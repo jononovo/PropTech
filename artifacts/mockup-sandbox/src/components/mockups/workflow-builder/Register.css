@@ -1,0 +1,115 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Outfit:wght@300..700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+.register-theme {
+  --bg-ground: #F7F5F0;
+  --bg-zebra: #F1EFE9;
+  --bg-surface: #FFFFFF;
+  --ink-primary: #1A1D1A;
+  --ink-secondary: #5C615D;
+  --ink-muted: #8F9E93;
+  
+  --brand-green: #2A4D3B;
+  --brand-green-light: #E6EDE9;
+  
+  --alert-clay: #B85C38;
+  --alert-clay-light: #F7ECE8;
+  --alert-clay-muted: #D9886C;
+  
+  --warn-amber: #D99632;
+  --warn-amber-light: #FDF3E1;
+  
+  --success-green: #48755C;
+  --success-green-light: #EBF2ED;
+
+  --border-hairline: #E4E1DA;
+  --border-strong: #D1CDDA;
+
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg-ground);
+  color: var(--ink-primary);
+}
+
+.font-serif {
+  font-family: 'Fraunces', serif;
+}
+
+.font-mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* Custom Scrollbar for spreadsheet feel */
+.register-theme ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.register-theme ::-webkit-scrollbar-track {
+  background: var(--bg-ground);
+}
+.register-theme ::-webkit-scrollbar-thumb {
+  background: #D5D2CC;
+  border-radius: 4px;
+}
+.register-theme ::-webkit-scrollbar-thumb:hover {
+  background: #BDBAB5;
+}
+
+/* Spreadheet Grid Aesthetics */
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sheet-th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--border-strong);
+  padding: 8px 12px;
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-ground);
+  z-index: 10;
+}
+
+.sheet-td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 0.8125rem;
+  vertical-align: middle;
+}
+
+.sheet-row {
+  transition: background-color 0.1s ease;
+}
+
+.sheet-row:nth-child(even):not(.is-expanded):not(.is-section) {
+  background-color: var(--bg-zebra);
+}
+
+.sheet-row:hover:not(.is-expanded):not(.is-section) {
+  background-color: #EAE7E0;
+}
+
+.sheet-row.is-expanded {
+  background-color: var(--bg-surface);
+  border-left: 2px solid var(--alert-clay);
+}
+
+.sheet-row.is-suggestion {
+  background-color: #F8F9FA; /* subtle cool gray for AI suggestion */
+  border-left: 2px dashed #93A5CE;
+}
+
+.sheet-row.is-section {
+  background-color: var(--bg-ground);
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.popover-card {
+  box-shadow: 0 4px 20px rgba(26, 29, 26, 0.08), 0 1px 3px rgba(26, 29, 26, 0.04);
+}

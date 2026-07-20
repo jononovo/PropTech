@@ -7,5 +7,6 @@ export const modules: ModuleMap = {
   "./components/mockups/workflow-builder/GardenPath.tsx": () => import("../components/mockups/workflow-builder/GardenPath.tsx"),
   "./components/mockups/workflow-builder/Intake.tsx": () => import("../components/mockups/workflow-builder/Intake.tsx"),
   "./components/mockups/workflow-builder/Ledger.tsx": () => import("../components/mockups/workflow-builder/Ledger.tsx"),
-  "./components/mockups/workflow-builder/Portal.tsx": () => import("../components/mockups/workflow-builder/Portal.tsx")
+  "./components/mockups/workflow-builder/Portal.tsx": () => import("../components/mockups/workflow-builder/Portal.tsx"),
+  "./components/mockups/workflow-builder/Register.tsx": () => import("../components/mockups/workflow-builder/Register.tsx")
 };

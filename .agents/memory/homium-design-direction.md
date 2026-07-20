@@ -9,7 +9,7 @@ description: Decided product architecture and visual language for the Homium Com
 One template/schema definition renders into exactly TWO consumption views:
 1. **Register** — dense spreadsheet-like operations sheet (bird's-eye, desktop, for staff reviewing the whole loan file). User "absolutely loves" this view.
 2. **Segmented step-by-step form** — easy on the eyes, section-by-section, for people filling things out; this is also the mobile/responsive story (the table view is not expected to work well on mobile).
-The workflow builder is a schema editor feeding both views (two candidate takes exist: "Schema" = Register in edit mode; "Composer" = write left / live multi-target preview right).
+The workflow builder is a schema editor feeding both views, and it must be FORM-style, not a table — the user explicitly rejected "builder as Register in edit mode" (the Schema mock). "Composer" (write left / live multi-target preview right) is the surviving builder direction; "Flow" is the step-by-step working view of an application (journey rail + single working column, no tables).
 
 **Why:** user articulated the split explicitly — operators need everything at their fingertips with no page-hopping (Excel energy), contributors need guided one-thing-at-a-time flow.
 **How to apply:** any new screen should be framed as a rendering of the same schema; don't invent third navigation paradigms; ops surfaces favor inline expansion + hover popovers over separate pages/modals.

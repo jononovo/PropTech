@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,400&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg-ground: #F7F5F0;
+  --bg-surface: #FFFFFF;
+  --bg-zebra: #FDFBFC;
+  --bg-hover: #F2F0EA;
+  
+  --ink-primary: #1A1D1A;
+  --ink-secondary: #585A58;
+  --ink-muted: #959795;
+  
+  --brand-green: #2A4D3B;
+  --brand-green-light: #E3EBE6;
+  
+  --warn-amber: #B85C38;
+  --warn-amber-light: #F8EBE6;
+  
+  --alert-clay: #9D432A;
+  --alert-clay-light: #F5E8E5;
+  
+  --border-hairline: #E8E6E1;
+  --border-strong: #D6D3CD;
+}
+
+body {
+  background-color: var(--bg-ground);
+  color: var(--ink-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.builder-theme {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--ink-primary);
+}
+
+.builder-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.builder-th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-secondary);
+  border-bottom: 1px solid var(--border-strong);
+  background-color: var(--bg-ground);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.builder-td {
+  padding: 8px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-hairline);
+  vertical-align: middle;
+}
+
+.builder-row {
+  background-color: var(--bg-surface);
+  transition: background-color 0.15s ease;
+}
+
+.builder-row:hover {
+  background-color: var(--bg-hover);
+}
+
+.builder-row:nth-child(even):not(.is-section):not(.is-expanded) {
+  background-color: rgba(247, 245, 240, 0.4); /* Faint zebra */
+}
+.builder-row:nth-child(even):not(.is-section):not(.is-expanded):hover {
+  background-color: var(--bg-hover);
+}
+
+.builder-row.is-section {
+  background-color: var(--bg-ground);
+  border-bottom: 1px solid var(--border-strong);
+  border-top: 1px solid var(--border-strong);
+}
+
+.builder-row.is-section td {
+  border-bottom: none;
+}
+
+.builder-row.is-section + .builder-row {
+  border-top: none;
+}
+
+.builder-row.is-expanded td {
+  border-bottom: none;
+}
+
+.popover-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Custom Scrollbar for the table container */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-ground);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
+}

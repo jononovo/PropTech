@@ -1,0 +1,205 @@
+All right, so I was just on a call with my friend who runs a fintech company: homium.io 
+
+And they do home loan assistance through programs with partners.
+For example, they will get a fund of 3 million from a company or a celebrity to help first time homebuyers of a certain criteria, for example, those making a certain amount and have children, so that they can avoid the deposit requirement.
+
+And what they will do is they will give the deposit requirement let's say hundred thousand dollars in exchange for a piece of the equity of the home that is being bought. 
+
+And then they will cycle that money through by eventually once the loan goes through and the payment start, they will sell that portion of the home to someone else receive the money back take their fees and then find other people that need that home loan deposit and cycle the fund to impact another batch of people.
+
+# **Product: Intelligent Document & Compliance Manager**
+
+But basically, the idea for a product has been formed, and this is a intelligent document and compliance manager.
+
+It has a number of different aspects and overlapping features so I will just kind of run through them in point form so that there's some kind of an idea of how it can work.
+ 
+
+# The Problem:
+At times a loan originator may have collected a lot of information around a home loan or had it on file and may send over all of the documents merged into a single PDF - Perhaps 300 pages or so. And this document would be sent to homium.io team as the compliance requirement for a home loan.
+
+---
+
+# The Solution:
+
+What would need to happen is an AI system would have to begin by sequentially doing a full analysis of each page to determine if the page might be missing if a document is complete or even suspected a fraud.
+
+Other things that could be flagged or if important portions of the document or page numbering or a signature might be cut off because maybe the page was scanned wrong or crooked.
+
+**Digital Damage or Corruption:**
+That there may also be issues where perhaps it was just scanned in the wrong format or two bad quality and may have to be requested for a better quality version.
+
+
+**Physical Damage or Corruption:**
+Or perhaps a page corner was folded or perhaps the document was folded too many times and some of the text on it is barely legible.
+
+**Errors**
+They maybe a number of reasons why a document may be flagged.
+It could also been accidentally included from another application meeting the wrong application.
+Or there may actually be a typo or an error in the document so there are a lot of different checks that should run first in the formatting, but then also in the content itself to not only segment in which folder or document sequence. This file should be saved, but also to do a fraud analysis and ensure that if something is suspicious, it gets flagged.
+
+Does that make sense?
+
+**Fraud**
+The document could also be flagged as fraudulent.
+And system may need to benefit from checking against other databases that may have a bunch of variants of these files. 
+
+
+# Foundation: Document Storage 
+
+Document Storage by application, stakeholder, folder, tag & priority.
+At it's foundation it is a gigantic folder of documents. Often 300+ per homeloan application process.
+Every single home loan application has really a gigantic list of documents that need to be vetted and managed and analyzed and unified in order for the process to be compliant with the different processes.
+
+
+# Service: Contextual Document Analysis 
+
+Then below the storage, there is a document analysis piece that uses both sort of static conversion and formatting tools that have consisted for a long time. But it merges these with AI analysis to enable scoring and reporting and gap analysis and more efficient process management.
+
+Does that make sense?
+
+In order to do contextual document analysis there must be a clear and segmented compliance framework for each workflow.
+
+There are two main "Loan" product lines:
+1. Purchase Loan
+2. Home Equity Re-finance Loan
+
+And then within those two product lines, there are multiple variants based on the state or the criteria for the applicant to be eligible to the homeloan fund (criteria), original homeloan (credit risk/score/ranking).
+
+
+# Categories of Documents:
+
+Within the spectrum of documents required, there are a number of different stakeholders which are either required to produce or to manage these documents.
+
+**Stakeholders:**
+- Homeloan applicants
+- Originators
+- Underwriters
+- Managers
+- [Others?]
+
+Here is a initial list of some of the different documents that are required:
+- Application
+- Home valuation docs
+- House Title Deed 
+- Bank Statements
+
+# Service: Document Splitting, Formatting, Naming, Saving 
+
+So we could segment the service into:
+- Document Quality Management - Format, clarity, scan-quality, text-clarity, corruption, physical damage, scan mis-management.
+- Document Structure Analysis: Shape, Icons, page-numbers, headers, signatures, initials, official stamps, text clarity, language/translations.
+- Static Document Content Analysis/Reading: OCR - Actually read/transcribe the content into a usable/data-relevant format.
+- AI-Driven Content Verifying/re-factoring: 1. Flag areas that need analysis ( where a text potentially doesn't make sense.) 2. Escalate to premium scan ( perhaps multiple agents and models independently, scanning and then combining results.), if the document is high value or extra complex.  - Zoning in on key parts or elements. Whether it be a signature or a logo or a clause of text that might be faded.
+- Premium/High-value analysis: looking at either dubious or questionable or hard to read or high value documents or portions to ensure compliance. This is basically a the feature that actually does the work of making sure the document is in the right place or it's the right document for the right application. It would also be the portion that actually would flag things as fraudulent or erroneous.
+  It would use the best models or structures or repos, google, for example, released a tool that does high-end OCR of long and unstructured data. 
+  This tool could be used from the start for every document or for special cases.
+  
+  
+  
+# Post-processing Workflow:
+
+After the analysis what should happen is:
+A. there are three markdown files per page. But for certain pages that are pretty clear or not high-value it's possible that the deep analysis document is not generated. 
+
+ 1. OCR Text Transcription [md file] - this is more of a basic OCR document that only lists the text that was transcribed from the document. It does not try to analyze images or seals or signatures. 
+ 2. Full AI Transcription (Including Images) [md file]: this is all the text and images on the document are tagged or described in this document.
+ 3. Basic Analysis [json file]: That provides; document title + page x of x, a short description, fraud score, quality score, formatting score, optional notes.
+ 4. Deep Analysis [json file] : This scan results in a deep report that may send her around a specific signature or image or initial or logo or clause of text. Whatever was flagged. The deep analysis could include all three of the following processes:
+    
+	 1. does a deep internal analysis and then 
+	 2. compares with external database (landing.ai for example) and does 
+	 3. online research to try and determine if this document is a fraud and what may be missing from it. 
+	    ( this is only generated if the page has been flagged by the "Basic Analysis" scan or if it is part of the workflow due to it, sensitive or critical nature.)
+   
+
+# Action Recommendation Enging:
+
+All of the information analysed, split, named, saved in segmented reports per section, and each of these sections is attributable to a specific stakeholder, and so if a document is missing or illegible or erroneous or misattributed, it's probable that the stakeholder partner would have to be contacted to see if they could source a better version the correct version of the file missing or in the case of serious suspicion of fraud that they would be alerted to the document.
+
+So each segment of the process or the expected process would have its own action items sort of report or steps with recommended steps.
+
+It could be as simple as emailing back and asking someone to sign a document or an initial document to update a document.
+
+Or to just send additional information that you added to the database directly by the team.
+
+Or asking a partner to send more information.
+
+
+# Monitoring / Alarm Bells:
+
+In any case, what should also happen is that there should be layers of "Alarm bells".
+
+For example, in order for a deal to go through the bank statements usually can't be older than three months and in some cases that may even be a request for criminal record or other documentation that is time bound or time sensitive. 
+
+ in such a case what should happen is there should be a section that says this document is going to be in admissible or ineligible by this date if the loan isn't approved. 
+ For this document will have to be updated or this information will have to be updated.
+ It's a simple as for example, a passport or drivers license expiring prior to the home loan being approved if there is a delay.
+ 
+ So each section should have a list of pre-set "Alarm Bells" that are highlighted on the application if they get within either 90 days or 30 days or seven days of a certain deadline. 
+ 
+ Does that make sense?
+
+
+# Technology to Use:
+
+I recall Google released an open source repo for the analysis of unstructured data. 
+I'm not sure if this should be used for all documentation.
+
+But it's definitely something that should be explored for the deep analysis.
+Or for the double take if it is a very large document or complex.
+
+
+
+# UX / Shape of the Application
+
+
+**Starting Point: Drop your files** 
+The idea of this is that the shape of this application would basically be a page that says drop your documentation for this project or link your Google Drive or box or dropbox folder and people wouldn't have to say OK upload this documents for this this documents for this this document, this every document would be analyzed names and allocated to the corresponding requirement.
+
+
+**Re-assigning:**
+
+But there is also perhaps segments that overlap and so he would also be very editable and dragon drop simple for someone who then uploaded a whole folder of documents to be able to simply say oh hey actually this one is not this. It's actually this please re-analyze or just allocate this to th and this one also should be copied over to this other one, etc. etc..
+
+**AI / Human Over-rides:**
+
+What I'm trying to say is the AI shouldn't override human allocation and it should also be very intuitive and easy for someone to just upload directly to specific fields if they want to or a hybrid where they upload a bunch of documents but can easily reassign or change or adapt things manually.
+
+Does that make sense?
+
+**Manual / Human Upload Flow:**
+
+Obviously, as I said, they would also just be different sections where it would be very easy for user. Just add new files and allocate them directly to their requirements..
+
+Meaning that this whole system could just work like a simple form. For example, example of the AI was switched off for some reason or switched off for certain segments or certain documents or certain forms.
+
+---
+
+# Product Skeleton: Form Builder with Document Storage
+
+In fact, from a product development point of view or perspective, I think the best way to start is with a form builder structure, and then off of the form builder. You obviously have the document submission pages and segments, and each of these forms is allocated toward a specific flow or process. 
+Different stakeholders may have viewing or editing/upload rights for different sections of the process.
+
+And so really it's from a structural point of view. It's a form builder that saves a lot of documents and requests a lot of documents and has multiple segments and permissions and editing rights both from the front end and the back end.
+
+What do you think about this?
+
+
+
+
+
+
+  
+  
+  
+  
+
+
+
+  
+  
+
+
+
+   
+   

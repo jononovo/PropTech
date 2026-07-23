@@ -82,3 +82,9 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 - Mobile hamburger sheet is account-only now (name/role/sign-out + mono case footer); its Pages list was removed as redundant. Trade-off accepted: applicant name truncates harder on 390px.
 - Timeline doctrine (user call): the chart IS the alert surface — no banner restating a row it already ranks; days-to-close renders at data size (18px mono inline), never display-type.
 - Verdict pattern (user call, built in variant C first): verdicts are two-layer — click arms the option (check + blue outline, siblings dim, key hints hide), an optional note field opens beneath ("travels with the verdict into the audit trail"), confirm logs both ("Log verdict" / "Log verdict + note"). Cancel disarms. `?armed=1` = deterministic demo state. If a review direction is chosen, carry this pattern into it.
+
+## Form Builder exploration (direction not chosen)
+- Product sequencing agreed: schema JSON is the contract; builder UI first, analyzer later (user researching separately); portal = React+Vite, not Next. Builder scope locked: single column, sections→subsections→blocks, block kinds document+fields only, JSON file IS the persistence — no flags/notifications/subtitles ever.
+- Shared contract: builderData.ts (Template types, PALETTE, PURCHASE_LOAN seed = the Workfile's 6 sections, templateToJson/templateStats/expiryLabel). Variants never fork it.
+- FormBuilderA (subagent homium-builder-a): palette-drag hypothesis; JSON behind header toggle drawer; params ?drop=1 ?json=1 ?focus=income. FormBuilderB (homium-builder-b): live-file hypothesis; outline left, inline "+" inserters (?insert=1), right rail = always-visible JSON with selected-block band auto-scrolled into view; ?focus=income.
+- Canvas frames at y=11470: builder-a x2821, builder-a-drop x4325, builder-b x5829.

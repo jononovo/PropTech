@@ -69,3 +69,10 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 ## Header trigger revision (Jul 23 2026, user call)
 - The next-action trigger no longer spells out the top blocker in the chrome ("too much space, super messy, too attention-getting — we're here to work"). It is now a quiet bell icon with a small squared mono count badge: red-tinted only while a true blocker exists, amber otherwise, bare when quiet. Same on mobile (replaces dot+count).
 - The ranked blockers-first dropdown is unchanged — severity and detail live one click deeper, never in the chrome. Doctrine now: chrome whispers a count; the queue speaks.
+
+## Page Review room (exploration in progress — user comparing variants)
+- New surface: page-level human-in-the-loop review beneath the Workfile's document-level verdicts. AI classifies + scores each page (Quality/OCR/Fraud triad — always shown together), draws %-rect region callouts on CSS-drawn facsimiles (never images), asks ONE plain question per stop. Human verdicts: accept / request / flag to partner (originator|underwriter) / archive. "Hold" band = automated deep review — explicitly not the human's turn; that restraint is a product value.
+- Scope choice is first-class: "Priority only" vs "Every page". Stops ≠ pages — contiguous runs (fax covers) collapse into one stop.
+- reviewData.ts is the shared contract, derived from data.ts (never fork facts); identical facsimile hints keep variants comparable.
+- Three interaction hypotheses live on canvas, Ops Desk skin held fixed: A Filmstrip (conveyor momentum, page is hero), B Queue+Inspector (inbox — command over the set), C Spotlight walkthrough (AI narrates one concern at a time; scope-chooser entry; veil + cutout). Frames homium-review-a/b/c + c-entry. Direction NOT chosen yet.
+- Flex lesson (recurring family bug): fixed-content chip clusters need flex-none — flex shrink + overflow-hidden silently clips trailing cells.

@@ -2,6 +2,9 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/homium/Backbone.tsx": () => import("../components/mockups/homium/Backbone.tsx"),
+  "./components/mockups/homium/ReviewFilmstrip.tsx": () => import("../components/mockups/homium/ReviewFilmstrip.tsx"),
+  "./components/mockups/homium/ReviewOverlay.tsx": () => import("../components/mockups/homium/ReviewOverlay.tsx"),
+  "./components/mockups/homium/ReviewQueue.tsx": () => import("../components/mockups/homium/ReviewQueue.tsx"),
   "./components/mockups/workflow-builder/Application.tsx": () => import("../components/mockups/workflow-builder/Application.tsx"),
   "./components/mockups/workflow-builder/Blueprint.tsx": () => import("../components/mockups/workflow-builder/Blueprint.tsx"),
   "./components/mockups/workflow-builder/Composer.tsx": () => import("../components/mockups/workflow-builder/Composer.tsx"),

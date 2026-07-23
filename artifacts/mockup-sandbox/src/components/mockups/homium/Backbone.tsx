@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, ChevronDown, ArrowUpRight, Keyboard, LogOut, Menu as MenuIcon, User, X } from "lucide-react";
+import { Bell, ChevronDown, ArrowUpRight, FolderOpen, History, Inbox, Keyboard, ListChecks, LogOut, Menu as MenuIcon, User, X } from "lucide-react";
 import { CASE, daysToClose, allReqs, liveClocks } from "./data";
 import IntakePage from "./pages/IntakePage";
 import WorkfilePage from "./pages/WorkfilePage";
@@ -11,11 +11,11 @@ export type Go = (p: PageId) => void;
 
 const MONO = "font-['IBM_Plex_Mono']";
 
-const TABS: { id: PageId; label: string }[] = [
-  { id: "intake", label: "Intake" },
-  { id: "workfile", label: "Workfile" },
-  { id: "timeline", label: "Timeline" },
-  { id: "register", label: "Register" },
+const TABS: { id: PageId; label: string; icon: typeof Inbox }[] = [
+  { id: "intake", label: "Intake", icon: Inbox },
+  { id: "workfile", label: "Workfile", icon: FolderOpen },
+  { id: "timeline", label: "Timeline", icon: History },
+  { id: "register", label: "Register", icon: ListChecks },
 ];
 
 function initialPage(): PageId {
@@ -130,8 +130,29 @@ export function Backbone() {
                 onClick={() => go(t.id)}
                 className={`relative px-4 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors ${active ? "text-[#0F172A]" : "text-[#64748B] hover:text-[#0F172A]"}`}
               >
-                {t.label}
+                <span className="flex items-center gap-1.5">
+                  <t.icon size={13} strokeWidth={2} className={active ? "text-[#1D4ED8]" : "text-[#94A3B8]"} />
+                  {t.label}
+                </span>
                 {active && <span className="absolute left-3 right-3 bottom-0 h-[2px] bg-[#1D4ED8]" />}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* mobile: icon-only tabs — the four pages stay one tap away */}
+        <nav className="flex md:hidden items-center gap-0.5 shrink-0" aria-label="Pages">
+          {TABS.map(t => {
+            const active = page === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => go(t.id)}
+                aria-label={t.label}
+                title={t.label}
+                className={`w-8 h-9 flex items-center justify-center rounded-[4px] transition-colors ${active ? "text-[#1D4ED8] bg-[#EFF6FF]" : "text-[#64748B] hover:bg-[#F1F5F9]"}`}
+              >
+                <t.icon size={16} strokeWidth={2} />
               </button>
             );
           })}
@@ -240,21 +261,8 @@ export function Backbone() {
 
           {menu === "nav" && (
             <div className={`${PANEL} md:hidden`}>
-              <div className="px-4 pt-3 pb-2 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Pages</div>
-              {TABS.map(t => {
-                const active = page === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => go(t.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-[0.08em] border-t border-[#F1F5F9] transition-colors ${active ? "text-[#1E40AF] bg-[#F8FAFC]" : "text-[#334155] hover:bg-[#F8FAFC]"}`}
-                  >
-                    {t.label}
-                    {active && <span className="w-1.5 h-1.5 rounded-[2px] bg-[#1D4ED8]" />}
-                  </button>
-                );
-              })}
-              <div className="flex items-center gap-2.5 px-4 py-2.5 border-t border-[#E2E8F0]">
+              {/* pages moved into the header as icon tabs — this sheet is account territory now */}
+              <div className="flex items-center gap-2.5 px-4 pt-3 pb-2.5">
                 <div className="w-7 h-7 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[9.5px] font-semibold text-[#1E40AF] shrink-0">ER</div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[12px] font-semibold leading-tight">Eleanor Ramos</div>

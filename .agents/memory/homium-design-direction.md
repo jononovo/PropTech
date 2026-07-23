@@ -76,3 +76,7 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 - reviewData.ts is the shared contract, derived from data.ts (never fork facts); identical facsimile hints keep variants comparable.
 - Three interaction hypotheses live on canvas, Ops Desk skin held fixed: A Filmstrip (conveyor momentum, page is hero), B Queue+Inspector (inbox — command over the set), C Spotlight walkthrough (AI narrates one concern at a time; scope-chooser entry; veil + cutout). Frames homium-review-a/b/c + c-entry. Direction NOT chosen yet.
 - Flex lesson (recurring family bug): fixed-content chip clusters need flex-none — flex shrink + overflow-hidden silently clips trailing cells.
+
+## Nav icons revision (user call)
+- The four page tabs carry icons: Intake=Inbox, Workfile=FolderOpen, Timeline=History, Register=ListChecks. Desktop = 13px icon + label (icon blue when active); mobile = icon-only 32px tab row in the header (blue wash when active) — pages are one tap away, no sheet needed.
+- Mobile hamburger sheet is account-only now (name/role/sign-out + mono case footer); its Pages list was removed as redundant. Trade-off accepted: applicant name truncates harder on 390px.

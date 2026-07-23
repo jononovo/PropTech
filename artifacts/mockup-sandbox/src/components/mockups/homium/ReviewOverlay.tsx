@@ -198,6 +198,11 @@ export function ReviewOverlay() {
   );
   const [currentIndex, setCurrentIndex] = useState(0);
   const [concernIndex, setConcernIndex] = useState(0);
+  // two-layer verdict: first click arms the option, an optional note rides along, confirm logs both
+  const [armed, setArmed] = useState<string | null>(
+    params.get('armed') === '1' ? (REVIEW_QUEUE[0].suggested ?? null) : null // deterministic demo state
+  );
+  const [note, setNote] = useState("");
 
   // Clean pages carry no scores/actions — give them safe defaults for "Every page" mode.
   const CLEAN_AS_STOPS = CLEAN_RUN.map(c => ({
@@ -250,6 +255,8 @@ export function ReviewOverlay() {
   }
 
   const handleAction = () => {
+    setArmed(null);
+    setNote("");
     if (currentStop.callouts && concernIndex < currentStop.callouts.length - 1) {
       setConcernIndex(c => c + 1);
     } else {
@@ -414,19 +421,22 @@ export function ReviewOverlay() {
             else if (i === 1) hint = 'R';
             else if (i === 2) hint = 'F';
 
+            const isArmed = armed === action.label;
+            if (isArmed) btnClass = 'bg-[#EFF6FF] text-[#1E40AF] border-[#1D4ED8]';
             return (
               <button 
                 key={action.label}
-                onClick={handleAction}
-                className={`w-full px-3 py-2.5 rounded-[4px] text-[13px] font-semibold transition-colors border ${btnClass} flex items-center justify-between group`}
+                onClick={() => { setArmed(isArmed ? null : action.label); if (isArmed) setNote(''); }}
+                className={`w-full px-3 py-2.5 rounded-[4px] text-[13px] font-semibold transition-colors border ${btnClass} flex items-center justify-between group ${armed && !isArmed ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-center">
+                  {isArmed && <span className="mr-2">&#10003;</span>}
                   {action.label}
-                  {isSuggested && (
+                  {isSuggested && !armed && (
                     <span className="ml-2 opacity-80 font-normal text-[11px]">(Suggested)</span>
                   )}
                 </div>
-                {hint && (
+                {hint && !armed && (
                   <span className={`text-[10px] font-mono border rounded-[2px] px-1.5 py-0.5 opacity-60 group-hover:opacity-100 ${isSuggested ? 'border-blue-400' : 'border-[#E2E8F0]'}`}>
                     {hint}
                   </span>
@@ -434,6 +444,31 @@ export function ReviewOverlay() {
               </button>
             );
           })}
+
+          {/* layer two: an optional note rides with the armed verdict */}
+          {armed && (
+            <div className="mt-1 border border-[#E2E8F0] rounded-[4px] bg-[#F8FAFC] p-3 flex flex-col gap-2">
+              <label className="text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[#64748B]">
+                Add a note — optional
+              </label>
+              <textarea
+                autoFocus
+                rows={2}
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder={`Context for \u201C${armed}\u201D — travels with the verdict into the audit trail`}
+                className="w-full resize-none rounded-[4px] border border-[#E2E8F0] bg-white px-2.5 py-2 text-[12.5px] leading-snug text-[#0F172A] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#1D4ED8]"
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button onClick={() => { setArmed(null); setNote(''); }} className="px-3 py-1.5 rounded-[4px] text-[12px] font-medium text-[#64748B] hover:bg-[#F1F5F9] transition-colors">
+                  Cancel
+                </button>
+                <button onClick={handleAction} className="px-3 py-1.5 rounded-[4px] text-[12px] font-semibold bg-[#1D4ED8] text-white hover:bg-[#1E40AF] transition-colors">
+                  {note.trim() ? 'Log verdict + note' : 'Log verdict'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {(currentStop.callouts?.length || 0) > 1 && (

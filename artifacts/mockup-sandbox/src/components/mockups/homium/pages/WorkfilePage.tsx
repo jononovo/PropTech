@@ -1,10 +1,17 @@
 import React, { useState } from "react";
 import type { Go } from "../Backbone";
 import { CASE, SECTIONS, liveClocks, stoppedClocks, band, daysTo, fmt, daysToClose, Req, stats, allReqs } from "../data";
-import { Check, Lock, Bell, Clock, Hourglass, AlertCircle, Sparkles, UploadCloud, FileText, ChevronRight, X } from "lucide-react";
+import { Check, Lock, Bell, Clock, Hourglass, AlertCircle, Sparkles, UploadCloud, FileText, ChevronRight, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 export default function WorkfilePage({ go }: { go: Go }) {
   const [toast, setToast] = useState<string | null>(null);
+
+  const [isRailCollapsed, setIsRailCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("rail") === "collapsed";
+    }
+    return false;
+  });
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -32,22 +39,29 @@ export default function WorkfilePage({ go }: { go: Go }) {
         </div>
       )}
 
-      <div className="w-full max-w-[1100px] flex flex-col md:flex-row px-4 md:px-8 mt-4 md:mt-12 gap-6 md:gap-12">
+      <div className="w-full max-w-[1100px] flex flex-col md:flex-row px-4 md:px-8 mt-4 md:mt-12 gap-6 md:gap-12 transition-all duration-200">
         {/* Left Rail */}
-        <aside className="w-full md:w-[280px] shrink-0 flex flex-col pt-2">
-          <div className="mb-3 md:mb-6 font-semibold text-[10px] uppercase tracking-[0.06em] text-[#64748B]">
-            {currentStats.quiet} OF 20 FILED CLEAN · {currentStats.attention} NEED YOU
+        <aside className={`shrink-0 flex flex-col pt-2 transition-[width] duration-200 ease-in-out ${isRailCollapsed ? "w-full md:w-[52px]" : "w-full md:w-[280px]"}`}>
+          
+          {/* Desktop Header */}
+          <div className="hidden md:flex items-center mb-6 h-[26px]">
+            {!isRailCollapsed && (
+              <div className="font-semibold text-[10px] uppercase tracking-[0.06em] text-[#64748B] flex-1 truncate pr-2">
+                {currentStats.quiet} OF 20 FILED CLEAN · {currentStats.attention} NEED YOU
+              </div>
+            )}
+            <button 
+              onClick={() => setIsRailCollapsed(!isRailCollapsed)}
+              className={`w-[26px] h-[26px] shrink-0 rounded-[4px] flex items-center justify-center text-[#64748B] hover:bg-[#F1F5F9] transition-colors ${isRailCollapsed ? 'mx-auto' : ''}`}
+              title={isRailCollapsed ? "Expand rail" : "Collapse rail"}
+            >
+              {isRailCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+            </button>
           </div>
 
-          {/* Desktop Rail */}
-          <div className="hidden md:flex relative flex-col gap-5 ml-2">
-            <div className="absolute left-[7px] top-[14px] bottom-4 w-[1px] bg-[#E2E8F0]"></div>
-            <RailNode num="01" name="Initial Application" count="3/3" state="done" />
-            <RailNode num="02" name="Identity Verification" count="2/2" state="done" />
-            <RailNode num="03" name="Income & Assets" count="2/5" state="current" dot="blocker" />
-            <RailNode num="04" name="Property Valuation" count="3/4" state="waiting" dot="warning" />
-            <RailNode num="05" name="Title & Escrow" count="1/3" state="review" dot="neutral" />
-            <RailNode num="06" name="Credit & Compliance" count="2/3" state="clock" dot="warning" />
+          {/* Mobile Header Whisper */}
+          <div className="md:hidden mb-3 font-semibold text-[10px] uppercase tracking-[0.06em] text-[#64748B]">
+            {currentStats.quiet} OF 20 FILED CLEAN · {currentStats.attention} NEED YOU
           </div>
 
           {/* Mobile Rail (Horizontal Scroll) */}
@@ -60,32 +74,72 @@ export default function WorkfilePage({ go }: { go: Go }) {
             <MobileRailNode num="06" name="Credit" count="2/3" state="clock" dot="warning" />
           </div>
 
-          {/* Desktop Waiting Card */}
-          <div className="hidden md:block mt-10 bg-white border border-[#E2E8F0] rounded p-3">
-            <div className="font-semibold text-[10px] uppercase tracking-[0.06em] text-[#64748B] mb-2.5">
-              Waiting on others
+          {/* Desktop Rail (Expanded) */}
+          {!isRailCollapsed && (
+            <div className="hidden md:flex relative flex-col gap-5 ml-2 animate-in fade-in duration-200">
+              <div className="absolute left-[7px] top-[14px] bottom-4 w-[1px] bg-[#E2E8F0]"></div>
+              <RailNode num="01" name="Initial Application" count="3/3" state="done" />
+              <RailNode num="02" name="Identity Verification" count="2/2" state="done" />
+              <RailNode num="03" name="Income & Assets" count="2/5" state="current" dot="blocker" />
+              <RailNode num="04" name="Property Valuation" count="3/4" state="waiting" dot="warning" />
+              <RailNode num="05" name="Title & Escrow" count="1/3" state="review" dot="neutral" />
+              <RailNode num="06" name="Credit & Compliance" count="2/3" state="clock" dot="warning" />
             </div>
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-start gap-2">
-                <Hourglass className="w-3.5 h-3.5 text-[#D97706] mt-[2px] shrink-0" />
-                <div className="text-[13px] leading-tight text-[#334155]">
-                  <span className="font-medium text-[#0F172A]">Insurance binder</span>
-                  <span> — originator · requested <span className="font-['IBM_Plex_Mono'] text-[#0F172A]">Jul 22</span></span>
+          )}
+
+          {/* Desktop Rail (Collapsed) */}
+          {isRailCollapsed && (
+            <div className="hidden md:flex flex-col items-center gap-1 w-full animate-in fade-in duration-200">
+              <CollapsedRailNode num="01" name="Initial Application" count="3/3" state="done" />
+              <CollapsedRailNode num="02" name="Identity Verification" count="2/2" state="done" />
+              <CollapsedRailNode num="03" name="Income & Assets" count="2/5" state="current" dot="blocker" />
+              <CollapsedRailNode num="04" name="Property Valuation" count="3/4" state="waiting" dot="warning" />
+              <CollapsedRailNode num="05" name="Title & Escrow" count="1/3" state="review" dot="neutral" />
+              <CollapsedRailNode num="06" name="Credit & Compliance" count="2/3" state="clock" dot="warning" />
+            </div>
+          )}
+
+          {/* Desktop Waiting Card (Expanded) */}
+          {!isRailCollapsed && (
+            <div className="hidden md:block mt-10 bg-white border border-[#E2E8F0] rounded p-3 animate-in fade-in duration-200">
+              <div className="font-semibold text-[10px] uppercase tracking-[0.06em] text-[#64748B] mb-2.5">
+                Waiting on others
+              </div>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-start gap-2">
+                  <Hourglass className="w-3.5 h-3.5 text-[#D97706] mt-[2px] shrink-0" />
+                  <div className="text-[13px] leading-tight text-[#334155]">
+                    <span className="font-medium text-[#0F172A]">Insurance binder</span>
+                    <span> — originator · requested <span className="font-['IBM_Plex_Mono'] text-[#0F172A]">Jul 22</span></span>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Hourglass className="w-3.5 h-3.5 text-[#D97706] mt-[2px] shrink-0" />
+                  <div className="text-[13px] leading-tight text-[#334155]">
+                    <span className="font-medium text-[#0F172A]">Preliminary CD</span>
+                    <span> — escrow · due <span className="font-['IBM_Plex_Mono'] text-[#0F172A]">Aug 31</span></span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <Hourglass className="w-3.5 h-3.5 text-[#D97706] mt-[2px] shrink-0" />
-                <div className="text-[13px] leading-tight text-[#334155]">
-                  <span className="font-medium text-[#0F172A]">Preliminary CD</span>
-                  <span> — escrow · due <span className="font-['IBM_Plex_Mono'] text-[#0F172A]">Aug 31</span></span>
-                </div>
-              </div>
             </div>
-          </div>
+          )}
+
+          {/* Desktop Waiting Card (Collapsed) */}
+          {isRailCollapsed && (
+            <div className="hidden md:flex mt-10 flex-col items-center animate-in fade-in duration-200">
+              <button 
+                className="w-[40px] h-[40px] rounded-[4px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] flex flex-col items-center justify-center transition-colors"
+                title="Waiting on others:&#10;• Insurance binder&#10;• Preliminary CD"
+              >
+                <Hourglass className="w-3.5 h-3.5 text-[#D97706] mb-[2px]" />
+                <span className="font-['IBM_Plex_Mono'] text-[10px] text-[#64748B] leading-none">2</span>
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Main Column */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 w-full max-w-[880px] flex flex-col transition-all duration-200">
           <header className="mb-4 md:mb-6 flex flex-col md:flex-row justify-start md:justify-between items-start md:items-end gap-3 md:gap-0">
             <div>
               <div className="font-semibold text-[10px] uppercase tracking-[0.08em] text-[#64748B] mb-1.5">
@@ -374,6 +428,37 @@ function RailNode({
         </div>
       </div>
     </div>
+  );
+}
+
+function CollapsedRailNode({ 
+  num, 
+  name, 
+  count, 
+  state, 
+  dot 
+}: { 
+  num: string; 
+  name: string; 
+  count: string; 
+  state: "done" | "current" | "waiting" | "review" | "clock"; 
+  dot?: "blocker" | "warning" | "neutral";
+}) {
+  const active = state === "current";
+  return (
+    <button
+      title={`${name} (${count})`}
+      className={`relative w-[40px] h-[40px] flex flex-col items-center justify-center rounded-[3px] transition-colors
+        ${active ? "bg-[#EFF6FF] shadow-[inset_2px_0_0_0_#1D4ED8]" : "hover:bg-[#F8FAFC] border border-transparent"}
+      `}
+    >
+      <span className={`font-['IBM_Plex_Mono'] text-[10.5px] ${active ? "text-[#1D4ED8] font-medium" : "text-[#64748B]"}`}>
+        {num}
+      </span>
+      {dot === "blocker" && <div className="absolute top-[6px] right-[6px] w-[5px] h-[5px] rounded-[1px] bg-[#DC2626]" />}
+      {dot === "warning" && <div className="absolute top-[6px] right-[6px] w-[5px] h-[5px] rounded-[1px] bg-[#D97706]" />}
+      {dot === "neutral" && <div className="absolute top-[6px] right-[6px] w-[5px] h-[5px] rounded-[1px] bg-[#94A3B8]" />}
+    </button>
   );
 }
 

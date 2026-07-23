@@ -60,3 +60,8 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 - Timeline + Register are intentionally desktop-only (user's explicit scope call).
 - **Gotcha:** percentage max-width (`max-w-full`) on a child of an intrinsically-sized flex item (`flex-none`) collapses toward min-content → phantom text truncation at desktop widths. Scope % max-widths to the breakpoint that has a real constraint (`max-w-full md:max-w-none`).
 - Canvas: two live phone frames (390×844, `?page=intake` / `?page=workfile`) sit right of the desktop backbone frame (`homium-backbone-m-intake`, `homium-backbone-m-workfile`).
+
+## Menu doctrine (Jul 23 2026)
+- Avatar → account menu, utilities ONLY (profile/prefs, notification rules, shortcuts, sign out, mono email footer). Never put work or urgency in it — the next-action queue stays the single urgency surface. Mobile: avatar stays hidden; account folds into the hamburger sheet as a name+role+sign-out row above the mono case footer.
+- Workfile journey rail is collapsible (desktop): ghost PanelLeft toggle in rail header → 52px spine of mono section numbers, attention dots preserved top-right, active = blue wash + 2px left rule, waiting-on-others becomes hourglass+count cell; form column breathes to ~880px. `?rail=collapsed` forces it for screenshots. Mobile chip row IS the collapsed state.
+- Global nav stays top tabs while destinations are 4 case-scoped lenses of one file — a left sidebar would duplicate tabs and steal width from the width-hungry pages (Workfile/Timeline/Register). A global sidebar earns its place only when app-level destinations exist (case queue, reports, admin) — agreed growth path.

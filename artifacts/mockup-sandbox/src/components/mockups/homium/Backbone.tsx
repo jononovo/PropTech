@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ArrowUpRight, Menu as MenuIcon, X } from "lucide-react";
+import { Bell, ChevronDown, ArrowUpRight, Keyboard, LogOut, Menu as MenuIcon, User, X } from "lucide-react";
 import { CASE, daysToClose, allReqs, liveClocks } from "./data";
 import IntakePage from "./pages/IntakePage";
 import WorkfilePage from "./pages/WorkfilePage";
@@ -26,11 +26,11 @@ function initialPage(): PageId {
   return "intake";
 }
 
-type MenuId = null | "case" | "next" | "nav";
+type MenuId = null | "case" | "next" | "nav" | "account";
 function initialMenu(): MenuId {
   if (typeof window !== "undefined") {
     const o = new URLSearchParams(window.location.search).get("open");
-    if (o === "case" || o === "next" || o === "nav") return o;
+    if (o === "case" || o === "next" || o === "nav" || o === "account") return o;
   }
   return null;
 }
@@ -192,7 +192,48 @@ export function Backbone() {
           )}
         </div>
 
-        <div className="hidden md:flex w-[26px] h-[26px] rounded-full bg-[#F1F5F9] border border-[#CBD5E1] items-center justify-center text-[9.5px] font-semibold text-[#334155] shrink-0" title="Eleanor Ramos — Underwriter">ER</div>
+        {/* account — utilities only; urgency lives one button to the left */}
+        <div className="relative shrink-0 hidden md:block">
+          <button
+            onClick={() => setMenu(menu === "account" ? null : "account")}
+            className={`w-[26px] h-[26px] rounded-full bg-[#F1F5F9] border flex items-center justify-center text-[9.5px] font-semibold text-[#334155] transition-colors ${menu === "account" ? "border-[#1D4ED8]" : "border-[#CBD5E1] hover:border-[#94A3B8]"}`}
+            title="Eleanor Ramos — Underwriter"
+          >
+            ER
+          </button>
+
+          {menu === "account" && (
+            <div className={`${PANEL} md:right-0 md:w-[264px]`}>
+              <div className="flex items-center gap-3 px-4 pt-3.5 pb-3 border-b border-[#F1F5F9]">
+                <div className="w-8 h-8 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[10.5px] font-semibold text-[#1E40AF] shrink-0">ER</div>
+                <div className="min-w-0">
+                  <div className="text-[12.5px] font-semibold leading-tight">Eleanor Ramos</div>
+                  <div className="text-[10.5px] text-[#64748B] leading-tight mt-0.5">Underwriter · Homium Compliance</div>
+                </div>
+              </div>
+              <div className="py-1">
+                {[
+                  { icon: User, label: "Profile & preferences" },
+                  { icon: Bell, label: "Notification rules" },
+                  { icon: Keyboard, label: "Keyboard shortcuts", hint: "?" },
+                ].map(({ icon: Icon, label, hint }) => (
+                  <button key={label} onClick={() => setMenu(null)} className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-[12px] text-[#334155] hover:bg-[#F8FAFC] transition-colors">
+                    <Icon size={13} className="text-[#64748B] shrink-0" />
+                    <span className="flex-1">{label}</span>
+                    {hint && <span className={`${MONO} text-[10px] text-[#94A3B8]`}>{hint}</span>}
+                  </button>
+                ))}
+                <button onClick={() => setMenu(null)} className="w-full flex items-center gap-2.5 px-4 py-2 text-left text-[12px] text-[#334155] hover:bg-[#F8FAFC] transition-colors border-t border-[#F1F5F9] mt-1">
+                  <LogOut size={13} className="text-[#64748B] shrink-0" />
+                  Sign out
+                </button>
+              </div>
+              <div className={`px-4 py-2 border-t border-[#E2E8F0] bg-[#F8FAFC] ${MONO} text-[10px] text-[#64748B]`}>
+                eleanor.ramos@homium.io
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* mobile nav */}
         <div className="relative shrink-0 md:hidden">
@@ -220,6 +261,17 @@ export function Backbone() {
                   </button>
                 );
               })}
+              <div className="flex items-center gap-2.5 px-4 py-2.5 border-t border-[#E2E8F0]">
+                <div className="w-7 h-7 rounded-full bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-center text-[9.5px] font-semibold text-[#1E40AF] shrink-0">ER</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12px] font-semibold leading-tight">Eleanor Ramos</div>
+                  <div className="text-[10px] text-[#64748B] leading-tight">Underwriter</div>
+                </div>
+                <button onClick={() => setMenu(null)} className="flex items-center gap-1.5 text-[11px] font-medium text-[#475569] hover:text-[#0F172A] px-2 py-2 rounded-[4px] hover:bg-[#F1F5F9] transition-colors">
+                  <LogOut size={12} />
+                  Sign out
+                </button>
+              </div>
               <div className={`px-4 py-2 border-t border-[#E2E8F0] bg-[#F8FAFC] ${MONO} text-[10px] text-[#64748B]`}>
                 {CASE.id} · {daysToClose} days to close
               </div>

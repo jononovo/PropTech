@@ -5,6 +5,7 @@ export const modules: ModuleMap = {
   "./components/mockups/homium/DocDimensions.tsx": () => import("../components/mockups/homium/DocDimensions.tsx"),
   "./components/mockups/homium/FormBuilderA.tsx": () => import("../components/mockups/homium/FormBuilderA.tsx"),
   "./components/mockups/homium/FormBuilderB.tsx": () => import("../components/mockups/homium/FormBuilderB.tsx"),
+  "./components/mockups/homium/FormLibrary.tsx": () => import("../components/mockups/homium/FormLibrary.tsx"),
   "./components/mockups/homium/ReviewFilmstrip.tsx": () => import("../components/mockups/homium/ReviewFilmstrip.tsx"),
   "./components/mockups/homium/ReviewOverlay.tsx": () => import("../components/mockups/homium/ReviewOverlay.tsx"),
   "./components/mockups/homium/ReviewQueue.tsx": () => import("../components/mockups/homium/ReviewQueue.tsx"),

@@ -84,13 +84,41 @@ export type Section = {
   subsections: Subsection[];
 };
 
+// Template lifecycle: a DRAFT is editable and cannot be assigned to applications;
+// an ACTIVE version is frozen and in use. "Update to a new version" copies
+// vN → vN+1 as a draft; vN stays active. Applications pin the version they
+// started on, so different versions can run concurrently.
+export type TemplateStatus = "draft" | "active";
+
 export type Template = {
   template: string;
   version: number;
+  status: TemplateStatus;
   program: string;
   alternatives: AlternativeGroup[];
   sections: Section[];
 };
+
+// The forms library: every template family with its versions.
+export type TemplateListing = {
+  id: string;
+  name: string;
+  program: string;
+  version: number;
+  status: TemplateStatus;
+  sections: number;
+  docs: number;
+  updated: string;   // e.g. "Jul 21"
+  inUseBy: number;   // applications currently pinned to this version
+};
+
+export const TEMPLATE_INDEX: TemplateListing[] = [
+  { id: "purchase-ca-v4", name: "Purchase Loan — CA", program: "Homium Deposit Assistance", version: 4, status: "draft",  sections: 6, docs: 16, updated: "Jul 23", inUseBy: 0 },
+  { id: "purchase-ca-v3", name: "Purchase Loan — CA", program: "Homium Deposit Assistance", version: 3, status: "active", sections: 6, docs: 15, updated: "Jul 09", inUseBy: 214 },
+  { id: "purchase-ca-v2", name: "Purchase Loan — CA", program: "Homium Deposit Assistance", version: 2, status: "active", sections: 6, docs: 14, updated: "May 28", inUseBy: 37 },
+  { id: "refi-ca-v2",     name: "Refinance — CA",     program: "Homium Deposit Assistance", version: 2, status: "active", sections: 5, docs: 12, updated: "Jun 30", inUseBy: 88 },
+  { id: "purchase-tx-v1", name: "Purchase Loan — TX", program: "Homium Deposit Assistance", version: 1, status: "draft",  sections: 6, docs: 15, updated: "Jul 18", inUseBy: 0 },
+];
 
 // ── the palette: what can be dragged into the form ──────────────────────────
 export const PALETTE = [
@@ -104,6 +132,7 @@ export const PALETTE = [
 export const PURCHASE_LOAN: Template = {
   template: "Purchase Loan — CA",
   version: 3,
+  status: "draft",
   program: "Homium Deposit Assistance",
   alternatives: [
     { id: "proof-of-identity", name: "Proof of Identity", primary: "gov-id", satisfiedBy: ["passport"] },

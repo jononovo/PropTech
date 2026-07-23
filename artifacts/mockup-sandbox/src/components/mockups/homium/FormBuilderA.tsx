@@ -175,21 +175,22 @@ export default function FormBuilderA() {
         {/* Header */}
         <header className="h-[52px] bg-white border-b border-[#E2E8F0] flex items-center px-4 shrink-0 z-10">
           <div className="text-[14px] font-medium text-[#0F172A] border-b border-dashed border-[#94A3B8] pb-[1px] cursor-text mr-2">{PURCHASE_LOAN.template}</div>
-          <div className="font-mono text-[11px] font-medium text-[#64748B] bg-[#F1F5F9] px-1.5 py-0.5 rounded-[2px]">v{PURCHASE_LOAN.version}</div>
+
           <div className="flex-1" />
+
+          <div className="font-mono text-[11px] font-medium text-[#64748B] bg-[#F1F5F9] px-1.5 py-0.5 rounded-[2px] mr-2">v{PURCHASE_LOAN.version}</div>
+          {PURCHASE_LOAN.status === "draft" ? (
+            <div className="font-mono text-[10px] font-medium text-[#64748B] uppercase tracking-[0.06em] border border-[#CBD5E1] px-1.5 py-0.5 rounded-[2px] mr-6">draft</div>
+          ) : (
+            <div className="font-mono text-[10px] font-medium text-[#1D4ED8] uppercase tracking-[0.06em] border border-[#BFDBFE] px-1.5 py-0.5 rounded-[2px] mr-6">active</div>
+          )}
           
           <button onClick={togglePreview} className={`flex items-center gap-1.5 text-[12.5px] font-medium mr-6 transition-colors ${showPreview ? 'text-[#1D4ED8]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>
             <Eye size={15} />
             Preview
           </button>
-          <button onClick={toggleJson} className="font-mono text-[11px] font-medium text-[#64748B] hover:text-[#0F172A] mr-6 transition-colors">
+          <button onClick={toggleJson} className="font-mono text-[11px] font-medium text-[#64748B] hover:text-[#0F172A] mr-2 transition-colors">
             {`{ } JSON`}
-          </button>
-          <button className="text-[12.5px] font-medium text-[#64748B] hover:text-[#0F172A] mr-4 transition-colors">
-            Duplicate
-          </button>
-          <button className="bg-[#1D4ED8] hover:bg-[#1E40AF] transition-colors text-white text-[12.5px] font-medium px-3.5 py-1.5 rounded-[4px] shadow-sm">
-            Export JSON
           </button>
         </header>
 

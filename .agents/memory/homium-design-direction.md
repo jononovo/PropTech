@@ -51,3 +51,12 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 **Scope:** all homium/* backbone files; shell (Backbone.tsx) owns the single Google Fonts import (Inter + IBM Plex Mono). Old workflow-builder mockups stay Ledger — historical record, do not convert.
 **Why:** explicit user mood pivot; product logic (blockers-first header, two-clock model, form-not-table) unchanged.
 **Truncation gotcha:** Tailwind `truncate` on a `flex` container clips without ellipsis — put `truncate` on an inner block/span child instead.
+
+## Mobile pass (Jul 23 2026)
+- Breakpoint doctrine: md (768px). Below md = stacked mobile; at/above md the approved 1440 layout must stay pixel-identical (mobile-first classes, desktop styling behind `md:`).
+- Header mobile: mark + applicant name (flex-1, truncate) + next-action as dot + queue-count + hamburger. Wordmark, avatar, dividers, inline tab row hidden. Tabs move into hamburger sheet (active = blue + square dot, mono case-id footer). `?open=nav` added for screenshots.
+- All header dropdowns share one PANEL recipe: `fixed inset-x-2 top-[58px]` full-width sheet on mobile, `md:absolute` anchored dropdown on desktop.
+- Workfile mobile: journey rail → horizontally scrollable chip switcher pinned on top, whisper line above it; WAITING ON OTHERS moves to page bottom; buttons full-width. Intake mobile: case strip stacks with closing target as bordered footer row.
+- Timeline + Register are intentionally desktop-only (user's explicit scope call).
+- **Gotcha:** percentage max-width (`max-w-full`) on a child of an intrinsically-sized flex item (`flex-none`) collapses toward min-content → phantom text truncation at desktop widths. Scope % max-widths to the breakpoint that has a real constraint (`max-w-full md:max-w-none`).
+- Canvas: two live phone frames (390×844, `?page=intake` / `?page=workfile`) sit right of the desktop backbone frame (`homium-backbone-m-intake`, `homium-backbone-m-workfile`).

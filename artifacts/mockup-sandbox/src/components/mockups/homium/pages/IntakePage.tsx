@@ -70,7 +70,7 @@ export default function IntakePage({ go }: { go: Go }) {
   };
 
   return (
-    <div className="intake-root overflow-y-auto px-8 py-10 flex flex-col items-center relative">
+    <div className="intake-root overflow-y-auto px-4 py-6 md:px-8 md:py-10 flex flex-col items-center relative">
       {state === "drop" && <DropState onClick={() => setState("processing")} onSkip={() => setState("report")} />}
       {state === "processing" && <ProcessingState step={procStep} pages={pageCount} checkIdx={checkLabelIdx} />}
       {state === "report" && <ReportState resolved={resolved} onVerdict={handleVerdict} go={go} />}
@@ -91,14 +91,14 @@ function DropState({ onClick, onSkip }: { onClick: () => void; onSkip: () => voi
   return (
     <div className="w-full max-w-[720px] animate-fade-in flex flex-col items-center">
       {/* Case Card */}
-      <div className="w-full bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-4 mb-6 flex justify-between items-center">
+      <div className="w-full bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-4 mb-6 flex flex-col md:flex-row md:justify-between items-start md:items-center gap-4 md:gap-0">
         <div>
           <div className="font-mono text-[11px] text-[var(--ops-muted)] mb-1">{CASE.id}</div>
           <div className="font-semibold text-[16px] text-[var(--ops-ink)]">
-            {CASE.applicant} <span className="font-normal text-[var(--ops-body-sec)] pl-1">— {CASE.loan}</span>
+            {CASE.applicant} <span className="font-normal text-[var(--ops-body-sec)] block md:inline md:pl-1 mt-0.5 md:mt-0">— {CASE.loan}</span>
           </div>
         </div>
-        <div className="text-right">
+        <div className="w-full md:w-auto text-left md:text-right border-t border-[var(--ops-inner-rule)] pt-3 md:border-t-0 md:pt-0">
           <div className="micro-label mb-1">CLOSING TARGET</div>
           <div className="font-mono text-[13px] text-[var(--ops-ink)]">Sep 3 · {daysToClose} days out</div>
         </div>
@@ -107,33 +107,35 @@ function DropState({ onClick, onSkip }: { onClick: () => void; onSkip: () => voi
       {/* Drop Zone */}
       <div 
         onClick={onClick}
-        className="w-full h-[360px] bg-[var(--ops-surface)] border-[1.5px] border-dashed border-[var(--ops-strong-border)] rounded-[6px] flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--ops-inset)] transition-colors relative group"
+        className="w-full min-h-[300px] md:min-h-0 md:h-[360px] bg-[var(--ops-surface)] border-[1.5px] border-dashed border-[var(--ops-strong-border)] rounded-[6px] flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--ops-inset)] transition-colors relative group p-6 md:p-0 text-center"
       >
-        <div className="w-12 h-12 rounded bg-[var(--ops-accent)] flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300">
+        <div className="w-12 h-12 rounded bg-[var(--ops-accent)] flex items-center justify-center mb-4 md:mb-5 group-hover:scale-105 transition-transform duration-300">
           <Upload className="w-5 h-5 text-white" />
         </div>
-        <h2 className="font-semibold tracking-[-0.01em] text-[21px] text-[var(--ops-ink)] mb-2">Drop the application file</h2>
-        <p className="text-[14px] text-[var(--ops-muted)] text-center max-w-[380px] mb-6">
+        <h2 className="font-semibold tracking-[-0.01em] text-[19px] md:text-[21px] text-[var(--ops-ink)] mb-2">Drop the application file</h2>
+        <p className="text-[13px] md:text-[14px] text-[var(--ops-muted)] max-w-[380px] mb-6">
           One PDF, three hundred pages. Homium files everything against the checklist — you review only the exceptions.
         </p>
-        <button className="btn-secondary pointer-events-none">Browse files</button>
+        <button className="btn-secondary pointer-events-none w-full md:w-auto h-10 md:h-auto">Browse files</button>
         
-        <div className="absolute bottom-5 micro-label text-[10px] text-[var(--ops-faint)] opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute bottom-5 micro-label text-[10px] text-[var(--ops-faint)] opacity-0 group-hover:opacity-100 transition-opacity hidden md:block">
           demo — click the zone to load the package
         </div>
       </div>
       
       {/* Connect */}
-      <div className="flex items-center gap-3 mt-6">
+      <div className="flex flex-col md:flex-row items-center gap-2 md:gap-3 mt-6 w-full text-center">
         <span className="text-[13px] text-[var(--ops-muted)]">or connect</span>
-        <button onClick={onClick} className="text-[13px] font-medium text-[var(--ops-accent)] hover:text-[var(--ops-accent-hover)] transition-colors">Google Drive</button>
-        <div className="w-[1px] h-3 bg-[var(--ops-strong-border)]" />
-        <button onClick={onClick} className="text-[13px] font-medium text-[var(--ops-accent)] hover:text-[var(--ops-accent-hover)] transition-colors">Dropbox</button>
-        <div className="w-[1px] h-3 bg-[var(--ops-strong-border)]" />
-        <button onClick={onClick} className="text-[13px] font-medium text-[var(--ops-accent)] hover:text-[var(--ops-accent-hover)] transition-colors">Box</button>
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={onClick} className="text-[13px] font-medium text-[var(--ops-accent)] hover:text-[var(--ops-accent-hover)] transition-colors p-2 md:p-0 min-h-[40px] md:min-h-0">Google Drive</button>
+          <div className="w-[1px] h-3 bg-[var(--ops-strong-border)]" />
+          <button onClick={onClick} className="text-[13px] font-medium text-[var(--ops-accent)] hover:text-[var(--ops-accent-hover)] transition-colors p-2 md:p-0 min-h-[40px] md:min-h-0">Dropbox</button>
+          <div className="w-[1px] h-3 bg-[var(--ops-strong-border)]" />
+          <button onClick={onClick} className="text-[13px] font-medium text-[var(--ops-accent)] hover:text-[var(--ops-accent-hover)] transition-colors p-2 md:p-0 min-h-[40px] md:min-h-0">Box</button>
+        </div>
       </div>
 
-      <button onClick={(e) => { e.stopPropagation(); onSkip(); }} className="mt-12 micro-label hover:text-[var(--ops-accent)] transition-colors cursor-pointer">
+      <button onClick={(e) => { e.stopPropagation(); onSkip(); }} className="mt-10 md:mt-12 micro-label hover:text-[var(--ops-accent)] transition-colors cursor-pointer min-h-[40px] px-4">
         skip to the report →
       </button>
     </div>
@@ -151,25 +153,25 @@ function ProcessingState({ step, pages, checkIdx }: { step: number; pages: numbe
   else if (step === 4) pct = 100;
 
   return (
-    <div className="w-full max-w-[600px] mt-20 animate-fade-in">
-      <div className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-5 mb-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] text-[var(--ops-accent)] flex items-center justify-center">
+    <div className="w-full max-w-[600px] mt-8 md:mt-20 animate-fade-in">
+      <div className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-4 md:p-5 mb-8 md:mb-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0">
+          <div className="flex items-start md:items-center gap-3">
+            <div className="w-9 h-9 shrink-0 rounded bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] text-[var(--ops-accent)] flex items-center justify-center">
               <FileText className="w-4 h-4" />
             </div>
             <div>
-              <div className="font-mono text-[13px] text-[var(--ops-ink)]">{CASE.package.file}</div>
+              <div className="font-mono text-[13px] text-[var(--ops-ink)] break-all">{CASE.package.file}</div>
               <div className="font-mono text-[11px] text-[var(--ops-muted)] mt-1">
                 {CASE.package.pages} pages · {CASE.package.size} · received {CASE.package.received}
               </div>
             </div>
           </div>
-          <div className="font-mono text-[15px] text-[var(--ops-accent)] font-semibold">
+          <div className="font-mono text-[15px] text-[var(--ops-accent)] font-semibold text-right">
             {Math.floor(pct)}%
           </div>
         </div>
-        <div className="w-full h-1 bg-[var(--ops-inner-rule)] rounded-full mt-5 overflow-hidden">
+        <div className="w-full h-1 bg-[var(--ops-inner-rule)] rounded-full mt-4 md:mt-5 overflow-hidden">
           <div 
             className="h-full bg-[var(--ops-accent)] transition-all duration-300 ease-out" 
             style={{ width: `${pct}%` }} 
@@ -184,7 +186,7 @@ function ProcessingState({ step, pages, checkIdx }: { step: number; pages: numbe
         <StepRow active={step === 3} done={step > 3} label="Running checks" mono={step > 2 ? `${CHECKS[checkIdx]} · ${checkIdx + 1} of 4` : ""} />
       </div>
 
-      <div className="text-center mt-16 micro-label text-[var(--ops-faint)]">
+      <div className="text-center mt-12 md:mt-16 micro-label text-[var(--ops-faint)] px-4">
         Quiet automation — you'll only be asked about exceptions.
       </div>
     </div>
@@ -193,9 +195,9 @@ function ProcessingState({ step, pages, checkIdx }: { step: number; pages: numbe
 
 function StepRow({ active, done, label, mono }: { active: boolean; done: boolean; label: string; mono: string }) {
   return (
-    <div className={`flex items-center justify-between transition-all duration-300 py-3 border-b border-[var(--ops-inner-rule)] ${active ? 'bg-[var(--ops-inset)] px-4 -mx-4 rounded' : 'px-2 -mx-2'} ${active || done ? "opacity-100" : "opacity-30"}`}>
+    <div className={`flex flex-col md:flex-row md:items-center justify-between transition-all duration-300 py-3 border-b border-[var(--ops-inner-rule)] ${active ? 'bg-[var(--ops-inset)] px-4 -mx-4 rounded' : 'px-2 -mx-2'} ${active || done ? "opacity-100" : "opacity-30"} gap-1 md:gap-0`}>
       <div className="flex items-center gap-3">
-        <div className="w-4 h-4 flex items-center justify-center">
+        <div className="w-4 h-4 flex items-center justify-center shrink-0">
           {done ? (
             <Check className="w-3.5 h-3.5 text-[var(--ops-ok-text)]" />
           ) : active ? (
@@ -204,11 +206,11 @@ function StepRow({ active, done, label, mono }: { active: boolean; done: boolean
             <div className="w-1.5 h-1.5 rounded-full bg-[var(--ops-border)]" />
           )}
         </div>
-        <span className={`text-[14px] ${active ? "text-[var(--ops-ink)] font-medium" : done ? "text-[var(--ops-body-sec)]" : "text-[var(--ops-muted)]"}`}>
+        <span className={`text-[13px] md:text-[14px] ${active ? "text-[var(--ops-ink)] font-medium" : done ? "text-[var(--ops-body-sec)]" : "text-[var(--ops-muted)]"}`}>
           {label}
         </span>
       </div>
-      <span className="font-mono text-[12px] text-[var(--ops-muted)]">{mono}</span>
+      <span className="font-mono text-[11px] md:text-[12px] text-[var(--ops-muted)] pl-7 md:pl-0">{mono}</span>
     </div>
   );
 }
@@ -220,27 +222,27 @@ function ReportState({ resolved, onVerdict, go }: { resolved: Record<string, str
   return (
     <div className="w-full max-w-[960px] animate-slide-up pb-16">
       {/* Stat strip */}
-      <div className="grid grid-cols-4 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-5">
         <StatCell val={st.found.toString()} label="documents found" sub="from 296 pages" />
         <StatCell val={st.quiet.toString()} label="filed quietly" sub="no action needed" />
         <StatCell val={st.attention.toString()} label="need you" sub="exceptions below" alert={st.attention > 0 ? "warning" : undefined} />
         <StatCell val={st.unassigned.toString()} label="unassigned" sub="review anytime" />
       </div>
 
-      <div className="flex justify-center mb-12">
-        <button onClick={() => go("timeline")} className="micro-label hover:text-[var(--ops-accent)] transition-colors">
+      <div className="flex justify-center mb-10 md:mb-12">
+        <button onClick={() => go("timeline")} className="micro-label hover:text-[var(--ops-accent)] transition-colors min-h-[40px] px-4">
           3 documents are on the clock — see timeline →
         </button>
       </div>
 
-      <div className="flex justify-between items-baseline mb-4 border-b border-[var(--ops-border)] pb-3">
-        <h3 className="font-semibold tracking-[-0.01em] text-[18px] text-[var(--ops-ink)]">Needs Your Attention</h3>
-        <button onClick={() => go("workfile")} className="micro-label hover:text-[var(--ops-accent)] transition-colors">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-baseline mb-4 border-b border-[var(--ops-border)] pb-3 gap-2 sm:gap-0">
+        <h3 className="font-semibold tracking-[-0.01em] text-[17px] md:text-[18px] text-[var(--ops-ink)]">Needs Your Attention</h3>
+        <button onClick={() => go("workfile")} className="micro-label hover:text-[var(--ops-accent)] transition-colors text-left sm:text-right min-h-[40px] sm:min-h-0">
           resolve in workfile →
         </button>
       </div>
 
-      <div className="space-y-3 mb-16">
+      <div className="space-y-3 mb-12 md:mb-16">
         {excs.map(({ req, sec }) => (
           <ExceptionRow 
             key={req.id} 
@@ -252,42 +254,42 @@ function ReportState({ resolved, onVerdict, go }: { resolved: Record<string, str
         ))}
       </div>
 
-      <div className="flex justify-between items-baseline mb-4 border-b border-[var(--ops-border)] pb-3 mt-12">
-        <h3 className="font-semibold tracking-[-0.01em] text-[18px] text-[var(--ops-ink)]">Unassigned</h3>
+      <div className="flex flex-col sm:flex-row justify-between sm:items-baseline mb-4 border-b border-[var(--ops-border)] pb-3 mt-10 md:mt-12 gap-2 sm:gap-0">
+        <h3 className="font-semibold tracking-[-0.01em] text-[17px] md:text-[18px] text-[var(--ops-ink)]">Unassigned</h3>
         <span className="micro-label">nothing blocks application</span>
       </div>
       
       <div className="space-y-3 mb-12">
         {UNASSIGNED.map(u => (
-          <div key={u.id} className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-4 flex items-start justify-between hover:bg-[var(--ops-inset)] transition-colors">
-            <div className="flex items-start gap-5">
-              <div className="min-w-[180px]">
-                <div className="text-[14px] font-medium text-[var(--ops-ink)] mb-1">{u.label}</div>
+          <div key={u.id} className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-3 md:p-4 flex flex-col md:flex-row items-start justify-between hover:bg-[var(--ops-inset)] transition-colors gap-4 md:gap-0">
+            <div className="flex flex-col md:flex-row items-start gap-2 md:gap-5 w-full">
+              <div className="w-full md:min-w-[180px]">
+                <div className="text-[13px] md:text-[14px] font-medium text-[var(--ops-ink)] mb-1">{u.label}</div>
                 <div className="font-mono text-[11px] text-[var(--ops-muted)]">pp. {u.pages}</div>
               </div>
-              <div className="text-[13px] text-[var(--ops-body-sec)] max-w-[400px] leading-relaxed border-l border-[var(--ops-border)] pl-4">
+              <div className="text-[12px] md:text-[13px] text-[var(--ops-body-sec)] w-full md:max-w-[400px] leading-relaxed border-l-2 md:border-l border-[var(--ops-inner-rule)] md:border-[var(--ops-border)] pl-3 md:pl-4 mt-1 md:mt-0">
                 {u.note}
               </div>
             </div>
-            <button className="btn-secondary">File as…</button>
+            <button className="btn-secondary w-full md:w-auto h-10 md:h-auto shrink-0 mt-1 md:mt-0">File as…</button>
           </div>
         ))}
       </div>
 
-      <div className="mb-8 mt-12">
-        <h3 className="font-semibold tracking-[-0.01em] text-[15px] text-[var(--ops-ink)] mb-5">Audit Trail</h3>
+      <div className="mb-8 mt-10 md:mt-12">
+        <h3 className="font-semibold tracking-[-0.01em] text-[14px] md:text-[15px] text-[var(--ops-ink)] mb-4 md:mb-5">Audit Trail</h3>
         <div className="pl-4 border-l-2 border-[var(--ops-inner-rule)] space-y-4 ml-1">
           {AUDIT.map((a, i) => (
-            <div key={i} className="flex items-start gap-4 relative">
+            <div key={i} className="flex flex-col md:flex-row md:items-start gap-1 md:gap-4 relative">
               <div className="absolute -left-[21px] w-2.5 h-2.5 rounded bg-[var(--ops-surface)] border-2 border-[var(--ops-strong-border)] mt-[3px]" />
-              <div className="font-mono text-[11px] text-[var(--ops-muted)] w-28 shrink-0 pt-0.5 tracking-wide">{a.time}</div>
-              <div className="text-[13px] text-[var(--ops-body-sec)] pt-px">{a.text}</div>
+              <div className="font-mono text-[11px] text-[var(--ops-muted)] md:w-28 shrink-0 pt-0.5 tracking-wide">{a.time}</div>
+              <div className="text-[12px] md:text-[13px] text-[var(--ops-body-sec)] pt-px leading-relaxed">{a.text}</div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="mt-16 pt-6 border-t border-[var(--ops-border)] text-center micro-label text-[var(--ops-faint)]">
+      <div className="mt-12 md:mt-16 pt-6 border-t border-[var(--ops-border)] text-center micro-label text-[var(--ops-faint)]">
         Your assignments win — Homium respects manual placement.
       </div>
     </div>
@@ -301,10 +303,10 @@ function StatCell({ val, label, sub, alert }: { val: string; label: string; sub:
   const textVal = isWarn ? "text-[var(--ops-warning-text)]" : isCrit ? "text-[var(--ops-critical-text)]" : "text-[var(--ops-ink)]";
 
   return (
-    <div className={`border rounded p-4 flex flex-col items-center text-center ${bg}`}>
-      <div className={`font-mono text-[28px] leading-none mb-2 font-medium ${textVal}`}>{val}</div>
-      <div className="micro-label mb-1">{label}</div>
-      <div className="text-[12px] text-[var(--ops-muted)]">{sub}</div>
+    <div className={`border rounded p-3 md:p-4 flex flex-col items-center text-center ${bg}`}>
+      <div className={`font-mono text-[24px] md:text-[28px] leading-none mb-1 md:mb-2 font-medium ${textVal}`}>{val}</div>
+      <div className="micro-label mb-1 text-[9.5px] md:text-[10.5px]">{label}</div>
+      <div className="text-[11px] md:text-[12px] text-[var(--ops-muted)] line-clamp-2 md:line-clamp-none px-1">{sub}</div>
     </div>
   );
 }
@@ -312,11 +314,13 @@ function StatCell({ val, label, sub, alert }: { val: string; label: string; sub:
 function ExceptionRow({ req, sec, resolvedText, onResolve }: { req: any; sec: any; resolvedText?: string; onResolve: (t: string) => void }) {
   if (resolvedText) {
     return (
-      <div className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-3 flex items-center gap-3 animate-fade-in">
-        <div className="w-5 h-5 rounded bg-[var(--ops-ok-wash)] border border-[var(--ops-ok-border)] flex items-center justify-center shrink-0">
+      <div className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded p-3 flex items-start sm:items-center gap-3 animate-fade-in">
+        <div className="w-5 h-5 rounded bg-[var(--ops-ok-wash)] border border-[var(--ops-ok-border)] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
           <Check className="w-3 h-3 text-[var(--ops-ok-text)]" />
         </div>
-        <div className="text-[13px] text-[var(--ops-ink)] flex-1">{resolvedText} <span className="text-[var(--ops-muted)] ml-2">— saved to audit log</span></div>
+        <div className="text-[12px] md:text-[13px] text-[var(--ops-ink)] flex-1 leading-snug">
+          {resolvedText} <span className="text-[var(--ops-muted)] block sm:inline sm:ml-2 mt-1 sm:mt-0">— saved to audit log</span>
+        </div>
       </div>
     );
   }
@@ -341,59 +345,59 @@ function ExceptionRow({ req, sec, resolvedText, onResolve }: { req: any; sec: an
   if (req.id === "c3") {
     verdicts = (
       <>
-        <button className="btn-secondary" onClick={() => onResolve("Accepted as-is")}>Accept as-is</button>
-        <button className="btn-primary" onClick={() => onResolve("Re-scan requested — secure upload link sent")}>Request re-scan</button>
+        <button className="btn-secondary w-full md:w-auto h-10 md:h-auto" onClick={() => onResolve("Accepted as-is")}>Accept as-is</button>
+        <button className="btn-primary w-full md:w-auto h-10 md:h-auto" onClick={() => onResolve("Re-scan requested — secure upload link sent")}>Request re-scan</button>
       </>
     );
   } else if (req.id === "c4") {
     verdicts = (
       <>
-        <button className="btn-secondary" onClick={() => onResolve("Document uploaded manually")}>Upload it myself</button>
-        <button className="btn-primary" onClick={() => onResolve("Requested from applicant — secure upload link sent")}>Request from applicant</button>
+        <button className="btn-secondary w-full md:w-auto h-10 md:h-auto" onClick={() => onResolve("Document uploaded manually")}>Upload it myself</button>
+        <button className="btn-primary w-full md:w-auto h-10 md:h-auto" onClick={() => onResolve("Requested from applicant — secure upload link sent")}>Request from applicant</button>
       </>
     );
   } else if (req.id === "e1") {
     verdicts = (
-      <div className="flex items-center gap-3">
-        <span className="micro-label">NO ACTION YET</span>
-        <button className="btn-secondary" onClick={() => onResolve("Viewed deep review")}>View deep review</button>
+      <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+        <span className="micro-label hidden sm:inline">NO ACTION YET</span>
+        <button className="btn-secondary w-full md:w-auto h-10 md:h-auto" onClick={() => onResolve("Viewed deep review")}>View deep review</button>
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded hover:bg-[var(--ops-inset)] transition-colors p-4">
-      <div className="flex justify-between items-start mb-3">
+    <div className="bg-[var(--ops-surface)] border border-[var(--ops-border)] rounded hover:bg-[var(--ops-inset)] transition-colors p-3 md:p-4">
+      <div className="flex flex-col justify-between items-start mb-3 gap-2">
         <div>
-          <div className="flex items-center gap-3 mb-1.5">
-            <h4 className="text-[15px] font-medium text-[var(--ops-ink)]">{req.name}</h4>
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1.5">
+            <h4 className="text-[14px] md:text-[15px] font-medium text-[var(--ops-ink)]">{req.name}</h4>
             <div className="px-1.5 py-0.5 rounded-[3px] bg-[var(--ops-inset)] border border-[var(--ops-border)] micro-label text-[9.5px]">
               {sec.num} · {sec.name}
             </div>
           </div>
           {req.file && (
-            <div className="inline-flex items-center gap-1.5 font-mono text-[11.5px] text-[var(--ops-muted)]">
-              <FileText className="w-3 h-3" />
-              {req.file} {req.pages ? `· pp. ${req.pages}` : ""}
+            <div className="inline-flex items-center gap-1.5 font-mono text-[11px] md:text-[11.5px] text-[var(--ops-muted)] break-all">
+              <FileText className="w-3 h-3 shrink-0" />
+              <span>{req.file} {req.pages ? `· pp. ${req.pages}` : ""}</span>
             </div>
           )}
         </div>
       </div>
       
-      <div className="flex items-end justify-between">
-        <div className={`flex items-start gap-2 max-w-[520px] rounded p-2.5 border ${sevWash} ${sevBorder}`}>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-0 mt-1 md:mt-0">
+        <div className={`flex items-start gap-2 w-full md:max-w-[520px] rounded p-2.5 border ${sevWash} ${sevBorder}`}>
           <AlertCircle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${sevText}`} />
           <div>
             <div className={`text-[12px] font-semibold mb-0.5 ${sevText}`}>
               {req.flag?.kind}
             </div>
-            <div className={`text-[13px] leading-relaxed ${sevText}`}>
+            <div className={`text-[12px] md:text-[13px] leading-relaxed ${sevText}`}>
               {req.flag?.note}
             </div>
           </div>
         </div>
         
-        <div className="flex gap-2 shrink-0 ml-4">
+        <div className="flex flex-col sm:flex-row md:flex-row gap-2 w-full md:w-auto shrink-0 md:ml-4">
           {verdicts}
         </div>
       </div>

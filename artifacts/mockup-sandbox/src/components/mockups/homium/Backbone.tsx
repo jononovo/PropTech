@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ArrowUpRight } from "lucide-react";
+import { ChevronDown, ArrowUpRight, Menu as MenuIcon, X } from "lucide-react";
 import { CASE, daysToClose, allReqs, liveClocks } from "./data";
 import IntakePage from "./pages/IntakePage";
 import WorkfilePage from "./pages/WorkfilePage";
@@ -26,11 +26,11 @@ function initialPage(): PageId {
   return "intake";
 }
 
-type Menu = null | "case" | "next";
-function initialMenu(): Menu {
+type MenuId = null | "case" | "next" | "nav";
+function initialMenu(): MenuId {
   if (typeof window !== "undefined") {
     const o = new URLSearchParams(window.location.search).get("open");
-    if (o === "case" || o === "next") return o;
+    if (o === "case" || o === "next" || o === "nav") return o;
   }
   return null;
 }
@@ -58,9 +58,12 @@ function nextUp(): NextItem[] {
 const TONE: Record<Tone, string> = { red: "text-[#B91C1C]", amber: "text-[#B45309]" };
 const DOT: Record<Tone, string> = { red: "bg-[#DC2626]", amber: "bg-[#D97706]" };
 
+// overlay panels: anchored dropdowns on desktop, full-width sheets under the header on mobile
+const PANEL = "fixed inset-x-2 top-[58px] md:absolute md:inset-x-auto md:top-[calc(100%+8px)] bg-white border border-[#E2E8F0] rounded-[6px] shadow-[0_8px_24px_rgba(15,23,42,0.12)] z-50 overflow-hidden";
+
 export function Backbone() {
   const [page, setPage] = useState<PageId>(initialPage);
-  const [menu, setMenu] = useState<Menu>(initialMenu);
+  const [menu, setMenu] = useState<MenuId>(initialMenu);
   const go: Go = p => { setPage(p); setMenu(null); };
   const queue = nextUp();
   const top = queue[0];
@@ -73,27 +76,27 @@ export function Backbone() {
       {menu && <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />}
 
       {/* ── shared chrome: identity · navigation · next action. Everything else lives one reveal deeper. ── */}
-      <header className="shrink-0 h-[52px] bg-white border-b border-[#E2E8F0] flex items-center gap-4 pl-5 pr-4">
+      <header className="shrink-0 h-[52px] bg-white border-b border-[#E2E8F0] flex items-center gap-2 md:gap-4 pl-3 md:pl-5 pr-2 md:pr-4">
         <div className="flex items-center gap-2.5 shrink-0">
           <div className="w-[26px] h-[26px] bg-[#1D4ED8] flex items-center justify-center rounded-[4px]">
             <span className="text-white text-[13px] font-bold leading-none">H</span>
           </div>
-          <span className="text-[15px] font-semibold tracking-[-0.01em]">Homium</span>
+          <span className="hidden md:inline text-[15px] font-semibold tracking-[-0.01em]">Homium</span>
         </div>
-        <div className="h-5 w-px bg-[#E2E8F0] shrink-0" />
+        <div className="hidden md:block h-5 w-px bg-[#E2E8F0] shrink-0" />
 
         {/* case anchor — the name is the file */}
-        <div className="relative min-w-0">
+        <div className="relative min-w-0 flex-1 md:flex-none">
           <button
             onClick={() => setMenu(menu === "case" ? null : "case")}
-            className="flex items-center gap-1.5 px-2 py-1.5 -ml-2 rounded-[4px] hover:bg-[#F1F5F9] transition-colors min-w-0"
+            className="flex items-center gap-1.5 px-2 py-2 md:py-1.5 -ml-2 rounded-[4px] hover:bg-[#F1F5F9] transition-colors min-w-0 max-w-full md:max-w-none"
           >
             <span className="text-[13px] font-semibold truncate">{CASE.applicant}</span>
             <ChevronDown size={12} className={`text-[#94A3B8] shrink-0 transition-transform duration-150 ${menu === "case" ? "rotate-180" : ""}`} />
           </button>
 
           {menu === "case" && (
-            <div className="absolute left-0 top-[calc(100%+8px)] w-[324px] bg-white border border-[#E2E8F0] rounded-[6px] shadow-[0_8px_24px_rgba(15,23,42,0.12)] z-50 overflow-hidden">
+            <div className={`${PANEL} md:left-0 md:w-[324px]`}>
               <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-[#F1F5F9]">
                 <span className={`${MONO} text-[11px] font-medium`}>{CASE.id}</span>
                 <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-[#1E40AF] bg-[#EFF6FF] border border-[#BFDBFE] rounded-[3px] px-1.5 py-[2px]">In underwriting</span>
@@ -119,7 +122,7 @@ export function Backbone() {
           )}
         </div>
 
-        <nav className="ml-auto flex items-stretch self-stretch shrink-0">
+        <nav className="ml-auto hidden md:flex items-stretch self-stretch shrink-0">
           {TABS.map(t => {
             const active = page === t.id;
             return (
@@ -135,34 +138,35 @@ export function Backbone() {
           })}
         </nav>
 
-        <div className="h-5 w-px bg-[#E2E8F0] shrink-0" />
+        <div className="hidden md:block h-5 w-px bg-[#E2E8F0] shrink-0" />
 
         {/* next action — the one thing the header is allowed to say out loud */}
         <div className="relative shrink-0">
           <button
             onClick={() => setMenu(menu === "next" ? null : "next")}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] hover:bg-[#F1F5F9] transition-colors"
+            className="flex items-center gap-1.5 md:gap-2 px-2 md:px-2.5 py-2 md:py-1.5 rounded-[4px] hover:bg-[#F1F5F9] transition-colors"
           >
             {top ? (
               <>
                 <span className={`w-[7px] h-[7px] rounded-[2px] shrink-0 ${DOT[top.tone]}`} />
-                <span className="text-[12.5px] font-semibold max-w-[220px] truncate">
+                <span className="hidden md:inline text-[12.5px] font-semibold max-w-[220px] truncate">
                   {top.title} <span className={`${TONE[top.tone]} font-medium`}>— {top.chip}</span>
                 </span>
-                {queue.length > 1 && <span className={`${MONO} text-[10px] text-[#64748B]`}>+{queue.length - 1}</span>}
+                <span className={`md:hidden ${MONO} text-[11px] font-medium ${TONE[top.tone]}`}>{queue.length}</span>
+                {queue.length > 1 && <span className={`hidden md:inline ${MONO} text-[10px] text-[#64748B]`}>+{queue.length - 1}</span>}
               </>
             ) : (
               <>
                 <span className="w-[7px] h-[7px] rounded-[2px] shrink-0 bg-[#15803D]" />
-                <span className="text-[12.5px] text-[#475569]">Nothing needs you</span>
-                <span className={`${MONO} text-[10px] text-[#64748B]`}>{daysToClose}d to close</span>
+                <span className="hidden md:inline text-[12.5px] text-[#475569]">Nothing needs you</span>
+                <span className={`hidden md:inline ${MONO} text-[10px] text-[#64748B]`}>{daysToClose}d to close</span>
               </>
             )}
             <ChevronDown size={12} className={`text-[#94A3B8] shrink-0 transition-transform duration-150 ${menu === "next" ? "rotate-180" : ""}`} />
           </button>
 
           {menu === "next" && (
-            <div className="absolute right-0 top-[calc(100%+8px)] w-[372px] bg-white border border-[#E2E8F0] rounded-[6px] shadow-[0_8px_24px_rgba(15,23,42,0.12)] z-50 overflow-hidden">
+            <div className={`${PANEL} md:right-0 md:w-[372px]`}>
               <div className="px-4 pt-3 pb-2 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">
                 Needs you · blockers first
               </div>
@@ -170,7 +174,7 @@ export function Backbone() {
                 <button
                   key={it.id}
                   onClick={() => go(it.page)}
-                  className="group w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-[#F8FAFC] transition-colors border-t border-[#F1F5F9]"
+                  className="group w-full flex items-center gap-3 px-4 py-3 md:py-2.5 text-left hover:bg-[#F8FAFC] transition-colors border-t border-[#F1F5F9]"
                 >
                   <span className={`${MONO} text-[10px] text-[#94A3B8] pt-[1px]`}>0{i + 1}</span>
                   <span className="flex-1 min-w-0">
@@ -188,7 +192,40 @@ export function Backbone() {
           )}
         </div>
 
-        <div className="w-[26px] h-[26px] rounded-full bg-[#F1F5F9] border border-[#CBD5E1] flex items-center justify-center text-[9.5px] font-semibold text-[#334155] shrink-0" title="Eleanor Ramos — Underwriter">ER</div>
+        <div className="hidden md:flex w-[26px] h-[26px] rounded-full bg-[#F1F5F9] border border-[#CBD5E1] items-center justify-center text-[9.5px] font-semibold text-[#334155] shrink-0" title="Eleanor Ramos — Underwriter">ER</div>
+
+        {/* mobile nav */}
+        <div className="relative shrink-0 md:hidden">
+          <button
+            onClick={() => setMenu(menu === "nav" ? null : "nav")}
+            className="w-9 h-9 flex items-center justify-center rounded-[4px] hover:bg-[#F1F5F9] transition-colors text-[#334155]"
+            aria-label="Pages"
+          >
+            {menu === "nav" ? <X size={17} /> : <MenuIcon size={17} />}
+          </button>
+
+          {menu === "nav" && (
+            <div className={`${PANEL} md:hidden`}>
+              <div className="px-4 pt-3 pb-2 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-[#64748B]">Pages</div>
+              {TABS.map(t => {
+                const active = page === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => go(t.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left text-[12px] font-semibold uppercase tracking-[0.08em] border-t border-[#F1F5F9] transition-colors ${active ? "text-[#1E40AF] bg-[#F8FAFC]" : "text-[#334155] hover:bg-[#F8FAFC]"}`}
+                  >
+                    {t.label}
+                    {active && <span className="w-1.5 h-1.5 rounded-[2px] bg-[#1D4ED8]" />}
+                  </button>
+                );
+              })}
+              <div className={`px-4 py-2 border-t border-[#E2E8F0] bg-[#F8FAFC] ${MONO} text-[10px] text-[#64748B]`}>
+                {CASE.id} · {daysToClose} days to close
+              </div>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* ── active page ── */}

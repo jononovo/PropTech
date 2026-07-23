@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "08JOIrjQfIS0ZQlK4rliB"
+uri = "file://docs/homium-template-schema-spec.md"
+type = "text"
+title = "Homium Template Schema — Technical Spec (dimensions, alternatives, analysis rules)"

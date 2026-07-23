@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { GripVertical, ChevronDown, ChevronRight, MoreHorizontal, Eye, Monitor, Smartphone, List, Upload } from "lucide-react";
-import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAVED_SECTIONS, Section, Role, Permission } from "./builderData";
+import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAVED_SECTIONS, Section, Role, Permission, RequirementLevel, Criticality, Sourcing, requirementLabel, criticalityLabel, sourcingLabel, groupForPrimary, groupsSatisfiedBy, blockName, Template } from "./builderData";
 
 // URL Params Supported:
 // ?json=1 - Opens the bottom drawer with JSON output
@@ -9,9 +9,21 @@ import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAV
 // ?collapsed=1 - Starts sections 02 (Identity) and 05 (Title) in collapsed state
 // ?menu=1 - Starts with the section menu open on section 01 (Initial Application)
 // ?focus=income - Scrolls the Income & Assets section into view on mount
+// ?focus=identity - Scrolls the Identity Verification section into view on mount and selects gov-id block
 // ?preview=1 - Opens the Live Preview right pane
 // ?pview=mobile|desktop|register - Selects the view mode in the Preview pane
 // ?perms=1 - Opens the permissions strip for section 03 (Income & Assets)
+
+const getBlockSectionNumber = (t: Template, blockId: string) => {
+  for (let i = 0; i < t.sections.length; i++) {
+    for (const ss of t.sections[i].subsections) {
+      for (const b of ss.blocks) {
+        if (b.id === blockId) return (i + 1).toString().padStart(2, '0');
+      }
+    }
+  }
+  return "00";
+};
 
 const getSectionStats = (section: Section) => {
   let blocks = 0;
@@ -31,7 +43,7 @@ export default function FormBuilderA() {
   
   const isCollapsedInit = params.get("collapsed") === "1";
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() =>
-    isCollapsedInit ? { "identity": true, "title-escrow": true } : {}
+    isCollapsedInit ? { "identity": true, "title-escrow": true } : {} as Record<string, boolean>
   );
 
   const isMenuInit = params.get("menu") === "1";
@@ -47,11 +59,13 @@ export default function FormBuilderA() {
   }, []);
 
   useEffect(() => {
-    if (params.get("focus") === "income") {
+    const focusParam = params.get("focus");
+    if (focusParam === "income") {
       const el = sectionRefs.current["income-assets"];
-      if (el) {
-        el.scrollIntoView({ block: "start" });
-      }
+      if (el) el.scrollIntoView({ block: "start" });
+    } else if (focusParam === "identity") {
+      const el = sectionRefs.current["identity"];
+      if (el) el.scrollIntoView({ block: "start" });
     }
   }, [params]);
 
@@ -67,6 +81,15 @@ export default function FormBuilderA() {
   const showDrop2 = params.get("drop") === "2";
   const showPreview = params.get("preview") === "1";
   const pview = params.get("pview") || "mobile";
+  const editedBlockId = params.get("focus") === "identity" ? "gov-id" : "bank-statements";
+  const editedBlockData = PURCHASE_LOAN.sections.flatMap(s => s.subsections).flatMap(ss => ss.blocks).find(b => b.id === editedBlockId);
+  
+  const [localReq, setLocalReq] = useState<RequirementLevel | null>(null);
+  useEffect(() => {
+    if (editedBlockData && editedBlockData.kind === "document" && "requirement" in editedBlockData) {
+      setLocalReq(editedBlockData.requirement);
+    }
+  }, [editedBlockId, editedBlockData]);
   
   const stats = templateStats(PURCHASE_LOAN);
   
@@ -117,7 +140,9 @@ export default function FormBuilderA() {
   };
 
   // Preview Data Preparation
-  const targetSection = PURCHASE_LOAN.sections.find(s => s.id === "income-assets") || PURCHASE_LOAN.sections[0];
+  const targetSection = PURCHASE_LOAN.sections.find(s => 
+    s.subsections.some(ss => ss.blocks.some(b => b.id === editedBlockId))
+  ) || PURCHASE_LOAN.sections[0];
   const targetSectionIndex = PURCHASE_LOAN.sections.indexOf(targetSection) + 1;
   const totalSections = PURCHASE_LOAN.sections.length;
   
@@ -339,44 +364,94 @@ export default function FormBuilderA() {
                                   <React.Fragment key={block.id}>
                                     
                                     {/* Block Card */}
-                                    {block.id === "bank-statements" ? (
+                                    {block.id === editedBlockId ? (
                                       // Editing State (Inline)
-                                      <div className="bg-white border-2 border-[#1D4ED8] rounded-[4px] p-3 flex shadow-sm relative z-10">
-                                        <GripVertical size={14} className="text-[#94A3B8] mr-2 mt-0.5 cursor-grab shrink-0" />
-                                        <div className="flex-1">
-                                          <div className="flex items-center">
-                                            <input 
-                                              type="text" 
-                                              defaultValue={block.name}
-                                              className="text-[13px] font-medium text-[#0F172A] border-b border-dashed border-[#1D4ED8] bg-transparent outline-none pb-0.5 flex-1 focus:border-solid" 
-                                            />
-                                          </div>
-                                          <div className="flex items-center gap-3 font-mono text-[11px] mt-2.5 bg-[#F8FAFC] p-2 rounded-[2px] border border-[#E2E8F0] flex-wrap">
-                                            <label className="flex items-center gap-1.5 cursor-pointer">
-                                              <input type="checkbox" defaultChecked={block.kind === "document" ? block.required : false} className="accent-[#1D4ED8] w-3 h-3" />
-                                              <span className="text-[#334155]">Required</span>
-                                            </label>
-                                            <div className="text-[#CBD5E1]">|</div>
-                                            
-                                            {block.kind === "document" && (
-                                              <>
-                                                <div className="flex items-center gap-1.5">
-                                                  <span className="text-[#64748B]">Fmt:</span>
-                                                  <input type="text" defaultValue={block.formats.join(", ")} className="border-b border-[#CBD5E1] outline-none text-[#0F172A] w-24 bg-transparent focus:border-[#1D4ED8] pb-px" />
-                                                </div>
-                                                <div className="text-[#CBD5E1]">|</div>
-                                                <div className="flex items-center gap-1.5">
-                                                  <span className="text-[#64748B]">Exp:</span>
-                                                  <select className="border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px cursor-pointer">
-                                                    <option>stale after 90d</option>
-                                                    <option>valid through closing</option>
-                                                    <option>no clock</option>
-                                                  </select>
-                                                </div>
-                                              </>
-                                            )}
+                                      <div className="bg-white border-2 border-[#1D4ED8] rounded-[4px] p-3 flex shadow-sm relative z-10 flex-col">
+                                        <div className="flex">
+                                          <GripVertical size={14} className="text-[#94A3B8] mr-2 mt-0.5 cursor-grab shrink-0" />
+                                          <div className="flex-1">
+                                            <div className="flex items-center">
+                                              <input 
+                                                type="text" 
+                                                defaultValue={block.name}
+                                                className="text-[13px] font-medium text-[#0F172A] border-b border-dashed border-[#1D4ED8] bg-transparent outline-none pb-0.5 flex-1 focus:border-solid" 
+                                              />
+                                            </div>
+                                            <div className="flex items-center gap-3 font-mono text-[11px] mt-2.5 bg-[#F8FAFC] p-2 rounded-[2px] border border-[#E2E8F0] flex-wrap">
+                                              
+                                              {block.kind === "document" && (
+                                                <>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[#64748B]">Req:</span>
+                                                    <select 
+                                                      value={localReq || block.requirement} 
+                                                      onChange={(e) => setLocalReq(e.target.value as RequirementLevel)}
+                                                      className="border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px cursor-pointer"
+                                                    >
+                                                      <option value="required">{requirementLabel("required")}</option>
+                                                      <option value="required_alt">{requirementLabel("required_alt")}</option>
+                                                      <option value="recommended">{requirementLabel("recommended")}</option>
+                                                      <option value="optional">{requirementLabel("optional")}</option>
+                                                    </select>
+                                                  </div>
+                                                  <div className="text-[#CBD5E1]">|</div>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[#64748B]">Weight:</span>
+                                                    <select 
+                                                      defaultValue={block.criticality}
+                                                      className="border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px cursor-pointer"
+                                                    >
+                                                      <option value="critical">{criticalityLabel("critical")}</option>
+                                                      <option value="standard">{criticalityLabel("standard")}</option>
+                                                      <option value="supporting">{criticalityLabel("supporting")}</option>
+                                                    </select>
+                                                  </div>
+                                                  <div className="text-[#CBD5E1]">|</div>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[#64748B]">Sourcing:</span>
+                                                    <select 
+                                                      defaultValue={block.sourcing}
+                                                      className="border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px cursor-pointer"
+                                                    >
+                                                      <option value="readily_available">{sourcingLabel("readily_available")}</option>
+                                                      <option value="constrained">{sourcingLabel("constrained")}</option>
+                                                      <option value="scarce">{sourcingLabel("scarce")}</option>
+                                                    </select>
+                                                  </div>
+                                                  <div className="text-[#CBD5E1]">|</div>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[#64748B]">Fmt:</span>
+                                                    <input type="text" defaultValue={block.formats.join(", ")} className="border-b border-[#CBD5E1] outline-none text-[#0F172A] w-24 bg-transparent focus:border-[#1D4ED8] pb-px" />
+                                                  </div>
+                                                  <div className="text-[#CBD5E1]">|</div>
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="text-[#64748B]">Exp:</span>
+                                                    <select className="border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px cursor-pointer">
+                                                      <option>stale after 90d</option>
+                                                      <option>valid through closing</option>
+                                                      <option>no clock</option>
+                                                    </select>
+                                                  </div>
+                                                </>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
+                                        
+                                        {block.kind === "document" && localReq === "required_alt" && (
+                                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#E2E8F0] ml-6">
+                                            <span className="font-mono text-[10px] text-[#64748B] uppercase tracking-wider">SATISFIED BY ANY OF:</span>
+                                            {groupForPrimary(PURCHASE_LOAN, block.id)?.satisfiedBy.map((altId, idx, arr) => (
+                                              <React.Fragment key={altId}>
+                                                <span className="text-[11px] text-[#334155]">{blockName(PURCHASE_LOAN, altId)} <span className="text-[#94A3B8]">({getBlockSectionNumber(PURCHASE_LOAN, altId)})</span></span>
+                                                {idx < arr.length - 1 && <span className="text-[#CBD5E1]">,</span>}
+                                              </React.Fragment>
+                                            ))}
+                                            <button className="text-[10px] text-[#64748B] border-b border-dashed border-[#CBD5E1] hover:text-[#0F172A] hover:border-[#94A3B8] transition-colors ml-1">
+                                              + add alternative
+                                            </button>
+                                          </div>
+                                        )}
                                       </div>
                                     ) : (
                                       // Rest State
@@ -386,19 +461,35 @@ export default function FormBuilderA() {
                                           <div className="text-[12.5px] font-medium text-[#0F172A]">{block.name}</div>
                                           
                                           {block.kind === "document" && (
-                                            <div className="font-mono text-[10.5px] text-[#64748B] mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
-                                              <span>{block.formats.join(", ")}</span>
-                                              <span className="text-[#CBD5E1]">•</span>
-                                              <span className={block.required ? "text-[#334155]" : ""}>{block.required ? "req" : "opt"}</span>
-                                              <span className="text-[#CBD5E1]">•</span>
-                                              <span>{expiryLabel(block.expiry)}</span>
-                                              {block.multiPage && (
-                                                <>
-                                                  <span className="text-[#CBD5E1]">•</span>
-                                                  <span>multi-page</span>
-                                                </>
+                                            <>
+                                              <div className="font-mono text-[10.5px] text-[#64748B] mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                                <span>{block.formats.join(", ")}</span>
+                                                <span className="text-[#CBD5E1]">•</span>
+                                                <span className={block.requirement.startsWith("required") ? "text-[#334155]" : ""}>
+                                                  {requirementLabel(block.requirement)} · <span className="text-[#64748B]">{criticalityLabel(block.criticality)}</span>
+                                                </span>
+                                                <span className="text-[#CBD5E1]">•</span>
+                                                <span>{expiryLabel(block.expiry)}</span>
+                                                {block.multiPage && (
+                                                  <>
+                                                    <span className="text-[#CBD5E1]">•</span>
+                                                    <span>multi-page</span>
+                                                  </>
+                                                )}
+                                              </div>
+                                              
+                                              {/* Cross-reference captions */}
+                                              {groupForPrimary(PURCHASE_LOAN, block.id) && (
+                                                <div className="font-mono text-[10px] text-[#64748B] mt-1.5 pt-1.5 border-t border-dashed border-[#F1F5F9]">
+                                                  required — unless {groupForPrimary(PURCHASE_LOAN, block.id)?.satisfiedBy.map(altId => `${blockName(PURCHASE_LOAN, altId)} (${getBlockSectionNumber(PURCHASE_LOAN, altId)})`).join(", ")} is filed
+                                                </div>
                                               )}
-                                            </div>
+                                              {groupsSatisfiedBy(PURCHASE_LOAN, block.id).length > 0 && (
+                                                <div className="font-mono text-[10px] text-[#64748B] mt-1.5 pt-1.5 border-t border-dashed border-[#F1F5F9]">
+                                                  can satisfy: {groupsSatisfiedBy(PURCHASE_LOAN, block.id).map(g => `${g.name} (${getBlockSectionNumber(PURCHASE_LOAN, g.primary)})`).join(", ")}
+                                                </div>
+                                              )}
+                                            </>
                                           )}
 
                                           {block.kind === "fields" && (
@@ -619,19 +710,27 @@ export default function FormBuilderA() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
-                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Requirement</th>
-                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Req</th>
-                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Responsible</th>
-                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Clock</th>
+                          <th className="px-2 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Requirement</th>
+                          <th className="px-2 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Req</th>
+                          <th className="px-2 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Weight</th>
+                          <th className="px-2 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Responsible</th>
+                          <th className="px-2 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Clock</th>
                         </tr>
                       </thead>
                       <tbody className="font-mono text-[10px] text-[#0F172A] divide-y divide-[#E2E8F0]">
                         {targetDocs.map(doc => (
                           <tr key={doc.id}>
-                            <td className="px-3 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px]" title={doc.name}>{doc.name}</td>
-                            <td className="px-3 py-2.5 text-[#64748B]">{doc.required ? 'req' : 'opt'}</td>
-                            <td className="px-3 py-2.5">Applicant</td>
-                            <td className="px-3 py-2.5 text-[#64748B]">{expiryLabel(doc.expiry)}</td>
+                            <td className="px-2 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[104px]" title={doc.name}>{doc.name}</td>
+                            <td className="px-2 py-2.5 text-[#64748B]">
+                              {doc.requirement === "required" ? "req" : doc.requirement === "required_alt" ? "req·alt" : doc.requirement === "recommended" ? "rec" : "opt"}
+                            </td>
+                            <td className="px-2 py-2.5 text-[#64748B]">
+                              {doc.criticality === "critical" ? "crit" : doc.criticality === "standard" ? "std" : "supp"}
+                            </td>
+                            <td className="px-2 py-2.5">Applicant</td>
+                            <td className="px-2 py-2.5 text-[#64748B] whitespace-nowrap">
+                              {doc.expiry === null ? "—" : doc.expiry.kind === "hard" ? "closing" : `${doc.expiry.days}d clock`}
+                            </td>
                           </tr>
                         ))}
                       </tbody>

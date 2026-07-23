@@ -36,3 +36,8 @@ Four linked pages under one shell (`homium/Backbone.tsx`, `?page=` switch, share
 **Why:** this distinction is the product's core scheduling logic and came from the user's domain call — future screens must not conflate the two.
 **Canonical counts come from data.ts helpers (stats(), alarmCount()), never hand-computed** — a hardcoded "14/3" drifted from the computed "15/2" across pages this round.
 **Sheaf reference verdict:** adopt its intake arc, exceptions-with-paired-verdicts, unassigned bucket, timeline concept; reject its component styling ("sloppy") — everything re-expressed in Ledger tokens.
+
+## Header doctrine (user-corrected, Jul 2026)
+A screen's chrome may only say three things out loud: **whose file, where you can go, what needs doing next**. All other metadata (case number, loan type, phase, countdown) demotes into deliberate reveals — a case-card popover on the applicant's name, and a ranked "needs you" dropdown on the right.
+**Why:** user rejected the first header ("disgusting") for treating six metadata pieces as equals — "surfacing only the most critical element" is the rule; ambient countdowns and reference IDs are clutter.
+**Ranking rule (user's explicit call): blockers first** — anything stalling underwriting (missing required docs, flagged docs awaiting verdict) outranks expiring clocks; clocks >30d don't earn header space. One urgency surface only — no competing badges elsewhere in the chrome.

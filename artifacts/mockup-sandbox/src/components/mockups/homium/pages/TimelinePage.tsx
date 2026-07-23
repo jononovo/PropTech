@@ -53,8 +53,8 @@ export default function TimelinePage({ go }: { go: Go }) {
           </p>
         </div>
         <div className="text-right flex flex-col items-end pt-2">
-          <div className="flex items-baseline gap-2 mb-1">
-            <span className="ops-mono text-[42px] leading-[0.8] text-[#0F172A] tracking-tight font-medium">{daysToClose}</span>
+          <div className="flex items-baseline gap-1.5 mb-1">
+            <span className="ops-mono text-[18px] leading-none text-[#0F172A] font-medium">{daysToClose}</span>
             <span className="text-[12px] text-[#334155] font-medium">days to close &middot; <span className="ops-mono text-[#64748B]">target {fmt(CLOSING)}</span></span>
           </div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#64748B] mt-2">
@@ -63,18 +63,7 @@ export default function TimelinePage({ go }: { go: Go }) {
         </div>
       </div>
 
-      {/* ALARM NARRATIVE */}
-      <div className="flex items-center gap-3 px-4 py-2 mx-6 mt-4 text-[13px] rounded-[4px] bg-[#FEF2F2] border border-[#FECACA]">
-        <Bell size={14} className="text-[#B91C1C] shrink-0" />
-        <span className="text-[#0F172A]">
-          Background check goes stale in <span className="ops-mono font-medium text-[#B91C1C]">6</span> days — if underwriting isn't cleared by <span className="ops-mono">Jul 29</span> it must be re-ordered.
-        </span>
-        <button onClick={() => go("workfile")} className="font-medium text-[#1D4ED8] hover:text-[#1E40AF] inline-flex items-center ml-auto shrink-0 transition-colors">
-          Review file <ArrowRight size={12} className="ml-1" />
-        </button>
-      </div>
-
-      {/* THE CHART */}
+      {/* THE CHART — the chart itself is the alert surface; no banners restating its rows */}
       <div className="relative mx-6 mt-6 border border-[#E2E8F0] bg-[#FFFFFF] rounded-[4px] shadow-none">
         
         {/* Chart Header */}

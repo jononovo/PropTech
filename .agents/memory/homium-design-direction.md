@@ -80,3 +80,4 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 ## Nav icons revision (user call)
 - The four page tabs carry icons: Intake=Inbox, Workfile=FolderOpen, Timeline=History, Register=ListChecks. Desktop = 13px icon + label (icon blue when active); mobile = icon-only 32px tab row in the header (blue wash when active) — pages are one tap away, no sheet needed.
 - Mobile hamburger sheet is account-only now (name/role/sign-out + mono case footer); its Pages list was removed as redundant. Trade-off accepted: applicant name truncates harder on 390px.
+- Timeline doctrine (user call): the chart IS the alert surface — no banner restating a row it already ranks; days-to-close renders at data size (18px mono inline), never display-type.

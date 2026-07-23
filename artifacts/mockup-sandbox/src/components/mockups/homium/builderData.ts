@@ -181,6 +181,13 @@ export const PURCHASE_LOAN: Template = {
   ],
 };
 
+// ── saved sections: reusable section fragments (copies on insert, never links) ─
+export const SAVED_SECTIONS: { id: string; name: string; blocks: number; docs: number; source: string }[] = [
+  { id: "std-application", name: "Standard Application", blocks: 3, docs: 2, source: "saved Jul 12" },
+  { id: "ca-compliance", name: "CA Compliance Pack", blocks: 4, docs: 4, source: "from Refi — CA" },
+  { id: "self-employed", name: "Self-Employed Income", blocks: 5, docs: 4, source: "saved Jun 30" },
+];
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 export const templateToJson = (t: Template): string => JSON.stringify(t, null, 2);
 

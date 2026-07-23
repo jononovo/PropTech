@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Inter:wght@400..600&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+.homium-timeline {
+  --hm-paper: #F7F5F0;
+  --hm-surface: #FDFCFA;
+  
+  --hm-ink: #1A1D1A;
+  --hm-ink-80: rgba(26, 29, 26, 0.80);
+  --hm-ink-60: rgba(26, 29, 26, 0.60);
+  --hm-ink-40: rgba(26, 29, 26, 0.40);
+  --hm-ink-20: rgba(26, 29, 26, 0.20);
+  --hm-ink-15: rgba(26, 29, 26, 0.15);
+  --hm-ink-10: rgba(26, 29, 26, 0.10);
+  --hm-ink-5: rgba(26, 29, 26, 0.05);
+  
+  --hm-green: #2A4D3B;
+  --hm-sage: #6C8276; 
+  --hm-sage-light: #D5DED9;
+  
+  --hm-clay: #B85C38;
+  --hm-amber: #B8862B;
+  
+  --font-serif: 'Fraunces', serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+
+  font-family: var(--font-sans);
+  color: var(--hm-ink);
+  background-color: var(--hm-paper);
+}
+
+.homium-timeline * {
+  box-sizing: border-box;
+}
+
+.hm-serif { font-family: var(--font-serif); }
+.hm-mono { font-family: var(--font-mono); }
+
+.hm-hairline-t { border-top: 1px solid var(--hm-ink-15); }
+.hm-hairline-b { border-bottom: 1px solid var(--hm-ink-15); }
+.hm-hairline-l { border-left: 1px solid var(--hm-ink-15); }
+.hm-hairline-r { border-right: 1px solid var(--hm-ink-15); }
+.hm-hairline { border: 1px solid var(--hm-ink-15); }
+
+.bg-paper { background-color: var(--hm-paper); }
+.bg-surface { background-color: var(--hm-surface); }
+.text-ink { color: var(--hm-ink); }
+.text-ink-80 { color: var(--hm-ink-80); }
+.text-ink-60 { color: var(--hm-ink-60); }
+.text-ink-40 { color: var(--hm-ink-40); }
+.bg-ink-5 { background-color: var(--hm-ink-5); }
+.text-clay { color: var(--hm-clay); }
+.text-green { color: var(--hm-green); }
+.bg-green { background-color: var(--hm-green); }
+
+/* Colors for bands */
+:root {
+  --c-escalate: var(--hm-clay);
+  --c-warn: var(--hm-amber);
+  --c-watch: var(--hm-sage);
+  --c-quiet: rgba(108, 130, 118, 0.6);
+}
+
+.track-escalate { background-color: var(--c-escalate); }
+.text-escalate { color: var(--c-escalate); }
+.chip-escalate { background-color: rgba(184, 92, 56, 0.08); color: var(--hm-clay); border: 1px solid rgba(184, 92, 56, 0.15); }
+
+.track-warn { background-color: var(--c-warn); }
+.text-warn { color: var(--c-warn); }
+.chip-warn { background-color: rgba(184, 134, 43, 0.08); color: var(--hm-amber); border: 1px solid rgba(184, 134, 43, 0.15); }
+
+.track-watch { background-color: var(--c-watch); }
+.text-watch { color: var(--c-watch); }
+.chip-watch { background-color: rgba(108, 130, 118, 0.08); color: var(--hm-sage); border: 1px solid rgba(108, 130, 118, 0.15); }
+
+.track-quiet { background-color: var(--c-quiet); }
+.text-quiet { color: rgba(108, 130, 118, 0.8); }
+.chip-quiet { background-color: rgba(108, 130, 118, 0.05); color: rgba(108, 130, 118, 0.8); border: 1px solid rgba(108, 130, 118, 0.1); }
+
+.hm-clay-wash {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(184, 92, 56, 0.04),
+    rgba(184, 92, 56, 0.04) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  border: 1px solid rgba(184, 92, 56, 0.15);
+  border-radius: 2px;
+}

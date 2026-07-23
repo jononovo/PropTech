@@ -24,3 +24,15 @@ The workflow builder is a schema editor feeding both views, and it must be FORM-
 - Mockups live in artifacts/mockup-sandbox/src/components/mockups/workflow-builder/ (Ledger, FieldNotes, GardenPath, Register, Schema, Composer + Application/Intake/Portal in Ledger v1 style).
 - Parallel design subagents must not touch index.css or each other's files; self-contained components with own css file if needed.
 - User prefers being offered 2 named variants per exploration round, each a distinct hypothesis with stated trade-offs.
+
+## Backbone prototype (Jul 2026 round — approved direction)
+Four linked pages under one shell (`homium/Backbone.tsx`, `?page=` switch, shared `homium/data.ts` as single source of truth):
+- **Intake** — drop 300-page PDF → staged processing → triage report (stat strip, exceptions queue with PAIRED verdict buttons, unassigned bucket, audit whisper). Arc adopted from the user's Sheaf reference, rebuilt in Ledger material.
+- **Workfile** — Flow DNA (journey rail + single working column); forms, never tables.
+- **Timeline** — the star: pure-CSS validity chart, today + closing markers, urgency-sorted rows, clay wash for docs that die before closing, "clocks stopped" shelf.
+- **Register** — dense sheet + Validity clock column + inline row expansion.
+
+**Two-clock expiry model (user-validated domain insight):** *staleness* clocks (bank stmts ≤90d, pay stubs ≤30d) STOP when the underwriter accepts the doc; *hard* expiries (ID validity, credit currency at closing) never stop and must be valid on closing day. Encode as `kind: "staleness" | "hard"`; helpers liveClocks()/stoppedClocks().
+**Why:** this distinction is the product's core scheduling logic and came from the user's domain call — future screens must not conflate the two.
+**Canonical counts come from data.ts helpers (stats(), alarmCount()), never hand-computed** — a hardcoded "14/3" drifted from the computed "15/2" across pages this round.
+**Sheaf reference verdict:** adopt its intake arc, exceptions-with-paired-verdicts, unassigned bucket, timeline concept; reject its component styling ("sloppy") — everything re-expressed in Ledger tokens.

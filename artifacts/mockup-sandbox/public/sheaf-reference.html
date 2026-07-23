@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#F4F6F8}
+a{color:#1D4ED8;text-decoration:none}
+a:hover{color:#173FB0;text-decoration:underline}
+*{box-sizing:border-box}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit}
+::selection{background:#D8E3FA}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes drawerIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+</style>
+</helmet>
+<div style="font-family:'Archivo',sans-serif;color:#101828;min-height:100vh;background:#F4F6F8;font-size:13.5px;line-height:1.45;font-variant-numeric:tabular-nums">
+
+<sc-if value="{{ isDrop }}" hint-placeholder-val="{{ true }}">
+<div data-screen-label="Dropzone" style="min-height:100vh;display:flex;flex-direction:column">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 28px;background:#FFFFFF;border-bottom:1px solid #E3E8EE">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:22px;height:22px;background:#101828;border-radius:5px;display:flex;align-items:center;justify-content:center"><div style="width:10px;height:10px;border:1.5px solid #FFFFFF;border-radius:2px"></div></div>
+      <div style="font-weight:700;font-size:15.5px;letter-spacing:-0.01em">Sheaf</div>
+      <div style="font-size:10.5px;font-weight:600;letter-spacing:.06em;color:#5B6B7C;background:#EEF1F5;border-radius:4px;padding:2px 7px;margin-left:2px">DOCUMENT OPS</div>
+    </div>
+    <div style="font-size:12.5px;color:#5B6B7C">Summit West Lending · <strong style="color:#101828;font-weight:600">Dana Okafor</strong></div>
+  </div>
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div style="width:660px;max-width:94vw;animation:fadeUp .4s ease both">
+      <div style="background:#FFFFFF;border:1px solid #E3E8EE;border-radius:8px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04)">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1D4ED8;font-weight:600;margin-bottom:4px">HL-2026-0847</div>
+          <div style="font-weight:700;font-size:16px;letter-spacing:-0.01em">Marisol &amp; Daniel Rivera — Purchase Loan</div>
+          <div style="color:#5B6B7C;font-size:12.5px;margin-top:3px">1129 Meadowlark Ln, Aurora CO · First-Time Family Fund · deposit assist $82,400</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;border-left:1px solid #E3E8EE;padding-left:18px">
+          <div style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#5B6B7C;font-weight:600;margin-bottom:3px">Closing target</div>
+          <div style="font-weight:700;font-size:15px">Sep 3, 2026</div>
+          <div style="font-size:11.5px;color:#5B6B7C;margin-top:1px">44 days out</div>
+        </div>
+      </div>
+      <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" onClick="{{ onZoneClick }}" style="border:1.5px dashed {{ dzBorder }};background:{{ dzBg }};border-radius:10px;padding:56px 40px;text-align:center;cursor:pointer;transition:all .15s ease">
+        <div style="width:46px;height:46px;background:#101828;border-radius:10px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(16,24,40,.18)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 13V3m0 0L6 7m4-4l4 4" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13v2a2 2 0 002 2h10a2 2 0 002-2v-2" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </div>
+        <div style="font-size:24px;font-weight:700;letter-spacing:-0.02em;margin-bottom:8px">Drop the application file</div>
+        <div style="color:#5B6B7C;max-width:420px;margin:0 auto;text-wrap:pretty;font-size:13px">One PDF, three hundred pages, no sorting needed. Sheaf splits, names, and files every page against this application's checklist — you review only what needs you.</div>
+        <div style="margin-top:24px;display:inline-flex;align-items:center;gap:8px;background:#1D4ED8;color:#FFFFFF;border-radius:7px;padding:9px 18px;font-weight:600;font-size:13px;box-shadow:0 1px 2px rgba(16,24,40,.1)">Browse files</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;color:#5B6B7C;font-size:12px">
+        <span>or connect</span>
+        <button onClick="{{ onZoneClick }}" style="background:#FFFFFF;border:1px solid #D5DCE4;border-radius:6px;padding:5px 11px;color:#374357;font-size:12px;font-weight:500" style-hover="border-color:#98A6B8">Google Drive</button>
+        <button onClick="{{ onZoneClick }}" style="background:#FFFFFF;border:1px solid #D5DCE4;border-radius:6px;padding:5px 11px;color:#374357;font-size:12px;font-weight:500" style-hover="border-color:#98A6B8">Dropbox</button>
+        <button onClick="{{ onZoneClick }}" style="background:#FFFFFF;border:1px solid #D5DCE4;border-radius:6px;padding:5px 11px;color:#374357;font-size:12px;font-weight:500" style-hover="border-color:#98A6B8">Box</button>
+      </div>
+      <div style="text-align:center;margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#98A6B8">demo — any file loads the sample Rivera package</div>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isProcessing }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Processing" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="width:580px;max-width:94vw;background:#FFFFFF;border:1px solid #E3E8EE;border-radius:10px;padding:32px 36px;animation:fadeUp .35s ease both;box-shadow:0 8px 32px rgba(16,24,40,.08)">
+    <div style="display:flex;align-items:center;gap:13px;margin-bottom:24px;padding-bottom:18px;border-bottom:1px solid #EEF1F5">
+      <div style="width:36px;height:44px;background:#F4F6F8;border:1px solid #D5DCE4;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#5B6B7C;font-weight:600">PDF</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Rivera_HL-0847_Complete_Package.pdf</div>
+        <div style="color:#5B6B7C;font-size:12px;margin-top:2px">312 pages · 48.2 MB · received {{ nowStamp }}</div>
+      </div>
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1D4ED8;font-weight:600;flex-shrink:0">{{ progLabel }}</div>
+    </div>
+    <sc-for list="{{ steps }}" as="st" hint-placeholder-count="4">
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0">
+        <div style="width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+          <sc-if value="{{ st.done }}" hint-placeholder-val="{{ false }}"><div style="width:18px;height:18px;border-radius:50%;background:#101828;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700">✓</div></sc-if>
+          <sc-if value="{{ st.active }}" hint-placeholder-val="{{ false }}"><div style="width:14px;height:14px;border-radius:50%;border:2px solid #E3E8EE;border-top-color:#1D4ED8;animation:spin .6s linear infinite"></div></sc-if>
+          <sc-if value="{{ st.pending }}" hint-placeholder-val="{{ true }}"><div style="width:6px;height:6px;border-radius:50%;background:#D5DCE4"></div></sc-if>
+        </div>
+        <div style="flex:1;color:{{ st.color }};font-weight:{{ st.weight }};font-size:13px">{{ st.label }}</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5B6B7C">{{ st.count }}</div>
+      </div>
+    </sc-for>
+    <div style="height:3px;background:#EEF1F5;border-radius:2px;margin-top:18px;overflow:hidden"><div style="height:100%;background:#1D4ED8;border-radius:2px;width:{{ progPct }};transition:width .2s ease"></div></div>
+    <div style="margin-top:13px;color:#5B6B7C;font-size:12px;text-align:center">Quiet automation — you'll only be asked about exceptions.</div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isReview }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Triage" style="min-height:100vh;display:flex">
+
+  <div style="width:264px;flex-shrink:0;background:#FFFFFF;border-right:1px solid #E3E8EE;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="padding:16px 18px 14px;border-bottom:1px solid #EEF1F5;display:flex;align-items:center;gap:9px">
+      <div style="width:22px;height:22px;background:#101828;border-radius:5px;display:flex;align-items:center;justify-content:center"><div style="width:10px;height:10px;border:1.5px solid #FFFFFF;border-radius:2px"></div></div>
+      <div style="font-weight:700;font-size:15px;letter-spacing:-0.01em">Sheaf</div>
+      <div style="flex:1"></div>
+      <button onClick="{{ onReset }}" title="New upload" style="background:none;border:1px solid #D5DCE4;border-radius:6px;padding:4px 9px;font-size:11.5px;color:#5B6B7C;font-weight:500" style-hover="border-color:#98A6B8;color:#101828">＋ New</button>
+    </div>
+    <div style="padding:16px 18px;border-bottom:1px solid #EEF1F5">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#1D4ED8;font-weight:600;margin-bottom:5px">HL-2026-0847</div>
+      <div style="font-weight:700;font-size:14px;letter-spacing:-0.01em;line-height:1.3">Rivera, M. &amp; D.</div>
+      <div style="font-size:12px;color:#5B6B7C;margin-top:2px">Purchase Loan · Colorado</div>
+      <div style="font-size:12px;color:#5B6B7C">First-Time Family Fund</div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <div style="flex:1;background:#F4F6F8;border-radius:6px;padding:7px 9px"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#98A6B8;font-weight:600">Closing</div><div style="font-weight:600;font-size:12.5px;margin-top:1px">Sep 3</div></div>
+        <div style="flex:1;background:#F4F6F8;border-radius:6px;padding:7px 9px"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#98A6B8;font-weight:600">Stage</div><div style="font-weight:600;font-size:12.5px;margin-top:1px">Underwriting</div></div>
+      </div>
+    </div>
+    <div style="padding:14px 18px;border-bottom:1px solid #EEF1F5">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <div style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#98A6B8;font-weight:700">File completeness</div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:#101828">{{ pctComplete }}</div>
+      </div>
+      <div style="height:5px;background:#EEF1F5;border-radius:3px;overflow:hidden;display:flex"><div style="height:100%;background:#101828;width:{{ pctBarClear }}"></div><div style="height:100%;background:#D7A13B;width:{{ pctBarFlag }}"></div></div>
+      <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:#5B6B7C">
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:#101828"></span>clear</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:#D7A13B"></span>needs review</span>
+        <span style="display:flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:2px;background:#E3E8EE"></span>open</span>
+      </div>
+    </div>
+    <div style="padding:14px 10px;flex:1">
+      <div style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#98A6B8;font-weight:700;padding:0 8px;margin-bottom:6px">Sections</div>
+      <button onClick="{{ onAllSections }}" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:{{ allSecBg }};border:none;border-radius:6px;padding:7px 8px;font-size:12.5px;font-weight:{{ allSecWeight }};color:#101828" style-hover="background:#F4F6F8">All sections<span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#98A6B8">27</span></button>
+      <sc-for list="{{ sideSections }}" as="ss" hint-placeholder-count="8">
+        <button onClick="{{ ss.onClick }}" style="display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:{{ ss.bg }};border:none;border-radius:6px;padding:7px 8px;font-size:12.5px;font-weight:{{ ss.weight }};color:#101828" style-hover="background:#F4F6F8">
+          <span style="width:7px;height:7px;border-radius:50%;background:{{ ss.dot }};flex-shrink:0"></span>
+          <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ss.name }}</span>
+          <span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ ss.countColor }};flex-shrink:0">{{ ss.count }}</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="padding:14px 18px;border-top:1px solid #EEF1F5">
+      <div style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#98A6B8;font-weight:700;margin-bottom:8px">Activity</div>
+      <sc-for list="{{ audit }}" as="au" hint-placeholder-count="3">
+        <div style="display:flex;gap:9px;padding:4px 0;font-size:11.5px;line-height:1.4">
+          <div style="font-family:'IBM Plex Mono',monospace;color:#98A6B8;flex-shrink:0;font-size:10.5px;padding-top:1px">{{ au.time }}</div>
+          <div style="color:#374357">{{ au.text }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0">
+    <div style="background:#FFFFFF;border-bottom:1px solid #E3E8EE;position:sticky;top:0;z-index:40">
+      <div style="padding:12px 26px;display:flex;align-items:center;gap:14px">
+        <div style="position:relative;width:280px">
+          <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#98A6B8"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.5L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+          <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search requirements or files…" style="width:100%;border:1px solid #D5DCE4;border-radius:7px;padding:7px 10px 7px 30px;font-size:12.5px;background:#FAFBFC;color:#101828;outline:none" style-focus="border-color:#1D4ED8;background:#FFFFFF">
+        </div>
+        <div style="flex:1"></div>
+        <div style="display:flex;background:#EEF1F5;border-radius:8px;padding:3px;gap:2px">
+          <button onClick="{{ toChecklist }}" style="border:none;border-radius:6px;padding:6px 15px;font-size:12.5px;font-weight:600;background:{{ tabChecklistBg }};color:{{ tabChecklistColor }};box-shadow:{{ tabChecklistShadow }}">Checklist</button>
+          <button onClick="{{ toTimeline }}" style="border:none;border-radius:6px;padding:6px 15px;font-size:12.5px;font-weight:600;background:{{ tabTimelineBg }};color:{{ tabTimelineColor }};box-shadow:{{ tabTimelineShadow }}">Timeline <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#B45309">{{ alarmCount }}</span></button>
+        </div>
+        <button style="background:#101828;border:none;color:#FFFFFF;border-radius:7px;padding:8px 15px;font-size:12.5px;font-weight:600" style-hover="background:#1F2A3D">Export file review</button>
+      </div>
+    </div>
+
+    <div style="max-width:1040px;padding:22px 26px 80px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;animation:fadeUp .35s ease both">
+        <div style="flex:1;min-width:150px;background:#FFFFFF;border:1px solid #E3E8EE;border-radius:8px;padding:13px 16px;box-shadow:0 1px 2px rgba(16,24,40,.03)"><div style="font-size:21px;font-weight:700;letter-spacing:-0.02em">{{ statDocs }}</div><div style="font-size:11px;color:#5B6B7C;letter-spacing:.05em;text-transform:uppercase;font-weight:600;margin-top:2px">documents found</div><div style="font-size:11.5px;color:#98A6B8;margin-top:4px">from 312 pages in one upload</div></div>
+        <div style="flex:1;min-width:150px;background:#FFFFFF;border:1px solid #E3E8EE;border-radius:8px;padding:13px 16px;box-shadow:0 1px 2px rgba(16,24,40,.03)"><div style="font-size:21px;font-weight:700;letter-spacing:-0.02em">{{ statClean }}</div><div style="font-size:11px;color:#5B6B7C;letter-spacing:.05em;text-transform:uppercase;font-weight:600;margin-top:2px">filed quietly</div><div style="font-size:11.5px;color:#98A6B8;margin-top:4px">no action needed from you</div></div>
+        <div style="flex:1;min-width:150px;background:#FFFFFF;border:1px solid #D7A13B;border-radius:8px;padding:13px 16px;box-shadow:0 1px 2px rgba(183,121,31,.08)"><div style="font-size:21px;font-weight:700;letter-spacing:-0.02em;color:#8A5A08">{{ statAttention }}</div><div style="font-size:11px;color:#8A5A08;letter-spacing:.05em;text-transform:uppercase;font-weight:600;margin-top:2px">need you</div><div style="font-size:11.5px;color:#B08A45;margin-top:4px">exceptions surfaced below</div></div>
+        <div style="flex:1;min-width:150px;background:#FFFFFF;border:1px solid #E3E8EE;border-radius:8px;padding:13px 16px;box-shadow:0 1px 2px rgba(16,24,40,.03)"><div style="font-size:21px;font-weight:700;letter-spacing:-0.02em;color:#5B6B7C">{{ statUnassigned }}</div><div style="font-size:11px;color:#5B6B7C;letter-spacing:.05em;text-transform:uppercase;font-weight:600;margin-top:2px">unassigned</div><div style="font-size:11.5px;color:#98A6B8;margin-top:4px">nothing blocking — review anytime</div></div>
+      </div>
+
+      <sc-if value="{{ tabIsChecklist }}" hint-placeholder-val="{{ true }}">
+        <sc-if value="{{ hasExceptions }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-bottom:26px;animation:fadeUp .4s ease both">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+            <div style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:#8A5A08;font-weight:700">Needs your attention</div>
+            <div style="flex:1;height:1px;background:#E9DFC8"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{ exceptions }}" as="ex" hint-placeholder-count="3">
+              <div style="background:#FFFFFF;border:1px solid #E3E8EE;border-left:3px solid {{ ex.dot }};border-radius:8px;padding:13px 16px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 1px 2px rgba(16,24,40,.03)">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                    <span onClick="{{ ex.onOpen }}" style="font-weight:600;font-size:13.5px;cursor:pointer" style-hover="color:#1D4ED8">{{ ex.title }}</span>
+                    <span style="font-size:11px;color:#98A6B8;font-weight:500;letter-spacing:.03em;text-transform:uppercase">{{ ex.section }}</span>
+                    <sc-if value="{{ ex.chip }}" hint-placeholder-val="{{ false }}"><span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#5B6B7C;background:#F4F6F8;border-radius:4px;padding:2px 6px">{{ ex.chip }}</span></sc-if>
+                  </div>
+                  <div style="color:#5B6B7C;font-size:12.5px;margin-top:3px;text-wrap:pretty">{{ ex.body }}</div>
+                </div>
+                <div style="display:flex;gap:7px;flex-shrink:0;align-items:center">
+                  <sc-if value="{{ ex.secondaryLabel }}" hint-placeholder-val="{{ false }}"><button onClick="{{ ex.onSecondary }}" style="background:none;border:none;color:#5B6B7C;font-size:12px;font-weight:500;padding:7px 6px" style-hover="color:#101828">{{ ex.secondaryLabel }}</button></sc-if>
+                  <button onClick="{{ ex.onPrimary }}" style="background:#101828;border:none;color:#FFFFFF;border-radius:6px;padding:7px 13px;font-size:12px;font-weight:600" style-hover="background:#1F2A3D">{{ ex.primaryLabel }}</button>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+        <sc-if value="{{ noExceptions }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#FFFFFF;border:1px solid #E3E8EE;border-radius:8px;padding:20px;text-align:center;color:#5B6B7C;margin-bottom:26px">Everything is filed. Nothing needs you right now.</div>
+        </sc-if>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px;padding:0 16px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#98A6B8;font-weight:700">
+            <div style="width:7px;flex-shrink:0"></div>
+            <div style="width:236px;flex-shrink:0">Requirement</div>
+            <div style="flex:1;min-width:0">Document</div>
+            <div style="width:66px;flex-shrink:0">Received</div>
+            <div style="width:56px;flex-shrink:0;text-align:center">Checks</div>
+            <div style="width:96px;flex-shrink:0;text-align:right">Validity</div>
+            <div style="width:104px;text-align:right;flex-shrink:0">Status</div>
+            <div style="width:10px"></div>
+          </div>
+          <sc-for list="{{ sections }}" as="sec" hint-placeholder-count="4">
+            <div style="background:#FFFFFF;border:1px solid #E3E8EE;border-radius:8px;overflow:hidden;animation:fadeUp .45s ease both;box-shadow:0 1px 2px rgba(16,24,40,.03)">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;background:#FAFBFC;border-bottom:1px solid #EEF1F5">
+                <div style="font-weight:700;font-size:12.5px;letter-spacing:.01em">{{ sec.name }}</div>
+                <div style="font-size:10.5px;color:#5B6B7C;background:#EEF1F5;border-radius:4px;padding:2px 8px;font-weight:600">{{ sec.owner }}</div>
+                <div style="flex:1"></div>
+                <div style="width:110px;height:4px;background:#EEF1F5;border-radius:2px;overflow:hidden"><div style="height:100%;background:{{ sec.barColor }};width:{{ sec.barPct }}"></div></div>
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:{{ sec.countColor }}">{{ sec.count }}</div>
+              </div>
+              <sc-for list="{{ sec.rows }}" as="req" hint-placeholder-count="3">
+                <div onClick="{{ req.onOpen }}" style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid #F2F4F7;cursor:pointer" style-hover="background:#FAFBFC">
+                  <div style="width:7px;height:7px;border-radius:50%;background:{{ req.dot }};border:{{ req.dotBorder }};flex-shrink:0"></div>
+                  <div style="width:236px;flex-shrink:0;font-weight:500;font-size:13px">{{ req.name }}</div>
+                  <div style="flex:1;min-width:0;display:flex;align-items:center;gap:7px">
+                    <sc-if value="{{ req.hasDoc }}" hint-placeholder-val="{{ true }}">
+                      <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#374357;background:#F4F6F8;border-radius:4px;padding:2.5px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ req.docLabel }}</span>
+                      <sc-if value="{{ req.confText }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;color:#98A6B8;white-space:nowrap;font-family:'IBM Plex Mono',monospace">{{ req.confText }}</span></sc-if>
+                    </sc-if>
+                    <sc-if value="{{ req.emptyNote }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#98A6B8;font-style:italic">{{ req.emptyNote }}</span></sc-if>
+                  </div>
+                  <div style="width:66px;flex-shrink:0;font-size:11.5px;color:#98A6B8;font-family:'IBM Plex Mono',monospace">{{ req.received }}</div>
+                  <div style="width:56px;flex-shrink:0;text-align:center"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:{{ req.checksColor }}">{{ req.checks }}</span></div>
+                  <div style="width:96px;flex-shrink:0;text-align:right"><sc-if value="{{ req.expiryChip }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;font-weight:600;color:{{ req.expiryColor }};background:{{ req.expiryBg }};border-radius:4px;padding:2.5px 7px;white-space:nowrap">{{ req.expiryChip }}</span></sc-if><sc-if value="{{ req.expiryQuiet }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;color:#98A6B8;font-family:'IBM Plex Mono',monospace">{{ req.expiryQuiet }}</span></sc-if></div>
+                  <div style="width:104px;text-align:right;font-size:11.5px;font-weight:600;color:{{ req.statusColor }};flex-shrink:0">{{ req.statusText }}</div>
+                  <div style="color:#D5DCE4;font-size:15px;line-height:1;width:10px">›</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+
+          <sc-if value="{{ showUnassigned }}" hint-placeholder-val="{{ true }}">
+          <div style="background:#FFFFFF;border:1px dashed #C3CCD7;border-radius:8px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;background:#FAFBFC;border-bottom:1px solid #EEF1F5">
+              <div style="font-weight:700;font-size:12.5px;color:#5B6B7C">Unassigned pages</div>
+              <div style="flex:1"></div>
+              <div style="font-size:11.5px;color:#98A6B8">nothing here blocks the application</div>
+            </div>
+            <sc-for list="{{ unassigned }}" as="u" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid #F2F4F7">
+                <div style="width:7px;height:7px;border-radius:50%;background:#E3E8EE;flex-shrink:0"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:500;font-size:13px">{{ u.label }} <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#98A6B8">pp.{{ u.pages }}</span></div>
+                  <div style="font-size:12px;color:#98A6B8;margin-top:1px">{{ u.note }}</div>
+                </div>
+                <button onClick="{{ u.onFile }}" style="background:#FFFFFF;border:1px solid #D5DCE4;border-radius:6px;padding:6px 12px;font-size:12px;color:#374357;font-weight:500;flex-shrink:0" style-hover="border-color:#1D4ED8;color:#1D4ED8">File as…</button>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+          <div style="color:#98A6B8;font-size:11.5px;text-align:center;margin-top:4px">Your assignments always win — Sheaf never re-files a document you placed by hand. Every action lands on the audit log.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ tabIsTimeline }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#FFFFFF;border:1px solid #E3E8EE;border-radius:8px;padding:22px 24px;animation:fadeUp .35s ease both;box-shadow:0 1px 2px rgba(16,24,40,.03)">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+            <div style="font-size:16px;font-weight:700;letter-spacing:-0.01em">Document validity</div>
+            <div style="font-size:11.5px;color:#5B6B7C">alarm thresholds · <span style="color:#8A5A08;font-weight:600">30 days</span> · <span style="color:#B42318;font-weight:600">7 days</span> · quiet before 90</div>
+          </div>
+          <div style="color:#5B6B7C;font-size:12.5px;margin-bottom:24px;text-wrap:pretty">Every time-bound document on this application, and the date it stops being admissible. If closing slips past a bar, that document must be refreshed.</div>
+          <div style="position:relative;padding:10px 0 4px">
+            <div style="position:relative;height:16px;margin-left:220px;margin-bottom:8px">
+              <sc-for list="{{ ticks }}" as="tk" hint-placeholder-count="3">
+                <div style="position:absolute;left:{{ tk.left }};top:0;font-size:10.5px;color:#98A6B8;font-family:'IBM Plex Mono',monospace;transform:translateX(-50%)">{{ tk.label }}</div>
+              </sc-for>
+            </div>
+            <div style="position:relative">
+              <div style="position:absolute;left:calc(220px + {{ todayLeft }} * (100% - 220px) / 100);top:-28px;bottom:0;width:1.5px;background:#101828;opacity:.6;z-index:2"></div>
+              <div style="position:absolute;left:calc(220px + {{ todayLeft }} * (100% - 220px) / 100);top:-28px;transform:translateX(5px);font-size:10px;font-weight:700;color:#101828;z-index:2;letter-spacing:.05em">TODAY</div>
+              <div style="position:absolute;left:calc(220px + {{ closingLeft }} * (100% - 220px) / 100);top:-28px;bottom:0;width:1.5px;background:#1D4ED8;opacity:.65;z-index:2"></div>
+              <div style="position:absolute;left:calc(220px + {{ closingLeft }} * (100% - 220px) / 100);top:-28px;transform:translateX(5px);font-size:10px;font-weight:700;color:#1D4ED8;z-index:2;letter-spacing:.05em">CLOSING</div>
+              <sc-for list="{{ timeline }}" as="it" hint-placeholder-count="5">
+                <div onClick="{{ it.onOpen }}" style="display:flex;align-items:center;height:44px;border-top:1px solid #F2F4F7;cursor:pointer" style-hover="background:#FAFBFC">
+                  <div style="width:220px;flex-shrink:0;padding-right:16px">
+                    <div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.name }}</div>
+                    <div style="font-size:10.5px;color:#98A6B8">{{ it.rule }}</div>
+                  </div>
+                  <div style="flex:1;position:relative;height:100%">
+                    <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#EEF1F5"></div>
+                    <div style="position:absolute;left:{{ it.barLeft }};width:{{ it.barWidth }};top:calc(50% - 3.5px);height:7px;border-radius:4px;background:{{ it.barColor }}"></div>
+                    <div style="position:absolute;left:{{ it.dotLeft }};top:calc(50% - 4.5px);width:9px;height:9px;border-radius:50%;background:{{ it.dotColor }};border:2px solid #FFFFFF;box-shadow:0 0 0 1px {{ it.dotColor }}"></div>
+                    <div style="position:absolute;left:{{ it.labelLeft }};top:2px;transform:{{ it.labelShift }};font-size:10px;font-family:'IBM Plex Mono',monospace;color:{{ it.chipColor }};white-space:nowrap">{{ it.until }}</div>
+                  </div>
+                  <div style="width:100px;text-align:right;flex-shrink:0"><span style="font-size:11px;font-weight:700;color:{{ it.chipColor }};background:{{ it.chipBg }};border-radius:4px;padding:3px 8px">{{ it.days }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="margin-top:20px;border-top:1px solid #EEF1F5;padding-top:14px;display:flex;gap:10px;align-items:flex-start">
+            <div style="width:8px;height:8px;border-radius:50%;background:#B42318;margin-top:4px;flex-shrink:0"></div>
+            <div style="font-size:12.5px;color:#5B6B7C;text-wrap:pretty"><strong style="color:#101828">Criminal record check goes stale in 6 days.</strong> If underwriting isn't cleared by Jul 26, the CBI check must be re-ordered — 3–5 business day turnaround. <span onClick="{{ onOpenCriminal }}" style="color:#1D4ED8;font-weight:600;cursor:pointer">Review it now →</span></div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ onCloseDrawer }}" style="position:fixed;inset:0;background:rgba(16,24,40,.4);z-index:60"></div>
+  <div style="position:fixed;top:0;right:0;bottom:0;width:470px;max-width:94vw;background:#FFFFFF;z-index:61;box-shadow:-16px 0 48px rgba(16,24,40,.16);display:flex;flex-direction:column;animation:drawerIn .2s ease both">
+    <div style="padding:16px 22px 0;flex-shrink:0;border-bottom:1px solid #EEF1F5">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div>
+          <div style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#98A6B8;font-weight:700;margin-bottom:4px">{{ sel.section }}</div>
+          <div style="font-size:17px;font-weight:700;letter-spacing:-0.01em">{{ sel.name }}</div>
+        </div>
+        <button onClick="{{ onCloseDrawer }}" style="background:none;border:none;font-size:19px;color:#98A6B8;padding:2px 6px" style-hover="color:#101828">×</button>
+      </div>
+      <div style="display:flex;gap:2px;margin-top:14px">
+        <sc-for list="{{ drawerTabs }}" as="dt" hint-placeholder-count="3">
+          <button onClick="{{ dt.onClick }}" style="background:none;border:none;padding:8px 11px;font-size:12px;font-weight:600;color:{{ dt.color }};border-bottom:2px solid {{ dt.border }};margin-bottom:-1px">{{ dt.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:18px 22px 26px">
+      <sc-if value="{{ drawerIsOverview }}" hint-placeholder-val="{{ true }}">
+        <sc-if value="{{ sel.hasDoc }}" hint-placeholder-val="{{ true }}">
+          <div style="background:repeating-linear-gradient(-45deg,#F4F6F8 0 10px,#EEF1F5 10px 20px);border:1px solid #E3E8EE;border-radius:8px;height:140px;display:flex;align-items:center;justify-content:center;margin-bottom:14px">
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5B6B7C;background:#FFFFFFE6;border-radius:4px;padding:4px 10px;border:1px solid #E3E8EE">pdf preview · pp.{{ sel.pages }}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:14px">
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#374357;background:#F4F6F8;border-radius:4px;padding:3px 8px">{{ sel.file }}</span>
+            <span style="font-size:11px;font-weight:600;color:{{ sel.byColor }};background:{{ sel.byBg }};border-radius:20px;padding:3px 10px">{{ sel.byLabel }}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:14px">
+            <div style="border:1px solid #EEF1F5;border-radius:7px;padding:9px 11px"><div style="font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#98A6B8;font-weight:700">Quality</div><div style="font-weight:700;font-size:15px;margin-top:2px;color:{{ sel.qColor }};font-family:'IBM Plex Mono',monospace">{{ sel.q }}</div></div>
+            <div style="border:1px solid #EEF1F5;border-radius:7px;padding:9px 11px"><div style="font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#98A6B8;font-weight:700">Format</div><div style="font-weight:700;font-size:15px;margin-top:2px;font-family:'IBM Plex Mono',monospace">{{ sel.f }}</div></div>
+            <div style="border:1px solid #EEF1F5;border-radius:7px;padding:9px 11px"><div style="font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#98A6B8;font-weight:700">Fraud risk</div><div style="font-weight:700;font-size:15px;margin-top:2px;color:{{ sel.frColor }};font-family:'IBM Plex Mono',monospace">{{ sel.fr }}</div></div>
+          </div>
+        </sc-if>
+        <div style="color:#374357;font-size:12.5px;margin-bottom:14px;text-wrap:pretty">{{ sel.desc }}</div>
+        <sc-if value="{{ sel.issue }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid {{ sel.issueBorder }};background:{{ sel.issueBg }};border-radius:8px;padding:12px 14px;margin-bottom:14px">
+            <div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:{{ sel.issueColor }};margin-bottom:4px">{{ sel.issueKind }}</div>
+            <div style="font-size:12.5px;color:#101828;text-wrap:pretty">{{ sel.issue }}</div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ sel.expiryNote }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1px solid #EEF1F5;border-radius:8px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;gap:10px;align-items:center">
+            <div style="font-size:12.5px;color:#5B6B7C">{{ sel.expiryNote }}</div>
+            <span style="font-size:11px;font-weight:700;color:{{ sel.expiryColor }};background:{{ sel.expiryBg }};border-radius:4px;padding:3px 8px;white-space:nowrap">{{ sel.expiryDays }}</span>
+          </div>
+        </sc-if>
+        <div style="font-size:11.5px;color:#98A6B8;margin-bottom:16px">Provided by <strong style="color:#5B6B7C">{{ sel.owner }}</strong> · original pages {{ sel.pagesLong }} · received Jul 18, 09:42</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <sc-if value="{{ sel.showAccept }}" hint-placeholder-val="{{ false }}"><button onClick="{{ sel.onAccept }}" style="width:100%;background:#101828;border:1px solid #101828;color:#FFFFFF;border-radius:7px;padding:10px;font-size:12.5px;font-weight:600" style-hover="background:#1F2A3D">{{ sel.acceptLabel }}</button></sc-if>
+          <sc-if value="{{ sel.showRequest }}" hint-placeholder-val="{{ false }}"><button onClick="{{ sel.onRequest }}" style="width:100%;background:#1D4ED8;border:1px solid #1D4ED8;color:#FFFFFF;border-radius:7px;padding:10px;font-size:12.5px;font-weight:600" style-hover="background:#173FB0">{{ sel.requestLabel }}</button></sc-if>
+          <sc-if value="{{ sel.showUpload }}" hint-placeholder-val="{{ false }}"><button onClick="{{ sel.onUpload }}" style="width:100%;background:#FFFFFF;border:1px solid #D5DCE4;color:#101828;border-radius:7px;padding:10px;font-size:12.5px;font-weight:600" style-hover="border-color:#98A6B8">Upload a file yourself</button></sc-if>
+          <div style="position:relative">
+            <sc-if value="{{ sel.showMove }}" hint-placeholder-val="{{ false }}"><button onClick="{{ onToggleMove }}" style="width:100%;background:#FFFFFF;border:1px solid #D5DCE4;color:#101828;border-radius:7px;padding:10px;font-size:12.5px;font-weight:600" style-hover="border-color:#98A6B8">Move to another requirement…</button></sc-if>
+            <sc-if value="{{ moveOpen }}" hint-placeholder-val="{{ false }}">
+              <div style="border:1px solid #E3E8EE;border-radius:8px;margin-top:6px;max-height:210px;overflow-y:auto;box-shadow:0 8px 24px rgba(16,24,40,.1);background:#FFFFFF">
+                <div style="padding:8px 12px;font-size:10.5px;color:#98A6B8;border-bottom:1px solid #EEF1F5">Unfilled requirements — your choice is final for the AI</div>
+                <sc-for list="{{ moveTargets }}" as="mt" hint-placeholder-count="2">
+                  <button onClick="{{ mt.onClick }}" style="display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid #F2F4F7;padding:8px 12px;font-size:12.5px" style-hover="background:#F4F6F8"><span style="color:#98A6B8;font-size:11px">{{ mt.section }} · </span>{{ mt.name }}</button>
+                </sc-for>
+                <sc-if value="{{ sel.canUnassign }}" hint-placeholder-val="{{ false }}"><button onClick="{{ sel.onUnassign }}" style="display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid #F2F4F7;padding:8px 12px;font-size:12.5px;color:#B42318" style-hover="background:#FDF1EF">Remove — doesn't belong to this application</button></sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ drawerIsTranscript }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11.5px;color:#98A6B8;margin-bottom:10px">Plain OCR — text only, no interpretation of images, seals or signatures.</div>
+        <pre style="margin:0;background:#F4F6F8;border:1px solid #EEF1F5;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;color:#374357">{{ sel.transcript }}</pre>
+      </sc-if>
+      <sc-if value="{{ drawerIsAiread }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11.5px;color:#98A6B8;margin-bottom:10px">Full AI read — every non-text element tagged and described.</div>
+        <pre style="margin:0;background:#F4F6F8;border:1px solid #EEF1F5;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;color:#374357">{{ sel.airead }}</pre>
+      </sc-if>
+      <sc-if value="{{ drawerIsReport }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11.5px;color:#98A6B8;margin-bottom:10px">Basic analysis — generated for every page of every document.</div>
+        <pre style="margin:0;background:#101828;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;color:#C6D4E4">{{ sel.report }}</pre>
+      </sc-if>
+      <sc-if value="{{ drawerIsDeep }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11.5px;color:#98A6B8;margin-bottom:10px">Deep report — triggered by the basic scan. Internal re-read, registry comparison, open research.</div>
+        <pre style="margin:0;background:#101828;border-radius:8px;padding:14px;font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;color:#E8D9B8">{{ sel.deep }}</pre>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasEmail }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ onCloseEmail }}" style="position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:70;display:flex;align-items:center;justify-content:center;padding:20px">
+    <div onClick="{{ stop }}" style="background:#FFFFFF;border-radius:10px;width:600px;max-width:100%;padding:24px 26px;box-shadow:0 24px 64px rgba(16,24,40,.24);animation:fadeUp .22s ease both">
+      <div style="font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#98A6B8;font-weight:700;margin-bottom:6px">Recommended action · drafted for you</div>
+      <div style="font-size:17px;font-weight:700;letter-spacing:-0.01em;margin-bottom:16px">{{ email.heading }}</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:9px">
+        <div style="width:56px;font-size:11.5px;color:#98A6B8;text-align:right;font-weight:600">To</div>
+        <div style="flex:1;border:1px solid #E3E8EE;border-radius:6px;padding:8px 11px;font-size:12.5px;font-family:'IBM Plex Mono',monospace;background:#FAFBFC">{{ email.to }}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:9px">
+        <div style="width:56px;font-size:11.5px;color:#98A6B8;text-align:right;font-weight:600">Subject</div>
+        <div style="flex:1;border:1px solid #E3E8EE;border-radius:6px;padding:8px 11px;font-size:12.5px;background:#FAFBFC">{{ email.subject }}</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <div style="width:56px;font-size:11.5px;color:#98A6B8;text-align:right;padding-top:9px;font-weight:600">Body</div>
+        <textarea value="{{ email.body }}" onChange="{{ onEmailBody }}" rows="9" style="flex:1;border:1px solid #D5DCE4;border-radius:6px;padding:10px 11px;font-size:12.5px;line-height:1.55;resize:vertical;color:#101828;outline:none" style-focus="border-color:#1D4ED8"></textarea>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:11.5px;color:#98A6B8">Includes a secure upload link scoped to this requirement.</div>
+        <div style="display:flex;gap:9px">
+          <button onClick="{{ onCloseEmail }}" style="background:none;border:none;color:#5B6B7C;font-size:12.5px;font-weight:500;padding:9px 8px" style-hover="color:#101828">Cancel</button>
+          <button onClick="{{ onSendEmail }}" style="background:#1D4ED8;border:none;color:#FFFFFF;border-radius:7px;padding:9px 17px;font-size:12.5px;font-weight:600" style-hover="background:#173FB0">Send request</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none">
+  <sc-for list="{{ toasts }}" as="t" hint-placeholder-count="0">
+    <div style="background:#101828;color:#F4F6F8;border-radius:8px;padding:10px 17px;font-size:12.5px;font-weight:500;box-shadow:0 10px 30px rgba(16,24,40,.28);animation:toastIn .22s ease both;white-space:nowrap">{{ t.text }}</div>
+  </sc-for>
+</div>
+
+<input type="file" ref="{{ fileRef }}" onChange="{{ onFilePicked }}" style="display:none">
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;},&quot;startAt&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dropzone&quot;,&quot;results&quot;],&quot;default&quot;:&quot;dropzone&quot;,&quot;tsType&quot;:&quot;'dropzone'|'results'&quot;,&quot;section&quot;:&quot;Demo&quot;},&quot;demoPace&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0.5,&quot;max&quot;:3,&quot;step&quot;:0.5,&quot;default&quot;:1,&quot;unit&quot;:&quot;x&quot;,&quot;section&quot;:&quot;Demo&quot;},&quot;showConfidence&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;AI presentation&quot;}}">
+class Component extends DCLogic {
+  state = {
+    stage: 'drop', dragOver: false, tab: 'checklist',
+    prog: { t: 0 },
+    sections: null, unassigned: null,
+    selectedId: null, drawerTab: 'overview', moveOpen: false,
+    email: null, toasts: [], query: '', secFilter: null,
+    audit: [
+      { time: '09:42', text: 'Package received — 312 pages' },
+      { time: '09:43', text: '28 documents identified, 26 matched' },
+      { time: '09:43', text: '5 exceptions surfaced for review' }
+    ]
+  };
+
+  constructor(props) {
+    super(props);
+    this.state.sections = this.buildSections();
+    this.state.unassigned = this.buildUnassigned();
+    this.TODAY = new Date(2026, 6, 20);
+    this.RANGE = [new Date(2026, 6, 15), new Date(2026, 9, 15)];
+  }
+
+  componentDidMount() { if ((this.props.startAt ?? 'dropzone') === 'results') this.setState({ stage: 'review' }); }
+  componentWillUnmount() { clearInterval(this.iv); }
+
+  buildSections() {
+    const d = (file, pages, conf) => ({ file, pages, conf, by: 'ai' });
+    return [
+      { id: 'A', name: 'Application Forms', owner: 'Originator', reqs: [
+        { id: 'a1', name: 'URLA — Form 1003', doc: d('urla_form1003.pdf', '1–9', 99), status: 'ok', desc: 'Uniform Residential Loan Application, complete with all eight sections. Both borrower signatures present on p.9.' },
+        { id: 'a2', name: 'Fund Eligibility Attestation', doc: d('fund_attestation.pdf', '10–11', 98), status: 'ok', desc: 'First-Time Family Fund attestation — household income band and dependent count declared, countersigned by originator.' },
+        { id: 'a3', name: 'Disclosure Acknowledgments', doc: d('disclosures.pdf', '12–18', 97), status: 'ok', desc: 'LE receipt, ECOA, and state-required Colorado disclosures. All checkboxes and initials accounted for.' } ] },
+      { id: 'B', name: 'Borrower Identity', owner: 'Applicant', reqs: [
+        { id: 'b1', name: 'Government ID — Driver License', doc: d('rivera_m_license.pdf', '19–20', 99), status: 'ok', desc: 'Colorado driver license, front and back, both applicants. Faces, DOB and address legible.', expiry: { date: new Date(2026, 7, 30), rule: 'ID must be valid through closing', note: 'M. Rivera\u2019s license expires Aug 30 — nine days before a slipped closing would need it.' },
+          transcript: 'COLORADO — DRIVER LICENSE\nDL 94-227-1180  CLASS R\nLN RIVERA  FN MARISOL\n1129 MEADOWLARK LN\nAURORA CO 80013\nDOB 03-14-1991  EXP 08-30-2026' },
+        { id: 'b2', name: 'Social Security Verification', doc: d('ssa_verification.pdf', '21', 96), status: 'ok', desc: 'SSA verification letter matching both applicant names and the SSNs on the 1003.' } ] },
+      { id: 'C', name: 'Income & Employment', owner: 'Applicant', reqs: [
+        { id: 'c1', name: 'Pay Stub — June 2026', doc: d('paystub_jun2026.pdf', '22–23', 98), status: 'ok', desc: 'BrightPath Logistics pay stub, period 06/01–06/30. Gross and YTD figures consistent with the 1003 income statement.' },
+        { id: 'c2', name: 'Pay Stub — May 2026', doc: d('paystub_may2026.pdf', '24', 61), status: 'flag', sev: 'red', flagKind: 'Possible misfile', issue: 'Employee name reads \u201cJordan T. Ellis\u201d — matches neither applicant. Employer and pay period fit the pattern of another active application.', desc: 'A pay stub was found where the May stub should be, but the employee name does not match either Rivera applicant.', scores: { q: 97, f: 96, fr: 'High · 71%' },
+          transcript: 'BRIGHTPATH LOGISTICS LLC — EARNINGS STATEMENT\nEMPLOYEE: JORDAN T. ELLIS\nPERIOD: 05/01/2026–05/31/2026\nNET PAY: $3,184.22\n\n[name mismatch — expected RIVERA, M. or RIVERA, D.]' },
+        { id: 'c3', name: 'W-2 — 2025', doc: d('w2_2025.pdf', '25–26', 97), status: 'ok', desc: '2025 W-2, BrightPath Logistics. EIN and wages cross-check against the 2025 return.' },
+        { id: 'c4', name: 'W-2 — 2024', doc: null, status: 'missing', flagKind: 'Not found', issue: 'Not found anywhere in the 312-page upload. Required for two-year income history on this product line.', desc: 'Two-year income history requires the 2024 W-2. The upload contained the 2025 form only.' },
+        { id: 'c5', name: 'Federal Tax Returns — 2024 & 2025', doc: d('returns_24_25.pdf', '27–58', 98), status: 'ok', desc: 'Signed 1040s for both years with all schedules. AGI figures consistent year over year.' },
+        { id: 'c6', name: 'Verification of Employment', doc: d('voe_brightpath.pdf', '59–60', 93), status: 'flag', sev: 'amber', flagKind: 'Scan defect', issue: 'Signature block is cut off — the page was scanned at roughly a 4° angle and the HR signature and date fall outside the frame.', desc: 'Employer VOE letter from BrightPath Logistics HR. Content complete, but the signature area did not survive the scan.', scores: { q: 58, f: 71, fr: 'Low · 2%' } } ] },
+      { id: 'D', name: 'Assets', owner: 'Applicant', reqs: [
+        { id: 'd1', name: 'Bank Statements — Apr & May', doc: d('chase_4821_apr_may.pdf', '61–84', 98), status: 'ok', desc: 'Chase checking ···4821, two full statement cycles. Deposit pattern matches stated payroll; no undocumented large deposits.', expiry: { date: new Date(2026, 7, 14), rule: 'Statements older than 90 days are inadmissible', note: 'Admissible until Aug 14. If closing slips, June and July statements will be needed.' },
+          transcript: 'JPMORGAN CHASE — STATEMENT OF ACCOUNT ···4821\nPERIOD 04/01–04/30/2026\nBEGINNING BALANCE  $18,204.11\nDEPOSITS & CREDITS  $7,911.40\nENDING BALANCE     $22,647.83' },
+        { id: 'd2', name: 'Gift Letter', doc: d('gift_letter.pdf', '85', 95), status: 'ok', desc: 'Gift of $6,000 from R. Vasquez (mother), signed, with no-repayment clause. Matching deposit located in April statement.' },
+        { id: 'd3', name: 'Retirement Statement — 401(k)', doc: d('fidelity_401k.pdf', '86–97', 97), status: 'ok', desc: 'Fidelity 401(k) quarterly statement, Q2 2026. Used for reserves only.' } ] },
+      { id: 'E', name: 'Property', owner: 'Originator', reqs: [
+        { id: 'e1', name: 'Purchase Agreement', doc: d('purchase_agreement.pdf', '98–130', 99), status: 'ok', desc: 'Fully executed contract at $412,000 with fund contingency rider. All initials and the final signature page present.' },
+        { id: 'e2', name: 'Appraisal Report', doc: d('appraisal_1129meadowlark.pdf', '131–176', 96), status: 'flag', sev: 'amber', flagKind: 'Legibility', issue: 'Page 143 is below the legibility threshold — heavy compression makes the comparable-sales table unreadable. The value conclusion on p.145 is clear.', desc: 'URAR appraisal, value $415,000, effective May 31. One page failed the legibility check.', scores: { q: 41, f: 90, fr: 'Low · 1%' }, expiry: { date: new Date(2026, 8, 28), rule: 'Appraisal valid 120 days from effective date', note: 'Valid until Sep 28 based on the May 31 effective date.' } },
+        { id: 'e3', name: 'Homeowners Insurance Binder', doc: d('hoi_binder.pdf', '177–179', 97), status: 'ok', desc: 'Binder with dwelling coverage at replacement cost, lender named as mortgagee.' },
+        { id: 'e4', name: 'Flood Certification', doc: d('flood_cert.pdf', '180', 98), status: 'ok', desc: 'Zone X determination — flood insurance not required.' } ] },
+      { id: 'F', name: 'Title', owner: 'Title Company', reqs: [
+        { id: 'f1', name: 'Title Commitment', doc: d('title_commitment.pdf', '181–202', 95), status: 'review', flagKind: 'Enhanced review', issue: 'The notary seal on p.197 differs from the county registry sample on file. Held in enhanced review — two of three checks complete. No action needed from you yet.', desc: 'ALTA commitment from Front Range Title. Schedule B exceptions are standard; one notarization is under automated deep review.', scores: { q: 96, f: 98, fr: 'Under review' },
+          transcript: 'ALTA COMMITMENT FOR TITLE INSURANCE\nFRONT RANGE TITLE — FILE FR-88412\nSCHEDULE A\n1. EFFECTIVE DATE: JUNE 28, 2026\n2. POLICY: 2021 ALTA OWNER\u2019S / LOAN\n4. PROPOSED INSURED: MARISOL RIVERA, DANIEL RIVERA',
+          deep: { trigger: 'seal_variance (basic scan p.197)', element: 'notary seal — lower right quadrant', internal: { rereads: 3, model_agreement: '2 of 3', confidence: 0.71 }, registry_check: { source: 'CO county notary registry', commission: '20244031877 — ACTIVE', finding: 'seal artwork differs from 2024 sample on file' }, open_research: 'Seal vendor updated artwork for 2025 renewals; variance pattern is common and usually benign.', recommendation: 'Verify commission with CO Secretary of State before clear-to-close. Auto-drafted inquiry queued.', status: 'in progress — 2 of 3 checks complete' } },
+        { id: 'f2', name: 'Warranty Deed — Prior', doc: d('prior_deed.pdf', '203–208', 97), status: 'ok', desc: 'Prior recorded deed; grantor chain consistent with the title commitment.' },
+        { id: 'f3', name: 'Property Survey', doc: d('survey.pdf', '209–214', 96), status: 'ok', desc: 'Improvement location certificate. No encroachments noted.' } ] },
+      { id: 'G', name: 'Credit & Compliance', owner: 'Underwriter', reqs: [
+        { id: 'g1', name: 'Credit Report — Tri-Merge', doc: d('credit_trimerge.pdf', '215–246', 99), status: 'ok', desc: 'Tri-merge report, mid-score 738 / 741. No disputed accounts.', expiry: { date: new Date(2026, 9, 2), rule: 'Credit reports valid 120 days', note: 'Valid until Oct 2 — comfortably past the closing target.' } },
+        { id: 'g2', name: 'Criminal Record Check', doc: d('cbi_check.pdf', '247–250', 97), status: 'ok', desc: 'CBI background check, clear, issued May 27.', expiry: { date: new Date(2026, 6, 26), rule: 'CBI check valid 60 days — must be current at closing', note: 'Goes stale Jul 26. Re-ordering takes 3–5 business days.' } },
+        { id: 'g3', name: 'OFAC / Watchlist Screening', doc: d('ofac_screen.pdf', '251', 98), status: 'ok', desc: 'Automated watchlist screen — no matches for either applicant.' } ] },
+      { id: 'H', name: 'Fund Criteria — FTFF', owner: 'Fund Administrator', reqs: [
+        { id: 'h1', name: 'Household Income Certification', doc: d('income_cert.pdf', '252–255', 97), status: 'ok', desc: 'Certified household income $118,400 — inside the fund\u2019s 80–120% AMI band for Arapahoe County.' },
+        { id: 'h2', name: 'Dependent Verification', doc: d('dependents.pdf', '256–260', 96), status: 'ok', desc: 'Birth certificates for two dependents — satisfies the fund\u2019s family criterion.' },
+        { id: 'h3', name: 'First-Time Homebuyer Attestation', doc: d('ftb_attestation.pdf', '261', 98), status: 'ok', desc: 'Signed attestation; no prior ownership found in public records for either applicant.' } ] }
+    ];
+  }
+
+  buildUnassigned() {
+    return [
+      { id: 'u1', label: 'Correspondence & fax covers', pages: '262–307', note: '46 pages of emails and cover sheets — nothing matches a requirement. Suggest: archive.' },
+      { id: 'u2', label: 'Xcel Energy bill — June 2026', pages: '308–312', note: 'No matching requirement on this workflow. Possibly proof of residence — not required for CO purchase loans.' }
+    ];
+  }
+
+  findReq(id) { for (const s of this.state.sections) { const r = s.reqs.find(r => r.id === id); if (r) return { r, s }; } return null; }
+  update(id, patch) { this.setState(st => ({ sections: st.sections.map(sec => ({ ...sec, reqs: sec.reqs.map(r => r.id === id ? { ...r, ...patch } : r) })) })); }
+  toast(text) {
+    const id = Date.now() + Math.random();
+    this.setState(st => ({ toasts: [...st.toasts, { id, text }] }));
+    setTimeout(() => this.setState(st => ({ toasts: st.toasts.filter(t => t.id !== id) })), 3400);
+  }
+  logAudit(text) {
+    const now = new Date();
+    const time = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    this.setState(st => ({ audit: [{ time, text }, ...st.audit].slice(0, 6) }));
+  }
+
+  startProcessing() {
+    if (this.state.stage === 'processing') return;
+    this.setState({ stage: 'processing', dragOver: false, prog: { t: 0 } });
+    const pace = this.props.demoPace ?? 1;
+    this.t0 = Date.now();
+    this.iv = setInterval(() => {
+      const t = (Date.now() - this.t0) * pace;
+      if (t > 7600) { clearInterval(this.iv); this.setState({ stage: 'review', prog: { t: 7600 } }); this.toast('26 of 27 requirements filed — 5 items need you'); }
+      else this.setState({ prog: { t } });
+    }, 70);
+  }
+
+  daysTo(date) { return Math.round((date - this.TODAY) / 86400000); }
+  band(days) { return days <= 7 ? 'red' : days <= 30 ? 'amber' : days <= 90 ? 'watch' : 'ok'; }
+  bandColors(b) {
+    return b === 'red' ? { c: '#B42318', bg: '#FDF1EF' } : b === 'amber' ? { c: '#8A5A08', bg: '#FBF3E0' } : b === 'watch' ? { c: '#5B6B7C', bg: '#EEF1F5' } : { c: '#0E6E4E', bg: '#E8F4EE' };
+  }
+  fmtDate(d) { return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+
+  emailFor(req, sec) {
+    const link = 'https://sheaf.app/u/HL-2026-0847/' + req.id;
+    const map = {
+      c4: { heading: 'Request the 2024 W-2 from the applicant', to: 'marisol.rivera@gmail.com', subject: 'One more document for your application — 2024 W-2', body: 'Hi Marisol,\n\nYour file is nearly complete — nice work getting everything over in one go. The only thing we couldn\u2019t find in the package is your 2024 W-2 (we have 2025 already).\n\nYou can add it here in under a minute:\n' + link + '\n\nNo need to re-send anything else.\n\nDana Okafor\nSummit West Lending' },
+      c6: { heading: 'Ask for a clean re-scan of the VOE', to: 'marisol.rivera@gmail.com', subject: 'Quick re-scan needed — employment letter', body: 'Hi Marisol,\n\nThe employment verification letter from BrightPath HR came through slightly tilted, and the signature at the bottom was cut off in the scan.\n\nCould you ask HR to re-send a straight scan of the signed letter? They can upload it directly here:\n' + link + '\n\nEverything else on the income side is complete.\n\nDana Okafor\nSummit West Lending' },
+      e2: { heading: 'Request a legible copy from the appraiser', to: 'orders@peakstate-appraisal.com', subject: 'Re-transmittal request — 1129 Meadowlark Ln (p.143)', body: 'Hello,\n\nIn appraisal file #APR-29917 (1129 Meadowlark Ln, Aurora CO), page 143 — the comparable-sales table — arrived too compressed to read.\n\nPlease re-transmit pages 141–150 at 300 dpi or higher:\n' + link + '\n\nThe remainder of the report came through cleanly.\n\nDana Okafor\nSummit West Lending' },
+      g2: { heading: 'Re-order the criminal record check', to: 'marisol.rivera@gmail.com', subject: 'Background check refresh — 5 minute task', body: 'Hi Marisol,\n\nA formality: the CBI background check in your file is only valid for 60 days and reaches that limit on Jul 26. To keep every option open on timing, we\u2019d like to re-order it now.\n\nAuthorize the refresh here (takes about 5 minutes):\n' + link + '\n\nDana Okafor\nSummit West Lending' }
+    };
+    return map[req.id] || { heading: 'Request an updated ' + req.name, to: 'marisol.rivera@gmail.com', subject: 'Document needed — ' + req.name, body: 'Hi Marisol,\n\nWe need an updated copy of: ' + req.name + '.\n\nUpload it here:\n' + link + '\n\nDana Okafor\nSummit West Lending' };
+  }
+
+  openEmail(id) {
+    const f = this.findReq(id); if (!f) return;
+    this.setState({ email: { reqId: id, ...this.emailFor(f.r, f.s) }, selectedId: null, moveOpen: false });
+  }
+
+  renderVals() {
+    const st = this.state;
+    const showConf = this.props.showConfidence ?? true;
+    const C = { red: '#B42318', amber: '#8A5A08', slate: '#3E4FA3', mute: '#98A6B8', ink: '#101828', quiet: '#5B6B7C' };
+
+    const t = st.prog.t;
+    const pages = Math.min(312, Math.floor(t / 2200 * 312));
+    const docs = t < 2200 ? 0 : Math.min(28, Math.floor((t - 2200) / 1700 * 28));
+    const matched = t < 3900 ? 0 : Math.min(26, Math.floor((t - 3900) / 1700 * 26));
+    const checksT = Math.max(0, t - 5600);
+    const checkLabels = ['scan quality', 'dates & validity windows', 'names & numbers', 'signatures & seals'];
+    const checkIdx = Math.min(3, Math.floor(checksT / 480));
+    const stepDefs = [
+      { label: 'Reading pages', done: t >= 2200, count: pages + ' / 312' },
+      { label: 'Identifying documents', done: t >= 3900, count: t < 2200 ? '' : docs + ' found' },
+      { label: 'Matching to the checklist', done: t >= 5600, count: t < 3900 ? '' : matched + ' of 27' },
+      { label: t < 5600 ? 'Running checks' : 'Checking ' + checkLabels[checkIdx], done: t >= 7500, count: t < 5600 ? '' : Math.min(4, checkIdx + 1) + ' of 4' }
+    ];
+    const steps = stepDefs.map((s, i) => {
+      const active = !s.done && (i === 0 || stepDefs[i - 1].done);
+      return { ...s, active, pending: !s.done && !active, color: s.done || active ? C.ink : C.mute, weight: active ? '600' : '500' };
+    });
+
+    const q = st.query.trim().toLowerCase();
+    let placed = 0, clean = 0, attention = 0, okCount = 0, flagCount = 0, total = 0;
+    const allReqs = [];
+    const sideSections = [];
+    const sections = [];
+    for (const sec of st.sections) {
+      let secProblem = false;
+      const rows = [];
+      for (const req of sec.reqs) {
+        allReqs.push({ req, sec });
+        total++;
+        const hasDoc = !!req.doc;
+        if (hasDoc) placed++;
+        const isProblem = req.status === 'flag' || req.status === 'review' || req.status === 'missing';
+        if (isProblem) { attention++; flagCount++; secProblem = true; }
+        else if (hasDoc) { clean++; okCount++; }
+        if (q && !(req.name.toLowerCase().includes(q) || (req.doc && req.doc.file.toLowerCase().includes(q)))) continue;
+        if (st.secFilter && sec.id !== st.secFilter) continue;
+        const sevColor = req.sev === 'red' ? C.red : req.status === 'review' ? C.slate : C.amber;
+        const stMap = {
+          ok: { dot: '#0E6E4E', dotBorder: 'none', text: req.note ? req.note : 'Filed', color: req.note ? C.quiet : '#0E6E4E' },
+          flag: { dot: sevColor, dotBorder: 'none', text: req.sev === 'red' ? 'Review' : 'Check', color: sevColor },
+          review: { dot: C.slate, dotBorder: 'none', text: 'Deep review', color: C.slate },
+          missing: { dot: 'transparent', dotBorder: '1.5px solid #D7A13B', text: 'Not found', color: C.amber },
+          waiting: { dot: '#C3CCD7', dotBorder: 'none', text: 'Requested', color: C.quiet }
+        };
+        const m = stMap[req.status];
+        let expiryChip = '', expiryColor = '', expiryBg = '', expiryQuiet = '';
+        if (req.expiry && req.status !== 'waiting') {
+          const days = this.daysTo(req.expiry.date);
+          const b = this.band(days);
+          if (b === 'red' || b === 'amber') { const c = this.bandColors(b); expiryChip = this.fmtDate(req.expiry.date); expiryColor = c.c; expiryBg = c.bg; }
+          else expiryQuiet = this.fmtDate(req.expiry.date);
+        }
+        const checksPassed = req.status === 'ok' ? '4/4' : req.status === 'missing' ? '—' : req.status === 'waiting' ? '—' : req.status === 'review' ? '2/3' : '3/4';
+        rows.push({
+          id: req.id, name: req.name, hasDoc,
+          docLabel: hasDoc ? req.doc.file + ' · pp.' + req.doc.pages : '',
+          confText: hasDoc && showConf && req.doc.by === 'ai' ? req.doc.conf + '%' : '',
+          emptyNote: hasDoc ? '' : (req.status === 'waiting' ? 'requested — secure link sent' : 'not in the upload'),
+          received: hasDoc ? (req.doc.pages === 'uploaded' ? 'today' : 'Jul 18') : '—',
+          checks: checksPassed, checksColor: req.status === 'ok' ? C.quiet : req.status === 'flag' || req.status === 'review' ? sevColor : C.mute,
+          dot: m.dot, dotBorder: m.dotBorder, statusText: m.text, statusColor: m.color,
+          expiryChip, expiryColor, expiryBg, expiryQuiet,
+          onOpen: () => this.setState({ selectedId: req.id, drawerTab: 'overview', moveOpen: false })
+        });
+      }
+      const secTotal = sec.reqs.length, secDone = sec.reqs.filter(r => r.doc && r.status === 'ok').length;
+      sideSections.push({
+        name: sec.name, count: secDone + '/' + secTotal,
+        countColor: secDone === secTotal ? '#0E6E4E' : secProblem ? C.amber : C.mute,
+        dot: secDone === secTotal ? '#0E6E4E' : secProblem ? '#D7A13B' : '#C3CCD7',
+        bg: st.secFilter === sec.id ? '#EEF1F5' : 'transparent', weight: st.secFilter === sec.id ? '700' : '500',
+        onClick: () => this.setState({ secFilter: st.secFilter === sec.id ? null : sec.id })
+      });
+      if (rows.length === 0) continue;
+      sections.push({ name: sec.name, owner: sec.owner, rows, count: secDone + ' of ' + secTotal + ' clear', countColor: secDone === secTotal ? '#0E6E4E' : C.quiet, barPct: Math.round(secDone / secTotal * 100) + '%', barColor: secDone === secTotal ? '#0E6E4E' : secProblem ? '#D7A13B' : '#98A6B8' });
+    }
+
+    const exceptions = [];
+    for (const { req, sec } of allReqs) {
+      if (!(req.status === 'flag' || req.status === 'review' || req.status === 'missing')) continue;
+      const open = () => this.setState({ selectedId: req.id, drawerTab: 'overview', moveOpen: false });
+      let ex = {
+        title: req.name, section: sec.name, body: req.issue,
+        chip: req.doc ? req.doc.file + ' · pp.' + req.doc.pages : '',
+        dot: req.sev === 'red' ? C.red : req.status === 'review' ? '#7A8BC9' : '#D7A13B',
+        onOpen: open
+      };
+      if (req.id === 'c2') Object.assign(ex, { primaryLabel: 'Remove from application', onPrimary: () => this.unassignDoc('c2'), secondaryLabel: 'It\u2019s correct — keep it', onSecondary: () => this.acceptFlag('c2') });
+      else if (req.id === 'c6') Object.assign(ex, { primaryLabel: 'Request re-scan', onPrimary: () => this.openEmail('c6'), secondaryLabel: 'Accept as-is', onSecondary: () => this.acceptFlag('c6') });
+      else if (req.id === 'c4') Object.assign(ex, { primaryLabel: 'Request from applicant', onPrimary: () => this.openEmail('c4'), secondaryLabel: 'Upload it myself', onSecondary: () => this.uploadTo('c4') });
+      else if (req.id === 'e2') Object.assign(ex, { primaryLabel: 'Request better copy', onPrimary: () => this.openEmail('e2'), secondaryLabel: 'Accept as-is', onSecondary: () => this.acceptFlag('e2') });
+      else if (req.status === 'review') Object.assign(ex, { primaryLabel: 'View deep report', onPrimary: () => this.setState({ selectedId: req.id, drawerTab: 'deep', moveOpen: false }) });
+      else if (req.status === 'missing') Object.assign(ex, { primaryLabel: 'Request document', onPrimary: () => this.openEmail(req.id), secondaryLabel: 'Upload', onSecondary: () => this.uploadTo(req.id) });
+      else Object.assign(ex, { primaryLabel: 'Review', onPrimary: open });
+      exceptions.push(ex);
+    }
+
+    const [r0, r1] = this.RANGE, span = r1 - r0;
+    const pct = d => Math.max(0, Math.min(100, (d - r0) / span * 100));
+    const timeline = [];
+    for (const { req } of allReqs) {
+      if (!req.expiry) continue;
+      const days = this.daysTo(req.expiry.date);
+      const b = this.band(days), c = this.bandColors(b);
+      const p = pct(req.expiry.date), tp = pct(this.TODAY);
+      timeline.push({
+        name: req.name, rule: req.expiry.rule, days: days + ' days', until: this.fmtDate(req.expiry.date),
+        barLeft: tp + '%', barWidth: Math.max(0, p - tp) + '%',
+        barColor: b === 'ok' || b === 'watch' ? '#E3E8EE' : c.bg,
+        dotLeft: 'calc(' + p + '% - 5px)', dotColor: c.c,
+        labelLeft: p + '%', labelShift: p > 88 ? 'translateX(-100%)' : 'translateX(8px)',
+        chipColor: c.c, chipBg: c.bg, sortKey: days,
+        onOpen: () => this.setState({ selectedId: req.id, drawerTab: 'overview', moveOpen: false })
+      });
+    }
+    timeline.sort((a, b) => a.sortKey - b.sortKey);
+    const alarms = timeline.filter(x => x.sortKey <= 30).length;
+    const ticks = [ { label: 'Aug', d: new Date(2026, 7, 1) }, { label: 'Sep', d: new Date(2026, 8, 1) }, { label: 'Oct', d: new Date(2026, 9, 1) } ].map(x => ({ label: x.label, left: pct(x.d) + '%' }));
+
+    let sel = null, drawerTabs = [];
+    const selReq = st.selectedId && !st.selectedId.startsWith('u') ? this.findReq(st.selectedId) : null;
+    const selU = st.selectedId && st.selectedId.startsWith('u') ? st.unassigned.find(u => u.id === st.selectedId) : null;
+    if (selReq) {
+      const { r, s } = selReq;
+      const sevColor = r.sev === 'red' ? C.red : r.status === 'review' ? C.slate : C.amber;
+      const scores = r.scores || { q: 96 + (r.id.charCodeAt(1) % 4), f: 97 + (r.id.charCodeAt(1) % 3), fr: 'Low · 1%' };
+      const days = r.expiry ? this.daysTo(r.expiry.date) : null;
+      const eb = days != null ? this.bandColors(this.band(days)) : null;
+      sel = {
+        name: r.name, section: s.name, owner: s.owner === 'Applicant' ? 'the applicant' : s.owner, hasDoc: !!r.doc,
+        file: r.doc ? r.doc.file : '', pages: r.doc ? r.doc.pages : '', pagesLong: r.doc ? r.doc.pages + ' of 312' : '—',
+        byLabel: r.doc ? (r.doc.by === 'you' ? 'Assigned by you' : showConf ? 'Auto-matched · ' + r.doc.conf + '%' : 'Auto-matched') : '',
+        byColor: r.doc && r.doc.by === 'you' ? '#3E4FA3' : '#0E6E4E', byBg: r.doc && r.doc.by === 'you' ? '#EDEFF9' : '#E8F4EE',
+        q: scores.q, f: scores.f, fr: scores.fr,
+        qColor: scores.q < 70 ? C.amber : C.ink, frColor: String(scores.fr).indexOf('High') === 0 ? C.red : String(scores.fr).indexOf('Under') === 0 ? C.slate : C.ink,
+        desc: r.desc,
+        issue: r.issue || '', issueKind: r.flagKind || '', issueColor: sevColor,
+        issueBorder: r.sev === 'red' ? '#EBC7C0' : r.status === 'review' ? '#C9D0EA' : '#EBD9AE',
+        issueBg: r.sev === 'red' ? '#FDF6F5' : r.status === 'review' ? '#F6F7FC' : '#FDF9EE',
+        expiryNote: r.expiry ? r.expiry.note : '', expiryDays: days != null ? days + ' days' : '', expiryColor: eb ? eb.c : '', expiryBg: eb ? eb.bg : '',
+        showAccept: r.status === 'flag', acceptLabel: r.sev === 'red' ? 'Keep it — it\u2019s correct' : 'Accept as-is', onAccept: () => this.acceptFlag(r.id),
+        showRequest: r.status === 'flag' || r.status === 'missing' || !!r.expiry, requestLabel: r.status === 'missing' ? 'Request from ' + (s.owner === 'Applicant' ? 'applicant' : s.owner.toLowerCase()) : r.status === 'flag' ? 'Request replacement' : 'Request a refresh',
+        onRequest: () => this.openEmail(r.id),
+        showUpload: r.status === 'missing' || r.status === 'waiting', onUpload: () => this.uploadTo(r.id),
+        showMove: !!r.doc, canUnassign: !!r.doc, onUnassign: () => this.unassignDoc(r.id),
+        transcript: r.transcript || ('— OCR · ' + (r.doc ? r.doc.file : r.name) + ' —\n\nText layer extracted cleanly.\n99.2% of glyphs above 0.98 confidence.\nFull transcription stored as ' + r.id + '_ocr.md'),
+        airead: '— full AI read —\n\n' + (r.doc ? r.doc.file : r.name) + '\n[signature — M. Rivera — lower right]\n[signature — D. Rivera — lower right]\n[date stamp — legible]\n' + (r.id === 'f1' ? '[notary seal — p.197 — VARIANCE FLAGGED]\n' : '[letterhead logo — matches issuer]\n') + '\nStored as ' + r.id + '_full.md',
+        report: JSON.stringify({ title: r.name, pages: r.doc ? r.doc.pages + ' of 312' : 'not found', description: r.desc, scores: { quality: scores.q, formatting: scores.f, fraud_risk: scores.fr }, notes: r.issue || 'none' }, null, 2),
+        deep: r.deep ? JSON.stringify(r.deep, null, 2) : ''
+      };
+      drawerTabs = [ { k: 'overview', label: 'Overview' } ];
+      if (r.doc) drawerTabs.push({ k: 'transcript', label: 'Transcript' }, { k: 'airead', label: 'AI read' }, { k: 'report', label: 'Analysis' });
+      if (r.deep) drawerTabs.push({ k: 'deep', label: 'Deep report' });
+    } else if (selU) {
+      sel = {
+        name: selU.label, section: 'Unassigned', owner: 'the upload', hasDoc: true,
+        file: 'unassigned_' + selU.id + '.pdf', pages: selU.pages, pagesLong: selU.pages + ' of 312',
+        byLabel: 'Not matched', byColor: C.quiet, byBg: '#EEF1F5',
+        q: 90, f: 88, fr: 'Low · 1%', qColor: C.ink, frColor: C.ink,
+        desc: selU.note, issue: '', expiryNote: '',
+        showAccept: false, showRequest: false, showUpload: false, showMove: true, canUnassign: false,
+        transcript: '— OCR · unassigned bundle pp.' + selU.pages + ' —\n\nMixed correspondence; no requirement signature matched.',
+        airead: '— full AI read —\n\nNo required-document patterns detected in this bundle.',
+        report: JSON.stringify({ title: selU.label, pages: selU.pages, description: selU.note, match: 'none above 0.4 confidence' }, null, 2), deep: ''
+      };
+      drawerTabs = [ { k: 'overview', label: 'Overview' }, { k: 'report', label: 'Analysis' } ];
+    }
+    drawerTabs = drawerTabs.map(dt => ({ label: dt.label, onClick: () => this.setState({ drawerTab: dt.k }), color: st.drawerTab === dt.k ? C.ink : C.mute, border: st.drawerTab === dt.k ? '#1D4ED8' : 'transparent' }));
+
+    const moveTargets = [];
+    for (const { req, sec } of allReqs) if (!req.doc) moveTargets.push({ name: req.name, section: sec.name, onClick: () => this.moveDoc(st.selectedId, req.id) });
+
+    const tabBtn = on => ({ bg: on ? '#FFFFFF' : 'transparent', color: on ? C.ink : C.quiet, shadow: on ? '0 1px 3px rgba(16,24,40,.12)' : 'none' });
+    const tc = tabBtn(st.tab === 'checklist'), tt = tabBtn(st.tab === 'timeline');
+    const now = new Date();
+
+    return {
+      isDrop: st.stage === 'drop', isProcessing: st.stage === 'processing', isReview: st.stage === 'review',
+      dzBorder: st.dragOver ? '#1D4ED8' : '#C3CCD7', dzBg: st.dragOver ? '#EFF4FE' : '#FFFFFF',
+      onDragOver: e => { e.preventDefault(); if (!st.dragOver) this.setState({ dragOver: true }); },
+      onDragLeave: () => this.setState({ dragOver: false }),
+      onDrop: e => { e.preventDefault(); this.startProcessing(); },
+      onZoneClick: () => this.startProcessing(),
+      steps, progPct: Math.min(100, t / 7500 * 100) + '%',
+      progLabel: Math.round(Math.min(100, t / 7500 * 100)) + '%',
+      nowStamp: 'Jul 18, 09:42',
+      statDocs: placed + st.unassigned.length, statClean: clean, statAttention: attention, statUnassigned: st.unassigned.length,
+      pctComplete: Math.round(okCount / total * 100) + '%',
+      pctBarClear: Math.round(okCount / total * 100) + '%', pctBarFlag: Math.round(flagCount / total * 100) + '%',
+      query: st.query, onQuery: e => this.setState({ query: e.target.value }),
+      sideSections, allSecBg: st.secFilter === null ? '#EEF1F5' : 'transparent', allSecWeight: st.secFilter === null ? '700' : '500',
+      onAllSections: () => this.setState({ secFilter: null }),
+      audit: st.audit,
+      tabIsChecklist: st.tab === 'checklist', tabIsTimeline: st.tab === 'timeline',
+      toChecklist: () => this.setState({ tab: 'checklist' }), toTimeline: () => this.setState({ tab: 'timeline' }),
+      tabChecklistBg: tc.bg, tabChecklistColor: tc.color, tabChecklistShadow: tc.shadow,
+      tabTimelineBg: tt.bg, tabTimelineColor: tt.color, tabTimelineShadow: tt.shadow,
+      alarmCount: alarms > 0 ? '· ' + alarms : '',
+      hasExceptions: exceptions.length > 0, noExceptions: exceptions.length === 0, exceptions,
+      sections, showUnassigned: !q && !st.secFilter,
+      unassigned: st.unassigned.map(u => ({ ...u, onFile: () => this.setState({ selectedId: u.id, drawerTab: 'overview', moveOpen: true }) })),
+      timeline, ticks, todayLeft: pct(this.TODAY), closingLeft: pct(new Date(2026, 8, 3)),
+      onOpenCriminal: () => this.setState({ selectedId: 'g2', drawerTab: 'overview', moveOpen: false }),
+      hasSel: !!sel, sel: sel || {}, drawerTabs,
+      drawerIsOverview: st.drawerTab === 'overview', drawerIsTranscript: st.drawerTab === 'transcript', drawerIsAiread: st.drawerTab === 'airead', drawerIsReport: st.drawerTab === 'report', drawerIsDeep: st.drawerTab === 'deep',
+      onCloseDrawer: () => this.setState({ selectedId: null, moveOpen: false }),
+      onToggleMove: () => this.setState(s2 => ({ moveOpen: !s2.moveOpen })), moveOpen: st.moveOpen, moveTargets,
+      hasEmail: !!st.email, email: st.email || {}, stop: e => e.stopPropagation(),
+      onEmailBody: e => { const v = e.target.value; this.setState(s2 => ({ email: { ...s2.email, body: v } })); },
+      onCloseEmail: () => this.setState({ email: null }),
+      onSendEmail: () => {
+        const em = st.email; if (!em) return;
+        const f = this.findReq(em.reqId);
+        if (f && !f.r.doc) this.update(em.reqId, { status: 'waiting', issue: null, flagKind: null });
+        else if (f) this.update(em.reqId, { status: 'ok', note: 'Replacement req.', issue: null, flagKind: null, sev: null });
+        this.setState({ email: null });
+        this.toast('Request sent to ' + em.to);
+        this.logAudit('Request sent — ' + (f ? f.r.name : ''));
+      },
+      onReset: () => { clearInterval(this.iv); this.setState({ stage: 'drop', tab: 'checklist', selectedId: null, email: null, moveOpen: false, query: '', secFilter: null, sections: this.buildSections(), unassigned: this.buildUnassigned() }); },
+      toasts: st.toasts,
+      fileRef: el => { this.fi = el; }, onFilePicked: e => {
+        const name = e.target.files && e.target.files[0] ? e.target.files[0].name : 'upload.pdf';
+        if (this.pendingUpload) { this.update(this.pendingUpload, { doc: { file: name, pages: 'uploaded', conf: null, by: 'you' }, status: 'ok', issue: null, flagKind: null, note: null }); this.toast('Filed ' + name + ' — assigned by you'); this.logAudit('You uploaded ' + name); this.pendingUpload = null; this.setState({ selectedId: null }); }
+        e.target.value = '';
+      }
+    };
+  }
+
+  acceptFlag(id) { const f = this.findReq(id); this.update(id, { status: 'ok', issue: null, flagKind: null, sev: null, note: 'Cleared by you' }); this.setState({ selectedId: null }); this.toast('Cleared — your call is recorded on the audit log'); this.logAudit('You cleared — ' + (f ? f.r.name : id)); }
+
+  unassignDoc(id) {
+    const f = this.findReq(id); if (!f || !f.r.doc) return;
+    const doc = f.r.doc;
+    this.setState(st => ({ unassigned: [...st.unassigned, { id: 'u' + (st.unassigned.length + 1) + id, label: doc.file, pages: doc.pages, note: 'Removed from ' + f.s.name + ' by you.' }] }));
+    this.update(id, { doc: null, status: 'missing', sev: null, flagKind: 'Not found', issue: 'Slot is empty after your removal — the correct document is still required.' });
+    this.setState({ selectedId: null, moveOpen: false });
+    this.toast('Moved to Unassigned — slot reopened');
+    this.logAudit('You removed ' + doc.file);
+  }
+
+  moveDoc(fromId, toId) {
+    if (!fromId || !toId) return;
+    if (fromId.startsWith('u')) {
+      const u = this.state.unassigned.find(x => x.id === fromId); if (!u) return;
+      this.update(toId, { doc: { file: 'unassigned_' + u.id + '.pdf', pages: u.pages, conf: null, by: 'you' }, status: 'ok', issue: null, flagKind: null, note: null });
+      this.setState(st => ({ unassigned: st.unassigned.filter(x => x.id !== fromId), selectedId: null, moveOpen: false }));
+    } else {
+      const f = this.findReq(fromId); if (!f || !f.r.doc) return;
+      const doc = { ...f.r.doc, by: 'you', conf: null };
+      this.update(toId, { doc, status: 'ok', issue: null, flagKind: null, note: null });
+      this.update(fromId, { doc: null, status: 'missing', sev: null, flagKind: 'Not found', issue: 'Slot reopened after you moved its document.' });
+      this.setState({ selectedId: null, moveOpen: false });
+    }
+    this.toast('Re-filed — the AI won\u2019t override your placement');
+    this.logAudit('You re-filed a document');
+  }
+
+  uploadTo(id) { this.pendingUpload = id; if (this.fi) this.fi.click(); }
+}
+</script>
+</body>
+</html>

@@ -56,7 +56,6 @@ function nextUp(): NextItem[] {
 }
 
 const TONE: Record<Tone, string> = { red: "text-[#B91C1C]", amber: "text-[#B45309]" };
-const DOT: Record<Tone, string> = { red: "bg-[#DC2626]", amber: "bg-[#D97706]" };
 
 // overlay panels: anchored dropdowns on desktop, full-width sheets under the header on mobile
 const PANEL = "fixed inset-x-2 top-[58px] md:absolute md:inset-x-auto md:top-[calc(100%+8px)] bg-white border border-[#E2E8F0] rounded-[6px] shadow-[0_8px_24px_rgba(15,23,42,0.12)] z-50 overflow-hidden";
@@ -140,29 +139,20 @@ export function Backbone() {
 
         <div className="hidden md:block h-5 w-px bg-[#E2E8F0] shrink-0" />
 
-        {/* next action — the one thing the header is allowed to say out loud */}
+        {/* needs-you — a quiet count in the chrome; the ranked queue stays one click deeper */}
         <div className="relative shrink-0">
           <button
             onClick={() => setMenu(menu === "next" ? null : "next")}
-            className="flex items-center gap-1.5 md:gap-2 px-2 md:px-2.5 py-2 md:py-1.5 rounded-[4px] hover:bg-[#F1F5F9] transition-colors"
+            title={top ? `${queue.length} item${queue.length > 1 ? "s" : ""} need you` : "Nothing needs you"}
+            aria-label="Needs you"
+            className={`relative w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-[4px] transition-colors ${menu === "next" ? "bg-[#F1F5F9] text-[#0F172A]" : "text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"}`}
           >
-            {top ? (
-              <>
-                <span className={`w-[7px] h-[7px] rounded-[2px] shrink-0 ${DOT[top.tone]}`} />
-                <span className="hidden md:inline text-[12.5px] font-semibold max-w-[220px] truncate">
-                  {top.title} <span className={`${TONE[top.tone]} font-medium`}>— {top.chip}</span>
-                </span>
-                <span className={`md:hidden ${MONO} text-[11px] font-medium ${TONE[top.tone]}`}>{queue.length}</span>
-                {queue.length > 1 && <span className={`hidden md:inline ${MONO} text-[10px] text-[#64748B]`}>+{queue.length - 1}</span>}
-              </>
-            ) : (
-              <>
-                <span className="w-[7px] h-[7px] rounded-[2px] shrink-0 bg-[#15803D]" />
-                <span className="hidden md:inline text-[12.5px] text-[#475569]">Nothing needs you</span>
-                <span className={`hidden md:inline ${MONO} text-[10px] text-[#64748B]`}>{daysToClose}d to close</span>
-              </>
+            <Bell size={16} />
+            {queue.length > 0 && (
+              <span className={`absolute top-[1px] right-[1px] min-w-[15px] h-[15px] px-[3px] flex items-center justify-center rounded-[3px] border ${MONO} text-[9px] font-medium leading-none ${top?.tone === "red" ? "text-[#B91C1C] bg-[#FEF2F2] border-[#FECACA]" : "text-[#B45309] bg-[#FFFBEB] border-[#FDE68A]"}`}>
+                {queue.length}
+              </span>
             )}
-            <ChevronDown size={12} className={`text-[#94A3B8] shrink-0 transition-transform duration-150 ${menu === "next" ? "rotate-180" : ""}`} />
           </button>
 
           {menu === "next" && (
@@ -185,6 +175,9 @@ export function Backbone() {
                   <ArrowUpRight size={12} className="text-[#94A3B8] group-hover:text-[#1D4ED8] shrink-0 transition-colors" />
                 </button>
               ))}
+              {queue.length === 0 && (
+                <div className="px-4 py-3 text-[12px] text-[#64748B] border-t border-[#F1F5F9]">Nothing needs you right now.</div>
+              )}
               <div className={`px-4 py-2 border-t border-[#E2E8F0] bg-[#F8FAFC] ${MONO} text-[10px] text-[#64748B]`}>
                 {daysToClose} days to close · target Sep 3
               </div>

@@ -44,10 +44,21 @@ export type Block =
 
 export type Subsection = { id: string; name: string; blocks: Block[] };
 
+// Who can see a section and who is responsible for adding its documents.
+// The section's `owner` is the responsible party; permissions govern visibility/upload per role.
+export type Role = "Applicant" | "Originator" | "Underwriter" | "Manager";
+export type Permission = { role: Role; view: boolean; upload: boolean };
+
+const ROLES: Role[] = ["Applicant", "Originator", "Underwriter", "Manager"];
+// perms("vu","v","v","-") → Applicant view+upload, Originator view, Underwriter view, Manager none
+const perms = (...codes: string[]): Permission[] =>
+  ROLES.map((role, i) => ({ role, view: codes[i].includes("v"), upload: codes[i].includes("u") }));
+
 export type Section = {
   id: string;
   name: string;
   owner: "Applicant" | "Originator" | "Escrow" | "Homium";
+  permissions: Permission[];
   subsections: Subsection[];
 };
 
@@ -74,6 +85,7 @@ export const PURCHASE_LOAN: Template = {
   sections: [
     {
       id: "initial-application", name: "Initial Application", owner: "Applicant",
+      permissions: perms("vu", "vu", "v", "v"),
       subsections: [
         {
           id: "application-forms", name: "Application forms",
@@ -99,6 +111,7 @@ export const PURCHASE_LOAN: Template = {
     },
     {
       id: "identity", name: "Identity Verification", owner: "Applicant",
+      permissions: perms("vu", "v", "v", "v"),
       subsections: [
         {
           id: "identity-docs", name: "Identity documents",
@@ -111,6 +124,7 @@ export const PURCHASE_LOAN: Template = {
     },
     {
       id: "income-assets", name: "Income & Assets", owner: "Applicant",
+      permissions: perms("vu", "v", "v", "v"),
       subsections: [
         {
           id: "income", name: "Income",
@@ -130,6 +144,7 @@ export const PURCHASE_LOAN: Template = {
     },
     {
       id: "property", name: "Property Valuation", owner: "Originator",
+      permissions: perms("v", "vu", "v", "v"),
       subsections: [
         {
           id: "valuation", name: "Valuation",
@@ -142,6 +157,7 @@ export const PURCHASE_LOAN: Template = {
     },
     {
       id: "title-escrow", name: "Title & Escrow", owner: "Escrow",
+      permissions: perms("-", "vu", "v", "vu"),
       subsections: [
         {
           id: "title-docs", name: "Title documents",
@@ -155,6 +171,7 @@ export const PURCHASE_LOAN: Template = {
     },
     {
       id: "credit-compliance", name: "Credit & Compliance", owner: "Homium",
+      permissions: perms("-", "-", "v", "vu"),
       subsections: [
         {
           id: "credit", name: "Credit",

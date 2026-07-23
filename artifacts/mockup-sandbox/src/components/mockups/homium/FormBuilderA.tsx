@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { GripVertical, ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
-import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAVED_SECTIONS, Section } from "./builderData";
+import { GripVertical, ChevronDown, ChevronRight, MoreHorizontal, Eye, Monitor, Smartphone, List, Upload } from "lucide-react";
+import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAVED_SECTIONS, Section, Role, Permission } from "./builderData";
 
 // URL Params Supported:
 // ?json=1 - Opens the bottom drawer with JSON output
@@ -9,6 +9,9 @@ import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAV
 // ?collapsed=1 - Starts sections 02 (Identity) and 05 (Title) in collapsed state
 // ?menu=1 - Starts with the section menu open on section 01 (Initial Application)
 // ?focus=income - Scrolls the Income & Assets section into view on mount
+// ?preview=1 - Opens the Live Preview right pane
+// ?pview=mobile|desktop|register - Selects the view mode in the Preview pane
+// ?perms=1 - Opens the permissions strip for section 03 (Income & Assets)
 
 const getSectionStats = (section: Section) => {
   let blocks = 0;
@@ -33,6 +36,9 @@ export default function FormBuilderA() {
 
   const isMenuInit = params.get("menu") === "1";
   const [openMenuId, setOpenMenuId] = useState<string | null>(isMenuInit ? "initial-application" : null);
+
+  const isPermsInit = params.get("perms") === "1";
+  const [openPermsSectionId, setOpenPermsSectionId] = useState<string | null>(isPermsInit ? "income-assets" : null);
 
   useEffect(() => {
     const handlePopState = () => setParams(new URLSearchParams(window.location.search));
@@ -59,16 +65,34 @@ export default function FormBuilderA() {
   const showJson = params.get("json") === "1";
   const showDrop = params.get("drop") === "1";
   const showDrop2 = params.get("drop") === "2";
+  const showPreview = params.get("preview") === "1";
+  const pview = params.get("pview") || "mobile";
   
   const stats = templateStats(PURCHASE_LOAN);
   
   const toggleJson = () => {
     const newParams = new URLSearchParams(params.toString());
-    if (showJson) {
-      newParams.delete("json");
+    if (showJson) newParams.delete("json");
+    else newParams.set("json", "1");
+    window.history.pushState({}, "", "?" + newParams.toString());
+    setParams(newParams);
+  };
+
+  const togglePreview = () => {
+    const newParams = new URLSearchParams(params.toString());
+    if (showPreview) {
+      newParams.delete("preview");
     } else {
-      newParams.set("json", "1");
+      newParams.set("preview", "1");
+      if (!newParams.has("pview")) newParams.set("pview", "mobile");
     }
+    window.history.pushState({}, "", "?" + newParams.toString());
+    setParams(newParams);
+  };
+
+  const updatePview = (view: string) => {
+    const newParams = new URLSearchParams(params.toString());
+    newParams.set("pview", view);
     window.history.pushState({}, "", "?" + newParams.toString());
     setParams(newParams);
   };
@@ -85,17 +109,30 @@ export default function FormBuilderA() {
       
     return formatted.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, (match) => {
       if (/^"/.test(match)) {
-        if (/:$/.test(match)) {
-          // Key
-          return `<span class="text-[#1E40AF]">${match.slice(0, -1)}</span><span class="text-[#94A3B8]">:</span>`;
-        }
-        // String
+        if (/:$/.test(match)) return `<span class="text-[#1E40AF]">${match.slice(0, -1)}</span><span class="text-[#94A3B8]">:</span>`;
         return `<span class="text-[#0F172A]">${match}</span>`;
       }
-      // Boolean / Number
       return `<span class="text-[#0F172A]">${match}</span>`;
     });
   };
+
+  // Preview Data Preparation
+  const targetSection = PURCHASE_LOAN.sections.find(s => s.id === "income-assets") || PURCHASE_LOAN.sections[0];
+  const targetSectionIndex = PURCHASE_LOAN.sections.indexOf(targetSection) + 1;
+  const totalSections = PURCHASE_LOAN.sections.length;
+  
+  const targetDocs = targetSection.subsections.flatMap(ss => 
+    ss.blocks.filter(b => b.kind === "document")
+  );
+
+  const appHiddenSections = PURCHASE_LOAN.sections
+    .map((s, i) => ({ section: s, index: i + 1 }))
+    .filter(({ section }) => {
+      const appPerm = section.permissions.find(p => p.role === "Applicant");
+      return appPerm && !appPerm.view;
+    })
+    .map(({ section, index }) => `${index.toString().padStart(2, '0')} ${section.name}`)
+    .join(", ");
 
   return (
     <>
@@ -112,6 +149,11 @@ export default function FormBuilderA() {
           <div className="text-[14px] font-medium text-[#0F172A] border-b border-dashed border-[#94A3B8] pb-[1px] cursor-text mr-2">{PURCHASE_LOAN.template}</div>
           <div className="font-mono text-[11px] font-medium text-[#64748B] bg-[#F1F5F9] px-1.5 py-0.5 rounded-[2px]">v{PURCHASE_LOAN.version}</div>
           <div className="flex-1" />
+          
+          <button onClick={togglePreview} className={`flex items-center gap-1.5 text-[12.5px] font-medium mr-6 transition-colors ${showPreview ? 'text-[#1D4ED8]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>
+            <Eye size={15} />
+            Preview
+          </button>
           <button onClick={toggleJson} className="font-mono text-[11px] font-medium text-[#64748B] hover:text-[#0F172A] mr-6 transition-colors">
             {`{ } JSON`}
           </button>
@@ -185,7 +227,7 @@ export default function FormBuilderA() {
                     <div ref={(el) => { sectionRefs.current[section.id] = el; }} className="mb-10 last:mb-0">
                       
                       {/* Section Header */}
-                      <div className="flex items-center group mb-4 relative">
+                      <div className="flex items-center group mb-4 relative z-20">
                         <button 
                           onClick={() => toggleCollapse(section.id)} 
                           className="p-1 -ml-1 mr-1 text-[#94A3B8] hover:text-[#0F172A] transition-colors rounded-[2px] hover:bg-[#E2E8F0]"
@@ -225,6 +267,15 @@ export default function FormBuilderA() {
                           
                           {isMenuOpen && (
                             <div className="absolute right-0 top-full mt-1 w-[160px] bg-white border border-[#E2E8F0] shadow-[0_8px_24px_rgba(15,23,42,0.12)] rounded-[4px] py-1 z-50">
+                              <button 
+                                className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors"
+                                onClick={() => {
+                                  setOpenPermsSectionId(openPermsSectionId === section.id ? null : section.id);
+                                  setOpenMenuId(null);
+                                }}
+                              >
+                                Permissions
+                              </button>
                               <button className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors">Save as block</button>
                               <button className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors">Duplicate section</button>
                               <div className="h-px bg-[#E2E8F0] my-1" />
@@ -234,9 +285,46 @@ export default function FormBuilderA() {
                         </div>
                       </div>
 
+                      {/* Permissions Strip */}
+                      {openPermsSectionId === section.id && (
+                        <div className="bg-[#F8FAFC] border-y border-[#E2E8F0] px-4 py-3 flex items-center mb-5 overflow-x-auto -ml-7 z-10 relative">
+                          <div className="text-[9.5px] font-semibold text-[#64748B] uppercase tracking-[0.08em] mr-8 shrink-0">Who sees · Who adds</div>
+                          <div className="flex items-center gap-8 flex-1">
+                            {section.permissions.map(perm => (
+                              <div key={perm.role} className="flex flex-col gap-2 shrink-0">
+                                <div className="text-[11px] font-medium text-[#0F172A]">{perm.role}</div>
+                                <div className="flex items-center gap-3">
+                                  {/* View Switch */}
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono text-[9px] text-[#64748B] uppercase tracking-wider">View</span>
+                                    <button 
+                                      className={`w-6 h-[14px] rounded-[7px] relative transition-colors ${perm.view ? 'bg-[#1D4ED8]' : 'bg-[#CBD5E1]'}`}
+                                    >
+                                      <div className={`absolute top-[2px] left-[2px] w-[10px] h-[10px] bg-white rounded-full transition-transform ${perm.view ? 'translate-x-[10px]' : ''}`} />
+                                    </button>
+                                  </div>
+                                  {/* Upload Switch */}
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono text-[9px] text-[#64748B] uppercase tracking-wider">Upload</span>
+                                    <button 
+                                      className={`w-6 h-[14px] rounded-[7px] relative transition-colors ${perm.upload ? 'bg-[#1D4ED8]' : 'bg-[#CBD5E1]'}`}
+                                    >
+                                      <div className={`absolute top-[2px] left-[2px] w-[10px] h-[10px] bg-white rounded-full transition-transform ${perm.upload ? 'translate-x-[10px]' : ''}`} />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="font-mono text-[10px] text-[#64748B] ml-8 shrink-0">
+                            responsible: <span className="text-[#0F172A]">{section.owner}</span>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Subsections */}
                       {!isCollapsed && (
-                        <div className="pl-6 space-y-8 border-l border-[#E2E8F0] ml-3 mt-4">
+                        <div className="pl-6 space-y-8 border-l border-[#E2E8F0] ml-3 mt-4 relative z-0">
                           {section.subsections.map(subsection => (
                             <div key={subsection.id} className="relative">
                               
@@ -331,16 +419,12 @@ export default function FormBuilderA() {
                                     {/* Drop Indicator ?drop=1 (Block Level) */}
                                     {showDrop && block.id === "pay-stubs" && (
                                       <div className="relative my-3.5 z-20">
-                                        {/* Blue Line */}
                                         <div className="h-[2px] bg-[#1D4ED8] w-full relative">
                                           <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-[8px] h-[8px] bg-[#F3F5F7] border-[2px] border-[#1D4ED8] rounded-full" />
                                         </div>
-                                        {/* Drop Label */}
                                         <div className="absolute -top-[7px] left-6 font-mono text-[9.5px] text-[#1D4ED8] bg-[#F3F5F7] px-1.5 tracking-[0.05em] font-medium z-10">
                                           DROP — DOCUMENT UPLOAD
                                         </div>
-                                        
-                                        {/* Dragged Ghost Card */}
                                         <div className="absolute top-4 left-12 w-[240px] bg-white border border-[#1D4ED8] shadow-[0_8px_24px_rgba(15,23,42,0.12)] rounded-[4px] p-2.5 flex opacity-90 z-30 pointer-events-none rotate-[2deg]">
                                           <GripVertical size={14} className="text-[#94A3B8] mr-2 mt-[2px]" />
                                           <div>
@@ -363,16 +447,12 @@ export default function FormBuilderA() {
                     {/* Section Drop Indicator ?drop=2 (Section Level) */}
                     {showDrop2 && section.id === "income-assets" && (
                       <div className="relative my-8 z-20">
-                        {/* Blue Line */}
                         <div className="h-[2px] bg-[#1D4ED8] w-full relative">
                           <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 w-[8px] h-[8px] bg-[#F3F5F7] border-[2px] border-[#1D4ED8] rounded-full" />
                         </div>
-                        {/* Drop Label */}
                         <div className="absolute -top-[7px] left-6 font-mono text-[9.5px] text-[#1D4ED8] bg-[#F3F5F7] px-1.5 tracking-[0.05em] font-medium z-10">
                           DROP — STANDARD APPLICATION · 3 BLOCKS
                         </div>
-                        
-                        {/* Dragged Ghost Card */}
                         <div className="absolute top-4 left-12 w-[260px] bg-white border border-[#1D4ED8] shadow-[0_8px_24px_rgba(15,23,42,0.12)] rounded-[4px] p-2.5 flex opacity-90 z-30 pointer-events-none rotate-[2deg]">
                           <GripVertical size={14} className="text-[#94A3B8] mr-2 mt-[2px] shrink-0" />
                           <div>
@@ -390,6 +470,187 @@ export default function FormBuilderA() {
               
             </div>
           </main>
+
+          {/* Right Preview Pane */}
+          {showPreview && (
+            <aside className="w-[420px] bg-[#EFF1F4] border-l border-[#E2E8F0] flex flex-col shrink-0 relative z-10 shadow-[-8px_0_24px_rgba(15,23,42,0.03)]">
+              <div className="p-6 pb-2 border-b border-[#E2E8F0]">
+                {/* Control Row */}
+                <div className="flex flex-col items-start gap-2.5 mb-4">
+                  <div className="flex bg-[#E2E8F0] p-0.5 rounded-[6px] shadow-inner">
+                    <button onClick={() => updatePview('mobile')} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] transition-colors ${pview === 'mobile' ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>
+                      <Smartphone size={14} /> <span className="text-[11px] font-medium">Mobile</span>
+                    </button>
+                    <button onClick={() => updatePview('desktop')} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] transition-colors ${pview === 'desktop' ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>
+                      <Monitor size={14} /> <span className="text-[11px] font-medium">Desktop</span>
+                    </button>
+                    <button onClick={() => updatePview('register')} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[4px] transition-colors ${pview === 'register' ? 'bg-white shadow-[0_1px_2px_rgba(0,0,0,0.05)] text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}>
+                      <List size={14} /> <span className="text-[11px] font-medium">Register</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#CBD5E1] px-2.5 py-1 rounded-[4px] shadow-sm flex-none whitespace-nowrap">
+                    <span className="text-[10px] text-[#64748B] uppercase tracking-wide">Previewing as:</span>
+                    <span className="font-mono text-[11px] text-[#0F172A] font-medium">Applicant</span>
+                    <ChevronDown size={14} className="text-[#94A3B8]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-6 pt-8">
+                
+                {pview === "mobile" && (
+                  <div className="w-[300px] h-[600px] mx-auto border-[1.5px] border-[#0F172A] rounded-[24px] bg-[#F8FAFC] flex flex-col overflow-hidden relative shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
+                    <div className="px-5 pt-12 pb-4 bg-white border-b border-[#E2E8F0] shrink-0">
+                      <div className="flex gap-1 mb-4">
+                        {Array.from({ length: totalSections }).map((_, i) => (
+                          <div key={i} className={`h-[2px] flex-1 rounded-full ${i < targetSectionIndex ? 'bg-[#1D4ED8]' : 'bg-[#E2E8F0]'}`} />
+                        ))}
+                      </div>
+                      <div className="font-mono text-[10px] text-[#64748B] tracking-wider mb-1">SECTION {targetSectionIndex.toString().padStart(2, '0')} OF {totalSections.toString().padStart(2, '0')}</div>
+                      <div className="text-[20px] font-semibold text-[#0F172A] leading-tight">{targetSection.name}</div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-auto p-4 space-y-3">
+                      {targetSection.subsections.map(ss => 
+                        ss.blocks.map(block => (
+                          <div key={block.id} className="bg-white border border-[#E2E8F0] rounded-[6px] p-3 shadow-sm flex flex-col gap-2">
+                            <div className="text-[13px] font-medium text-[#0F172A] leading-snug">{block.name}</div>
+                            
+                            {block.kind === "document" && (
+                              <>
+                                <div className="font-mono text-[10px] text-[#64748B]">{block.formats.join(", ")} · {expiryLabel(block.expiry)}</div>
+                                
+                                {block.id === "bank-statements" ? (
+                                  <div className="flex items-center gap-2 mt-1 pt-3 border-t border-[#F1F5F9]">
+                                    <span className="font-mono text-[11px] text-[#15803D]">chase_checking_jun.pdf</span>
+                                    <div className="flex-1" />
+                                    <span className="text-[11px] text-[#15803D] font-medium">filed</span>
+                                  </div>
+                                ) : (
+                                  <div className="border border-dashed border-[#CBD5E1] bg-[#F8FAFC] rounded-[4px] py-2.5 flex items-center justify-center gap-1.5 text-[#64748B] mt-1">
+                                    <Upload size={14} />
+                                    <span className="text-[12px] font-medium">Add file</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+
+                            {block.kind === "fields" && (
+                              <div className="mt-1 space-y-3">
+                                {block.fields.map(f => (
+                                  <div key={f.id}>
+                                    <div className="text-[11px] text-[#475569] mb-1">{f.label} {f.required && "*"}</div>
+                                    <div className="h-8 border border-[#E2E8F0] rounded-[4px] bg-[#F8FAFC]" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="p-4 bg-white border-t border-[#E2E8F0] shrink-0">
+                      <button className="w-full bg-[#1D4ED8] text-white font-medium text-[13px] py-2.5 rounded-[6px] shadow-sm">Save & continue</button>
+                    </div>
+                  </div>
+                )}
+
+                {pview === "desktop" && (
+                  <div className="w-full max-w-[460px] mx-auto bg-[#F8FAFC] border border-[#E2E8F0] rounded-[8px] flex flex-col overflow-hidden relative shadow-sm">
+                    <div className="px-6 pt-6 pb-4 bg-white border-b border-[#E2E8F0] shrink-0">
+                      <div className="flex gap-1 mb-4 w-[200px]">
+                        {Array.from({ length: totalSections }).map((_, i) => (
+                          <div key={i} className={`h-[2px] flex-1 rounded-full ${i < targetSectionIndex ? 'bg-[#1D4ED8]' : 'bg-[#E2E8F0]'}`} />
+                        ))}
+                      </div>
+                      <div className="font-mono text-[10px] text-[#64748B] tracking-wider mb-1">SECTION {targetSectionIndex.toString().padStart(2, '0')} OF {totalSections.toString().padStart(2, '0')}</div>
+                      <div className="text-[20px] font-semibold text-[#0F172A] leading-tight">{targetSection.name}</div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-auto p-6 space-y-4">
+                      {targetSection.subsections.map(ss => 
+                        ss.blocks.map(block => (
+                          <div key={block.id} className="bg-white border border-[#E2E8F0] rounded-[6px] p-4 shadow-sm flex flex-col gap-2">
+                            <div className="text-[14px] font-medium text-[#0F172A] leading-snug">{block.name}</div>
+                            
+                            {block.kind === "document" && (
+                              <>
+                                <div className="font-mono text-[11px] text-[#64748B]">{block.formats.join(", ")} · {expiryLabel(block.expiry)}</div>
+                                
+                                {block.id === "bank-statements" ? (
+                                  <div className="flex items-center gap-2 mt-2 pt-3 border-t border-[#F1F5F9]">
+                                    <span className="font-mono text-[12px] text-[#15803D]">chase_checking_jun.pdf</span>
+                                    <div className="flex-1" />
+                                    <span className="text-[12px] text-[#15803D] font-medium">filed</span>
+                                  </div>
+                                ) : (
+                                  <div className="border border-dashed border-[#CBD5E1] bg-[#F8FAFC] rounded-[4px] py-3 flex items-center justify-center gap-1.5 text-[#64748B] mt-2">
+                                    <Upload size={14} />
+                                    <span className="text-[13px] font-medium">Add file</span>
+                                  </div>
+                                )}
+                              </>
+                            )}
+
+                            {block.kind === "fields" && (
+                              <div className="mt-2 space-y-4">
+                                {block.fields.map(f => (
+                                  <div key={f.id}>
+                                    <div className="text-[12px] text-[#475569] mb-1.5">{f.label} {f.required && "*"}</div>
+                                    <div className="h-9 border border-[#E2E8F0] rounded-[4px] bg-[#F8FAFC]" />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div className="p-6 bg-white border-t border-[#E2E8F0] shrink-0">
+                      <button className="bg-[#1D4ED8] text-white font-medium text-[13px] px-6 py-2.5 rounded-[6px] shadow-sm">Save & continue</button>
+                    </div>
+                  </div>
+                )}
+
+                {pview === "register" && (
+                  <div className="bg-white border border-[#E2E8F0] rounded-[6px] overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Requirement</th>
+                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Req</th>
+                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Responsible</th>
+                          <th className="px-3 py-2 font-mono text-[9px] text-[#64748B] uppercase tracking-wider font-normal">Clock</th>
+                        </tr>
+                      </thead>
+                      <tbody className="font-mono text-[10px] text-[#0F172A] divide-y divide-[#E2E8F0]">
+                        {targetDocs.map(doc => (
+                          <tr key={doc.id}>
+                            <td className="px-3 py-2.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[140px]" title={doc.name}>{doc.name}</td>
+                            <td className="px-3 py-2.5 text-[#64748B]">{doc.required ? 'req' : 'opt'}</td>
+                            <td className="px-3 py-2.5">Applicant</td>
+                            <td className="px-3 py-2.5 text-[#64748B]">{expiryLabel(doc.expiry)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Shared Captions */}
+                <div className="mt-6 space-y-1.5 text-center">
+                  <div className="font-mono text-[10.5px] text-[#64748B]">renders from the same JSON — one definition, every view</div>
+                  {appHiddenSections && (
+                    <div className="font-mono text-[10px] text-[#94A3B8]">hidden from Applicant: {appHiddenSections}</div>
+                  )}
+                </div>
+
+              </div>
+            </aside>
+          )}
+
         </div>
 
         {/* JSON Drawer Overlay */}

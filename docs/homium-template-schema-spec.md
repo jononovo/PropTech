@@ -113,6 +113,27 @@ application"). That is reviewer judgment, not schema.
 
 ---
 
+## 4b. Display rules — the dimensions component
+
+One reusable component renders a document's dimensions everywhere (builder,
+applicant form, register, review), derived solely from the JSON. Two variants:
+
+- **`icons`** (mobile / compact): a hotel-amenity-style glyph row; tapping an icon opens a tooltip with the full label.
+- **`labels`** (desktop / dense views): quiet inline text tokens.
+
+**Exception-based rendering** — an icon or label appears only when it carries
+information; defaults stay invisible:
+
+| Dimension | Renders when | Hidden when |
+|---|---|---|
+| requirement | always (each of the 4 levels has a distinct glyph) | — |
+| criticality | `critical` only | `standard`, `supporting` |
+| sourcing | `constrained`, `scarce` | `readily_available` |
+| alternatives | block is a group primary or member (caption both directions) | not in any group |
+
+Transparency policy: every role sees the same dimensions — there is no
+per-audience filtering; restraint comes from the exception rules above.
+
 ## 5. Builder UI requirements (v1)
 
 Minimal, no decoration:

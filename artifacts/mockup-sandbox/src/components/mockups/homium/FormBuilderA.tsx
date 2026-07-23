@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { GripVertical, ChevronDown, ChevronRight, MoreHorizontal, Eye, Monitor, Smartphone, List, Upload } from "lucide-react";
+import { DocDimensions } from "./DocDimensions";
 import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAVED_SECTIONS, Section, Role, Permission, RequirementLevel, Criticality, Sourcing, requirementLabel, criticalityLabel, sourcingLabel, groupForPrimary, groupsSatisfiedBy, blockName, Template } from "./builderData";
 
 // URL Params Supported:
@@ -13,6 +14,7 @@ import { PALETTE, PURCHASE_LOAN, templateToJson, templateStats, expiryLabel, SAV
 // ?preview=1 - Opens the Live Preview right pane
 // ?pview=mobile|desktop|register - Selects the view mode in the Preview pane
 // ?perms=1 - Opens the permissions strip for section 03 (Income & Assets)
+// ?tip=1 - Opens the first tooltip in the preview pane
 
 const getBlockSectionNumber = (t: Template, blockId: string) => {
   for (let i = 0; i < t.sections.length; i++) {
@@ -81,6 +83,7 @@ export default function FormBuilderA() {
   const showDrop2 = params.get("drop") === "2";
   const showPreview = params.get("preview") === "1";
   const pview = params.get("pview") || "mobile";
+  const showTip = params.get("tip") === "1";
   const editedBlockId = params.get("focus") === "identity" ? "gov-id" : "bank-statements";
   const editedBlockData = PURCHASE_LOAN.sections.flatMap(s => s.subsections).flatMap(ss => ss.blocks).find(b => b.id === editedBlockId);
   
@@ -461,35 +464,19 @@ export default function FormBuilderA() {
                                           <div className="text-[12.5px] font-medium text-[#0F172A]">{block.name}</div>
                                           
                                           {block.kind === "document" && (
-                                            <>
-                                              <div className="font-mono text-[10.5px] text-[#64748B] mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
-                                                <span>{block.formats.join(", ")}</span>
-                                                <span className="text-[#CBD5E1]">•</span>
-                                                <span className={block.requirement.startsWith("required") ? "text-[#334155]" : ""}>
-                                                  {requirementLabel(block.requirement)} · <span className="text-[#64748B]">{criticalityLabel(block.criticality)}</span>
-                                                </span>
-                                                <span className="text-[#CBD5E1]">•</span>
-                                                <span>{expiryLabel(block.expiry)}</span>
-                                                {block.multiPage && (
-                                                  <>
-                                                    <span className="text-[#CBD5E1]">•</span>
-                                                    <span>multi-page</span>
-                                                  </>
-                                                )}
-                                              </div>
-                                              
-                                              {/* Cross-reference captions */}
-                                              {groupForPrimary(PURCHASE_LOAN, block.id) && (
-                                                <div className="font-mono text-[10px] text-[#64748B] mt-1.5 pt-1.5 border-t border-dashed border-[#F1F5F9]">
-                                                  required — unless {groupForPrimary(PURCHASE_LOAN, block.id)?.satisfiedBy.map(altId => `${blockName(PURCHASE_LOAN, altId)} (${getBlockSectionNumber(PURCHASE_LOAN, altId)})`).join(", ")} is filed
-                                                </div>
+                                            <div className="font-mono text-[10.5px] mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                              <span className="text-[#64748B]">{block.formats.join(", ")}</span>
+                                              <span className="text-[#CBD5E1]">•</span>
+                                              <DocDimensions block={block} template={PURCHASE_LOAN} variant="labels" />
+                                              <span className="text-[#CBD5E1]">•</span>
+                                              <span className="text-[#64748B]">{expiryLabel(block.expiry)}</span>
+                                              {block.multiPage && (
+                                                <>
+                                                  <span className="text-[#CBD5E1]">•</span>
+                                                  <span className="text-[#64748B]">multi-page</span>
+                                                </>
                                               )}
-                                              {groupsSatisfiedBy(PURCHASE_LOAN, block.id).length > 0 && (
-                                                <div className="font-mono text-[10px] text-[#64748B] mt-1.5 pt-1.5 border-t border-dashed border-[#F1F5F9]">
-                                                  can satisfy: {groupsSatisfiedBy(PURCHASE_LOAN, block.id).map(g => `${g.name} (${getBlockSectionNumber(PURCHASE_LOAN, g.primary)})`).join(", ")}
-                                                </div>
-                                              )}
-                                            </>
+                                            </div>
                                           )}
 
                                           {block.kind === "fields" && (
@@ -603,9 +590,12 @@ export default function FormBuilderA() {
                     
                     <div className="flex-1 overflow-auto p-4 space-y-3">
                       {targetSection.subsections.map(ss => 
-                        ss.blocks.map(block => (
+                        ss.blocks.map((block, bIdx) => (
                           <div key={block.id} className="bg-white border border-[#E2E8F0] rounded-[6px] p-3 shadow-sm flex flex-col gap-2">
-                            <div className="text-[13px] font-medium text-[#0F172A] leading-snug">{block.name}</div>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="text-[13px] font-medium text-[#0F172A] leading-snug">{block.name}</div>
+                              {block.kind === "document" && <DocDimensions block={block} template={PURCHASE_LOAN} variant="icons" initTipOpen={showTip && bIdx === 0 && ss === targetSection.subsections[0]} />}
+                            </div>
                             
                             {block.kind === "document" && (
                               <>
@@ -667,7 +657,13 @@ export default function FormBuilderA() {
                             
                             {block.kind === "document" && (
                               <>
-                                <div className="font-mono text-[11px] text-[#64748B]">{block.formats.join(", ")} · {expiryLabel(block.expiry)}</div>
+                                <div className="font-mono text-[10.5px] flex flex-wrap gap-x-2 gap-y-1 items-center mt-1">
+                                  <span className="text-[#64748B]">{block.formats.join(", ")}</span>
+                                  <span className="text-[#CBD5E1]">•</span>
+                                  <DocDimensions block={block} template={PURCHASE_LOAN} variant="labels" />
+                                  <span className="text-[#CBD5E1]">•</span>
+                                  <span className="text-[#64748B]">{expiryLabel(block.expiry)}</span>
+                                </div>
                                 
                                 {block.id === "bank-statements" ? (
                                   <div className="flex items-center gap-2 mt-2 pt-3 border-t border-[#F1F5F9]">

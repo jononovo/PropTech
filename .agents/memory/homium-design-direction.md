@@ -41,3 +41,13 @@ Four linked pages under one shell (`homium/Backbone.tsx`, `?page=` switch, share
 A screen's chrome may only say three things out loud: **whose file, where you can go, what needs doing next**. All other metadata (case number, loan type, phase, countdown) demotes into deliberate reveals — a case-card popover on the applicant's name, and a ranked "needs you" dropdown on the right.
 **Why:** user rejected the first header ("disgusting") for treating six metadata pieces as equals — "surfacing only the most critical element" is the rule; ambient countdowns and reference IDs are clutter.
 **Ranking rule (user's explicit call): blockers first** — anything stalling underwriting (missing required docs, flagged docs awaiting verdict) outranks expiring clocks; clocks >30d don't earn header space. One urgency surface only — no competing badges elsewhere in the chrome.
+
+## STYLE PIVOT — Ops Desk (Jul 23, 2026). Ledger is RETIRED for the product UI.
+User verdict: Ledger was "too relaxing — we're at work now; more like an Excel sheet." Chose "Ops Desk" from three offered directions (over light worksheet-green and dark terminal).
+**Tokens:** ground #F3F5F7 · surface #FFF with #E2E8F0 borders (inner rules #F1F5F9, strips #F8FAFC) · ink #0F172A / #334155 / muted #64748B / faint #94A3B8 · accent+selection+automation blue #1D4ED8 (hover #1E40AF, wash #EFF6FF, border #BFDBFE) · blocker #DC2626 / text #B91C1C on #FEF2F2/#FECACA · warning #D97706 / text #B45309 on #FFFBEB/#FDE68A · ok #15803D on #F0FDF4 (sparing — accepted/stopped/clear only) · neutral hold #475569 on #F8FAFC.
+**Type:** Inter everywhere; landmarks Inter 600 ≤22px title case (serif voice is dead — no Fraunces, no italics). IBM Plex Mono for DATA ONLY (numbers, dates, day counts, IDs, page spans, filenames, clocks). Micro-labels/column headers: Inter 600 caps 10–10.5px #64748B (no longer mono).
+**Shape:** radius ≤6px (4 cards/buttons, 3 squared tags — pills are dead); no in-page shadows (borders carry structure; shadow only on overlays); visible worksheet rules between rows/columns; row hover #F8FAFC; ~15–20% denser than Ledger. Primary buttons blue/white; secondary white + #CBD5E1 border.
+**Copy:** terse, workmanlike; keep functional plain-language notes (flag explanations, expiry rules); counts always from data.ts helpers.
+**Scope:** all homium/* backbone files; shell (Backbone.tsx) owns the single Google Fonts import (Inter + IBM Plex Mono). Old workflow-builder mockups stay Ledger — historical record, do not convert.
+**Why:** explicit user mood pivot; product logic (blockers-first header, two-clock model, form-not-table) unchanged.
+**Truncation gotcha:** Tailwind `truncate` on a `flex` container clips without ellipsis — put `truncate` on an inner block/span child instead.

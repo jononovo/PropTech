@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import type { Go } from "../Backbone";
-import { CASE, SECTIONS, liveClocks, stoppedClocks, band, daysTo, fmt, daysToClose, Req } from "../data";
+import { CASE, SECTIONS, liveClocks, stoppedClocks, band, daysTo, fmt, daysToClose, Req, stats, allReqs } from "../data";
 import { Check, Lock, Bell, Clock, Hourglass, AlertCircle, Sparkles, UploadCloud, FileText, ChevronRight, X } from "lucide-react";
 
 export default function WorkfilePage({ go }: { go: Go }) {
@@ -17,12 +17,14 @@ export default function WorkfilePage({ go }: { go: Go }) {
   const bankStatements = s3.reqs.find(r => r.id === "c3")!;
   const giftLetter = s3.reqs.find(r => r.id === "c4")!;
   const taxReturns = s3.reqs.find(r => r.id === "c5")!;
+  
+  const currentStats = stats();
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F7F5F0] text-[#1A1D1A] font-sans selection:bg-[#2A4D3B]/20 flex justify-center pb-24">
+    <div className="h-full overflow-y-auto bg-[#F3F5F7] text-[#0F172A] font-sans selection:bg-[#EFF6FF] flex justify-center pb-24">
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1A1D1A] text-white px-4 py-2 rounded shadow-lg text-sm font-medium z-50 animate-in fade-in slide-in-from-bottom-4 flex items-center gap-3">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#0F172A] text-white px-4 py-2 rounded shadow-lg text-sm font-medium z-50 animate-in fade-in slide-in-from-bottom-4 flex items-center gap-3">
           <span>{toast}</span>
           <button onClick={() => setToast(null)} className="text-white/70 hover:text-white">
             <X className="w-4 h-4" />
@@ -30,41 +32,41 @@ export default function WorkfilePage({ go }: { go: Go }) {
         </div>
       )}
 
-      <div className="w-full max-w-[1100px] flex px-8 mt-12 gap-16">
+      <div className="w-full max-w-[1100px] flex px-8 mt-12 gap-12">
         {/* Left Rail */}
-        <aside className="w-[290px] shrink-0 flex flex-col pt-2">
-          <div className="mb-6 font-['Space_Mono'] text-[11px] uppercase tracking-widest text-[#1A1D1A]/60">
-            15 of 20 filed clean · 2 need you
+        <aside className="w-[280px] shrink-0 flex flex-col pt-2">
+          <div className="mb-6 font-semibold text-[10px] uppercase tracking-[0.06em] text-[#64748B]">
+            {currentStats.quiet} OF 20 FILED CLEAN · {currentStats.attention} NEED YOU
           </div>
 
-          <div className="relative flex flex-col gap-6 ml-2">
-            <div className="absolute left-[7px] top-[14px] bottom-4 w-[1px] bg-[#1A1D1A]/10"></div>
+          <div className="relative flex flex-col gap-5 ml-2">
+            <div className="absolute left-[7px] top-[14px] bottom-4 w-[1px] bg-[#E2E8F0]"></div>
             
             <RailNode num="01" name="Initial Application" count="3/3" state="done" />
             <RailNode num="02" name="Identity Verification" count="2/2" state="done" />
-            <RailNode num="03" name="Income & Assets" count="2/5" state="current" dot="clay" />
-            <RailNode num="04" name="Property Valuation" count="3/4" state="waiting" dot="amber" />
-            <RailNode num="05" name="Title & Escrow" count="1/3" state="review" dot="slate" />
-            <RailNode num="06" name="Credit & Compliance" count="2/3" state="clock" dot="amber" />
+            <RailNode num="03" name="Income & Assets" count="2/5" state="current" dot="blocker" />
+            <RailNode num="04" name="Property Valuation" count="3/4" state="waiting" dot="warning" />
+            <RailNode num="05" name="Title & Escrow" count="1/3" state="review" dot="neutral" />
+            <RailNode num="06" name="Credit & Compliance" count="2/3" state="clock" dot="warning" />
           </div>
 
-          <div className="mt-12 bg-[#FDFCFA] border border-[#1A1D1A]/10 rounded shadow-sm p-4">
-            <div className="font-['Space_Mono'] text-[10px] uppercase tracking-widest text-[#1A1D1A]/60 mb-3">
+          <div className="mt-10 bg-white border border-[#E2E8F0] rounded p-3">
+            <div className="font-semibold text-[10px] uppercase tracking-[0.06em] text-[#64748B] mb-2.5">
               Waiting on others
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2.5">
               <div className="flex items-start gap-2">
-                <Hourglass className="w-3.5 h-3.5 text-[#B8862B] mt-[3px] shrink-0" />
-                <div className="text-[13px] leading-tight">
-                  <span className="font-medium">Insurance binder</span>
-                  <span className="text-[#1A1D1A]/60"> — originator · requested Jul 22</span>
+                <Hourglass className="w-3.5 h-3.5 text-[#D97706] mt-[2px] shrink-0" />
+                <div className="text-[13px] leading-tight text-[#334155]">
+                  <span className="font-medium text-[#0F172A]">Insurance binder</span>
+                  <span> — originator · requested <span className="font-['IBM_Plex_Mono'] text-[#0F172A]">Jul 22</span></span>
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <Hourglass className="w-3.5 h-3.5 text-[#B8862B] mt-[3px] shrink-0" />
-                <div className="text-[13px] leading-tight">
-                  <span className="font-medium">Preliminary CD</span>
-                  <span className="text-[#1A1D1A]/60"> — escrow · due Aug 31</span>
+                <Hourglass className="w-3.5 h-3.5 text-[#D97706] mt-[2px] shrink-0" />
+                <div className="text-[13px] leading-tight text-[#334155]">
+                  <span className="font-medium text-[#0F172A]">Preliminary CD</span>
+                  <span> — escrow · due <span className="font-['IBM_Plex_Mono'] text-[#0F172A]">Aug 31</span></span>
                 </div>
               </div>
             </div>
@@ -73,110 +75,114 @@ export default function WorkfilePage({ go }: { go: Go }) {
 
         {/* Main Column */}
         <main className="flex-1 flex flex-col pb-20">
-          <header className="mb-8 flex justify-between items-end">
+          <header className="mb-6 flex justify-between items-end">
             <div>
-              <div className="font-['Space_Mono'] text-[11px] uppercase tracking-widest text-[#1A1D1A]/60 mb-2">
+              <div className="font-semibold text-[10px] uppercase tracking-[0.08em] text-[#64748B] mb-1.5">
                 Section 03 of 06
               </div>
-              <h1 className="font-['Fraunces'] text-[32px] font-medium tracking-tight text-[#1A1D1A] mb-1">
+              <h1 className="font-semibold text-[22px] tracking-[-0.01em] text-[#0F172A] mb-1">
                 Income & Assets
               </h1>
-              <p className="text-[15px] text-[#1A1D1A]/60">
+              <p className="text-[14px] text-[#334155]">
                 Only Homium's underwriting team sees these documents.
               </p>
             </div>
             <button 
               onClick={() => go("register")}
-              className="text-[13px] text-[#1A1D1A]/60 hover:text-[#1A1D1A] transition-colors pb-1"
+              className="text-[13px] font-medium text-[#1D4ED8] hover:text-[#1E40AF] transition-colors pb-0.5"
             >
               see this section in the Register →
             </button>
           </header>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {/* W-2 Forms - ACCEPTED */}
-            <div className="bg-[#FDFCFA] rounded border border-[#1A1D1A]/10 px-4 py-3 flex items-center justify-between shadow-[0_1px_2px_rgba(26,29,26,0.02)]">
+            <div className="bg-white rounded border border-[#E2E8F0] px-4 py-2.5 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors">
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#2A4D3B]/10 flex items-center justify-center shrink-0">
-                  <Lock className="w-3 h-3 text-[#2A4D3B]" />
+                <div className="w-5 h-5 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] flex items-center justify-center shrink-0">
+                  <Lock className="w-3 h-3 text-[#15803D]" />
                 </div>
-                <div className="text-[14px] font-medium text-[#1A1D1A]/80">{w2.name}</div>
+                <div className="text-[13px] font-medium text-[#0F172A]">{w2.name}</div>
               </div>
-              <div className="font-['Space_Mono'] text-[12px] text-[#1A1D1A]/50">
+              <div className="font-['IBM_Plex_Mono'] text-[12px] text-[#15803D]">
                 accepted Jul 20 — clock stopped
               </div>
             </div>
 
             {/* Pay Stubs - CLEAN ON CLOCK */}
-            <div className="bg-[#FDFCFA] rounded border border-[#1A1D1A]/10 px-4 py-3 shadow-[0_1px_2px_rgba(26,29,26,0.02)] flex flex-col gap-1.5 hover:shadow-md transition-shadow">
+            <div className="bg-white rounded border border-[#E2E8F0] px-4 py-3 flex flex-col gap-2 hover:bg-[#F8FAFC] transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#1A1D1A]/5 flex items-center justify-center shrink-0">
-                    <FileText className="w-3 h-3 text-[#1A1D1A]/60" />
+                  <div className="w-5 h-5 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center shrink-0">
+                    <FileText className="w-3 h-3 text-[#475569]" />
                   </div>
-                  <div className="text-[14px] font-medium">{payStubs.name}</div>
-                  <div className="text-[13px] text-[#1A1D1A]/50 bg-[#1A1D1A]/5 px-2 py-0.5 rounded-sm">clean</div>
+                  <div className="text-[13px] font-medium text-[#0F172A]">{payStubs.name}</div>
+                  <div className="font-semibold text-[9.5px] uppercase tracking-[0.06em] text-[#475569] bg-[#F8FAFC] border border-[#E2E8F0] px-1.5 py-0.5 rounded-[3px]">
+                    clean
+                  </div>
                 </div>
                 <button 
                   onClick={() => go("timeline")}
-                  className="flex items-center gap-1.5 bg-[#B8862B]/10 text-[#B8862B] px-2.5 py-1 rounded hover:bg-[#B8862B]/20 transition-colors"
+                  className="flex items-center gap-1.5 bg-[#FFFBEB] border border-[#FDE68A] text-[#B45309] px-2 py-0.5 rounded-[3px] hover:bg-[#FEF3C7] transition-colors"
                 >
                   <Bell className="w-3 h-3" />
-                  <span className="font-['Space_Mono'] text-[11px]">goes stale Aug 7 · 15 days</span>
+                  <span className="font-['IBM_Plex_Mono'] text-[11px] font-medium">goes stale Aug 7 · 15 days</span>
                 </button>
               </div>
-              <div className="text-[13px] text-[#1A1D1A]/50 pl-8">
+              <div className="text-[13px] text-[#334155] pl-8">
                 {payStubs.expiry?.rule}. {payStubs.desc}
               </div>
             </div>
 
             {/* Bank Statements - FLAGGED */}
-            <div className="bg-[#FDFCFA] rounded border border-[#B85C38]/40 shadow-[0_4px_12px_rgba(184,92,56,0.08)] relative overflow-hidden flex flex-col">
-              <div className="absolute top-0 left-0 w-1 h-full bg-[#B85C38]"></div>
+            <div className="bg-white rounded border border-[#FECACA] relative flex flex-col">
+              <div className="absolute top-0 left-0 w-[2px] h-full bg-[#DC2626] rounded-l"></div>
               
-              <div className="p-5 pl-6">
-                <div className="flex items-start justify-between mb-3">
+              <div className="p-4 pl-5">
+                <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-[#B85C38]/10 flex items-center justify-center shrink-0">
-                      <AlertCircle className="w-3.5 h-3.5 text-[#B85C38]" />
+                    <div className="w-5 h-5 rounded-full bg-[#FEF2F2] flex items-center justify-center shrink-0">
+                      <AlertCircle className="w-3.5 h-3.5 text-[#B91C1C]" />
                     </div>
-                    <div className="text-[15px] font-medium text-[#1A1D1A]">{bankStatements.name}</div>
-                    <div className="text-[12px] font-medium text-[#B85C38] bg-[#B85C38]/10 px-2 py-0.5 rounded-sm uppercase tracking-wider">Flagged</div>
+                    <div className="text-[14px] font-semibold text-[#0F172A]">{bankStatements.name}</div>
+                    <div className="font-semibold text-[9.5px] uppercase tracking-[0.06em] text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-1.5 py-0.5 rounded-[3px]">
+                      Flagged
+                    </div>
                   </div>
                 </div>
 
-                <div className="pl-8 flex flex-col gap-4">
-                  <p className="text-[14px] text-[#1A1D1A]/80 leading-relaxed max-w-[500px]">
+                <div className="pl-8 flex flex-col gap-3.5">
+                  <p className="text-[13px] text-[#0F172A] leading-relaxed max-w-[500px]">
                     {bankStatements.flag?.note}
                   </p>
 
                   {/* Thumbnails */}
-                  <div className="flex items-center gap-3 my-1">
-                    <div className="w-12 h-16 bg-white border border-[#1A1D1A]/10 rounded shadow-sm relative">
-                      <div className="absolute top-2 left-2 right-2 h-1 bg-[#1A1D1A]/10 rounded-full"></div>
-                      <div className="absolute top-4 left-2 w-4 h-1 bg-[#1A1D1A]/10 rounded-full"></div>
+                  <div className="flex items-center gap-2.5 my-0.5">
+                    <div className="w-11 h-14 bg-white border border-[#E2E8F0] rounded-[3px] relative">
+                      <div className="absolute top-2 left-2 right-2 h-[2px] bg-[#E2E8F0] rounded-full"></div>
+                      <div className="absolute top-4 left-2 w-4 h-[2px] bg-[#E2E8F0] rounded-full"></div>
                     </div>
-                    <div className="w-12 h-16 bg-white border-2 border-[#B85C38] rounded shadow-sm relative overflow-hidden">
-                      <div className="absolute inset-0 bg-[#B85C38]/5"></div>
-                      <div className="absolute top-2 left-2 right-2 h-1 bg-[#1A1D1A]/10 rounded-full"></div>
-                      <div className="absolute top-1/2 -left-2 right-0 h-[1px] bg-[#B85C38] rotate-[-25deg] shadow-[0_0_2px_#B85C38]"></div>
+                    <div className="w-11 h-14 bg-white border-2 border-[#DC2626] rounded-[3px] relative overflow-hidden">
+                      <div className="absolute inset-0 bg-[#FEF2F2]/50"></div>
+                      <div className="absolute top-1.5 left-1.5 right-1.5 h-[2px] bg-[#FECACA] rounded-full"></div>
+                      <div className="absolute top-1/2 -left-2 right-0 h-[1.5px] bg-[#DC2626] rotate-[-25deg]"></div>
                     </div>
-                    <div className="w-12 h-16 bg-white border border-[#1A1D1A]/10 rounded shadow-sm relative">
-                      <div className="absolute top-2 left-2 right-2 h-1 bg-[#1A1D1A]/10 rounded-full"></div>
-                      <div className="absolute top-4 left-2 w-6 h-1 bg-[#1A1D1A]/10 rounded-full"></div>
+                    <div className="w-11 h-14 bg-white border border-[#E2E8F0] rounded-[3px] relative">
+                      <div className="absolute top-2 left-2 right-2 h-[2px] bg-[#E2E8F0] rounded-full"></div>
+                      <div className="absolute top-4 left-2 w-5 h-[2px] bg-[#E2E8F0] rounded-full"></div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 mt-1">
                     <button 
                       onClick={() => showToast("Scan request sent to applicant")}
-                      className="bg-[#1A1D1A] text-white text-[13px] font-medium px-4 py-2 rounded shadow-sm hover:bg-[#2A4D3B] transition-colors"
+                      className="bg-[#1D4ED8] text-white text-[12px] font-semibold px-3 py-1.5 rounded hover:bg-[#1E40AF] transition-colors"
                     >
                       Request re-scan
                     </button>
                     <button 
                       onClick={() => showToast("Exception cleared — accepted as-is")}
-                      className="text-[13px] font-medium text-[#1A1D1A]/60 px-4 py-2 hover:text-[#1A1D1A] transition-colors"
+                      className="bg-white border border-[#CBD5E1] text-[#0F172A] text-[12px] font-medium px-3 py-1.5 rounded hover:bg-[#F8FAFC] transition-colors"
                     >
                       Accept as-is
                     </button>
@@ -184,10 +190,10 @@ export default function WorkfilePage({ go }: { go: Go }) {
                 </div>
               </div>
               
-              <div className="bg-[#1A1D1A]/[0.02] border-t border-[#1A1D1A]/5 px-6 py-3 pl-14">
+              <div className="bg-[#F8FAFC] border-t border-[#F1F5F9] px-5 py-2 pl-[52px]">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-[#B85C38]/80" />
-                  <span className="text-[13px] text-[#1A1D1A]/70">
+                  <Clock className="w-3.5 h-3.5 text-[#B45309]" />
+                  <span className="text-[12px] text-[#334155]">
                     {bankStatements.expiry?.rule} — {bankStatements.expiry?.note?.split("—")[0].trim()}
                   </span>
                 </div>
@@ -195,50 +201,52 @@ export default function WorkfilePage({ go }: { go: Go }) {
             </div>
 
             {/* AI WHISPER */}
-            <div className="flex items-center gap-3 py-2 pl-4">
-              <Sparkles className="w-4 h-4 text-[#2A4D3B]" />
-              <div className="text-[13px] text-[#1A1D1A]/70">
+            <div className="flex items-center gap-2.5 py-2.5 px-3 bg-[#EFF6FF] border border-[#BFDBFE] rounded mt-1 mb-1">
+              <Sparkles className="w-4 h-4 text-[#1D4ED8] shrink-0" />
+              <div className="text-[13px] text-[#1E40AF]">
                 The $9,500 deposit on Jun 14 matches a transfer from R. Henderson Sr. — draft a gift-letter request?
               </div>
-              <div className="flex items-center gap-2 ml-auto pr-2">
+              <div className="flex items-center gap-2 ml-auto">
                 <button 
                   onClick={() => showToast("Request drafted — review before it sends")}
-                  className="whitespace-nowrap text-[13px] font-medium text-[#2A4D3B] bg-[#2A4D3B]/10 px-3 py-1.5 rounded hover:bg-[#2A4D3B]/20 transition-colors"
+                  className="whitespace-nowrap text-[12px] font-semibold text-white bg-[#1D4ED8] px-2.5 py-1 rounded hover:bg-[#1E40AF] transition-colors"
                 >
                   Draft it
                 </button>
-                <button className="whitespace-nowrap text-[13px] text-[#1A1D1A]/40 hover:text-[#1A1D1A]/60 px-2 py-1.5 transition-colors">
+                <button className="whitespace-nowrap text-[12px] font-medium text-[#475569] hover:text-[#0F172A] px-2 py-1 transition-colors">
                   No thanks
                 </button>
               </div>
             </div>
 
             {/* Gift Letter - MISSING */}
-            <div className="bg-[#FDFCFA] rounded border border-[#1A1D1A]/10 px-5 py-4 shadow-[0_1px_2px_rgba(26,29,26,0.02)] flex flex-col gap-3">
+            <div className="bg-white rounded border border-[#E2E8F0] px-4 py-4 flex flex-col gap-3 hover:bg-[#F8FAFC] transition-colors">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#1A1D1A]/5 flex items-center justify-center shrink-0">
-                    <FileText className="w-3 h-3 text-[#1A1D1A]/40" />
+                  <div className="w-5 h-5 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center shrink-0">
+                    <FileText className="w-3 h-3 text-[#94A3B8]" />
                   </div>
-                  <div className="text-[15px] font-medium text-[#1A1D1A]">{giftLetter.name}</div>
-                  <div className="text-[12px] font-medium text-[#1A1D1A]/50 bg-[#1A1D1A]/5 px-2 py-0.5 rounded-sm uppercase tracking-wider">Missing</div>
+                  <div className="text-[14px] font-semibold text-[#0F172A]">{giftLetter.name}</div>
+                  <div className="font-semibold text-[9.5px] uppercase tracking-[0.06em] text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-1.5 py-0.5 rounded-[3px]">
+                    Missing
+                  </div>
                 </div>
-                <div className="font-['Space_Mono'] text-[11px] uppercase tracking-widest text-[#B85C38]/80 bg-[#B85C38]/5 px-2 py-1 rounded">
+                <div className="font-semibold text-[9.5px] uppercase tracking-[0.06em] text-[#B91C1C] bg-[#FEF2F2] border border-[#FECACA] px-1.5 py-0.5 rounded-[3px]">
                   blocks underwriting until filed
                 </div>
               </div>
 
-              <div className="pl-8 flex flex-col gap-4">
-                <p className="text-[14px] text-[#1A1D1A]/70 max-w-[600px]">
+              <div className="pl-8 flex flex-col gap-3">
+                <p className="text-[13px] text-[#334155] max-w-[600px]">
                   {giftLetter.flag?.note}
                 </p>
 
-                <div className="border border-dashed border-[#1A1D1A]/20 rounded-lg bg-[#1A1D1A]/[0.01] p-6 flex flex-col items-center justify-center text-center transition-colors hover:bg-[#1A1D1A]/[0.02]">
-                  <UploadCloud className="w-6 h-6 text-[#1A1D1A]/30 mb-2" />
-                  <div className="text-[14px] text-[#1A1D1A]/70 font-medium mb-1">
+                <div className="border border-dashed border-[#CBD5E1] rounded bg-[#F8FAFC] p-4 flex flex-col items-center justify-center text-center transition-colors hover:bg-[#F1F5F9] hover:border-[#94A3B8]">
+                  <UploadCloud className="w-5 h-5 text-[#64748B] mb-1.5" />
+                  <div className="text-[13px] text-[#0F172A] font-medium">
                     Drag the signed gift letter here, or browse
                   </div>
-                  <div className="text-[13px] text-[#1A1D1A]/50">
+                  <div className="text-[12px] text-[#64748B]">
                     PDF or photo is fine
                   </div>
                 </div>
@@ -246,7 +254,7 @@ export default function WorkfilePage({ go }: { go: Go }) {
                 <div>
                   <button 
                     onClick={() => showToast("Request sent to applicant")}
-                    className="text-[13px] font-medium text-[#1A1D1A]/60 bg-[#1A1D1A]/5 px-4 py-2 rounded hover:bg-[#1A1D1A]/10 hover:text-[#1A1D1A] transition-colors"
+                    className="bg-white border border-[#CBD5E1] text-[#0F172A] text-[12px] font-medium px-3 py-1.5 rounded hover:bg-[#F8FAFC] transition-colors"
                   >
                     Request from applicant
                   </button>
@@ -255,26 +263,26 @@ export default function WorkfilePage({ go }: { go: Go }) {
             </div>
 
             {/* Tax Returns - CLEAN */}
-            <div className="bg-[#FDFCFA] rounded border border-[#1A1D1A]/10 px-4 py-3 flex items-center justify-between shadow-[0_1px_2px_rgba(26,29,26,0.02)]">
+            <div className="bg-white rounded border border-[#E2E8F0] px-4 py-2.5 flex items-center justify-between hover:bg-[#F8FAFC] transition-colors">
               <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#9CAF88]/20 flex items-center justify-center shrink-0">
-                  <Check className="w-3.5 h-3.5 text-[#2A4D3B]" />
+                <div className="w-5 h-5 rounded-full bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center shrink-0">
+                  <Check className="w-3.5 h-3.5 text-[#475569]" />
                 </div>
-                <div className="text-[14px] font-medium text-[#1A1D1A]/80">{taxReturns.name}</div>
+                <div className="text-[13px] font-medium text-[#0F172A]">{taxReturns.name}</div>
               </div>
-              <div className="font-['Space_Mono'] text-[12px] text-[#1A1D1A]/50 flex items-center gap-2">
+              <div className="font-['IBM_Plex_Mono'] text-[12px] text-[#64748B] flex items-center gap-2">
                 filed · awaiting review
               </div>
             </div>
           </div>
 
-          <div className="mt-10 flex items-center justify-between border-t border-[#1A1D1A]/10 pt-6">
-            <div className="font-['Space_Mono'] text-[12px] text-[#1A1D1A]/50">
+          <div className="mt-8 flex items-center justify-between border-t border-[#E2E8F0] pt-4">
+            <div className="font-['IBM_Plex_Mono'] text-[12px] text-[#64748B]">
               2 items left in this section
             </div>
             <button 
               onClick={() => showToast("Next: Property Valuation — 1 item waiting")}
-              className="bg-[#2A4D3B] text-white text-[14px] font-medium px-6 py-2.5 rounded shadow-sm hover:bg-[#1A1D1A] transition-colors flex items-center gap-2"
+              className="bg-[#1D4ED8] text-white text-[13px] font-semibold px-4 py-2 rounded hover:bg-[#1E40AF] transition-colors flex items-center gap-1.5"
             >
               Save & continue to 04 Property Valuation <ChevronRight className="w-4 h-4" />
             </button>
@@ -296,37 +304,37 @@ function RailNode({
   name: string; 
   count: string; 
   state: "done" | "current" | "waiting" | "review" | "clock"; 
-  dot?: "clay" | "amber" | "slate";
+  dot?: "blocker" | "warning" | "neutral";
 }) {
   return (
-    <div className="flex items-start gap-4 relative z-10 group cursor-default">
+    <div className="flex items-start gap-3.5 relative z-10 group cursor-default">
       <div className={`
-        w-[15px] h-[15px] rounded-full mt-[3px] flex items-center justify-center shrink-0 border bg-[#F7F5F0] transition-colors
-        ${state === "done" ? "border-[#2A4D3B] bg-[#2A4D3B]" : ""}
-        ${state === "current" ? "border-[#1A1D1A] border-2" : ""}
-        ${state !== "done" && state !== "current" ? "border-[#1A1D1A]/20 group-hover:border-[#1A1D1A]/40" : ""}
+        w-[15px] h-[15px] rounded-full mt-[1.5px] flex items-center justify-center shrink-0 border bg-[#F3F5F7] transition-colors
+        ${state === "done" ? "border-[#0F172A] bg-[#0F172A]" : ""}
+        ${state === "current" ? "border-[#1D4ED8] border-2" : ""}
+        ${state !== "done" && state !== "current" ? "border-[#CBD5E1] group-hover:border-[#94A3B8]" : ""}
       `}>
-        {state === "done" && <Check className="w-2.5 h-2.5 text-[#F7F5F0]" strokeWidth={3} />}
-        {state === "current" && <div className="w-1.5 h-1.5 rounded-full bg-[#1A1D1A]" />}
+        {state === "done" && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+        {state === "current" && <div className="w-1.5 h-1.5 rounded-full bg-[#1D4ED8]" />}
       </div>
       
-      <div className={`flex flex-col ${state === "current" ? "" : "opacity-70 group-hover:opacity-100"} transition-opacity`}>
+      <div className={`flex flex-col ${state === "current" ? "" : "opacity-80 group-hover:opacity-100"} transition-opacity`}>
         <div className="flex items-center gap-2">
-          <span className={`font-['Space_Mono'] text-[11px] ${state === "current" ? "text-[#1A1D1A]" : "text-[#1A1D1A]/60"}`}>
+          <span className={`font-['IBM_Plex_Mono'] text-[11px] ${state === "current" ? "text-[#1D4ED8] font-medium" : "text-[#64748B]"}`}>
             {num}
           </span>
-          <span className={`text-[13px] ${state === "current" ? "font-medium text-[#1A1D1A]" : "text-[#1A1D1A]"}`}>
+          <span className={`text-[13px] ${state === "current" ? "font-semibold text-[#0F172A]" : "text-[#334155] font-medium"}`}>
             {name}
           </span>
         </div>
         
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="font-['Space_Mono'] text-[10px] text-[#1A1D1A]/50">
+          <span className="font-['IBM_Plex_Mono'] text-[10.5px] text-[#64748B]">
             {count}
           </span>
-          {dot === "clay" && <div className="w-1.5 h-1.5 rounded-full bg-[#B85C38]" />}
-          {dot === "amber" && <div className="w-1.5 h-1.5 rounded-full bg-[#B8862B]" />}
-          {dot === "slate" && <div className="w-1.5 h-1.5 rounded-full bg-[#64748B]" />}
+          {dot === "blocker" && <div className="w-1.5 h-1.5 rounded-full bg-[#DC2626]" />}
+          {dot === "warning" && <div className="w-1.5 h-1.5 rounded-full bg-[#D97706]" />}
+          {dot === "neutral" && <div className="w-1.5 h-1.5 rounded-full bg-[#94A3B8]" />}
         </div>
       </div>
     </div>

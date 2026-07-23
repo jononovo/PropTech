@@ -1,3 +1,3 @@
 # Memory Index
 
-- [Homium design direction](homium-design-direction.md) — Ledger visual family, form-not-table builder rule, 4-page Backbone (Intake/Workfile/Timeline/Register), two-clock expiry model (staleness stops on acceptance; hard never).
+- [Homium design direction](homium-design-direction.md) — Ops Desk family (Ledger retired): form-not-table rule, 4-page Backbone, two-clock expiry, blockers-first header.

@@ -5,52 +5,51 @@
 }
 .homium-register-table th {
   font-family: var(--font-inter, ui-sans-serif, system-ui, sans-serif);
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(26, 29, 26, 0.5);
-  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: #64748B;
+  font-weight: 600;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(26, 29, 26, 0.1);
+  border-bottom: 1px solid #E2E8F0;
+  border-top: 1px solid #E2E8F0;
+  background-color: #F8FAFC;
 }
 .homium-register-table td {
-  padding: 8px 12px;
-  border-bottom: 1px solid rgba(26, 29, 26, 0.1);
+  padding: 6px 12px;
+  border-bottom: 1px solid #F1F5F9;
+  border-right: 1px solid #F1F5F9;
   vertical-align: middle;
+  height: 36px;
+}
+.homium-register-table td:last-child {
+  border-right: none;
 }
 .homium-register-row {
-  transition: all 0.2s ease;
-  background-color: #FDFCFA;
+  background-color: #FFFFFF;
+  transition: background-color 0.15s ease;
 }
 .homium-register-row:hover {
-  background-color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(26, 29, 26, 0.04), 0 1px 3px rgba(26, 29, 26, 0.02);
-  z-index: 10;
-  position: relative;
-}
-.homium-register-row:hover td {
-  border-bottom-color: transparent;
+  background-color: #F8FAFC;
 }
 .homium-section-band td {
-  background-color: #F7F5F0;
-  padding-top: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(26, 29, 26, 0.15);
+  background-color: #F8FAFC;
+  padding-top: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #E2E8F0;
 }
 .homium-expanded-panel {
-  background-color: #F7F5F0;
-  box-shadow: inset 0 3px 6px rgba(26, 29, 26, 0.03);
-  border-bottom: 1px solid rgba(26, 29, 26, 0.1);
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #E2E8F0;
 }
 .homium-micro-progress {
   height: 2px;
-  background-color: rgba(26, 29, 26, 0.1);
+  background-color: #E2E8F0;
   border-radius: 1px;
   overflow: hidden;
   display: flex;
 }
 .homium-micro-progress-fill {
-  background-color: #2A4D3B;
+  background-color: #1D4ED8;
   height: 100%;
 }

@@ -53,3 +53,7 @@ Thumbs.db
 services/analyzer/store/
 artifacts/api-server/data/packets/
 artifacts/api-server/data/uploads/
+
+# local secrets — never commit
+.env
+.env.local

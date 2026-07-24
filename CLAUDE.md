@@ -97,16 +97,34 @@ Gotchas (learned the hard way — see `.agents/memory/sheaf-dev-loop.md`):
 - Drizzle push needs `DATABASE_URL` in env; the server needs `PORT`, vite needs
   `PORT` + `BASE_PATH=/` locally.
 
-### What does NOT run locally (and must not be faked)
+### Secrets — same structure as Replit
 
-The **analyzer worker** needs Python 3.12 + uv + Paddle deps, plus provider keys that
-exist only in Replit secrets. Without it, uploading a packet still pre-flights and
-gates, but a Process run fails visibly — that is correct behavior, not something to
-work around with mocks. Full-pipeline tests (parse/judge/scrutiny) run on Replit.
-Analyzer env on Replit (`.replit [userenv.shared]`): `ANALYZER_URL`, `PARSE_BACKEND=paddle`,
-`PADDLE_VL_URL/MODEL` (Fireworks dedicated deployment `accounts/creditclaw/deployments/p4tlc3h1`,
-scale-to-zero ~10 min — an idle H100 is the cost incident we already had once),
-`TEXT_BACKEND=fireworks` (GLM), judge on Anthropic `claude-sonnet-4-6`.
+Replit injects secrets + `[userenv.shared]` as plain env vars; locally the identical
+variable names live in a **gitignored `.env`** at repo root (`cp .env.example .env`,
+fill `FIREWORKS_API_KEY` + `ANTHROPIC_API_KEY` yourself). Load per terminal:
+`set -a; source .env; set +a`. Keys never go in git or chat; if one leaks, rotate it
+at the provider console immediately.
+
+### Analyzer worker locally (real pipeline, real cost)
+
+Deps: `brew install uv poppler`, then `uv sync` at repo root (installs Python 3.12 +
+paddle stack from `uv.lock`). Run (env sourced first):
+
+```bash
+cd services/analyzer && uv run python -m uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+(`run.sh` is the Replit/Nix launcher — its GCC-runtime dance is unnecessary on macOS.)
+First parse downloads PP-DocLayoutV3 models to `~/.paddlex/`. Check
+`curl :8000/health` — it reports the pipeline string and `backendProblems` honestly;
+a missing key fails loudly there and at run time, never silently.
+
+**Cost awareness:** a local parse spins up the Fireworks dedicated H100
+(`accounts/creditclaw/deployments/p4tlc3h1`, scale-to-zero ~10 min) and the judge
+burns real Anthropic tokens. Batch your test runs into one warm window instead of
+scattering them — an idle H100 hour was already one cost incident. Without `.env`
+keys, uploads still pre-flight and gate; only Process runs fail (visibly — never
+mock around it).
 
 ## Browser testing
 

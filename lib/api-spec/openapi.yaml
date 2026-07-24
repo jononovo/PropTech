@@ -3,13 +3,23 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Homium Compliance Portal API — templates, versions, saved sections, applications
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: template-library
+    description: Template families, versions, lifecycle
+  - name: template-editor
+    description: Reading and saving a single template version
+  - name: saved-sections
+    description: Reusable section fragments (copies on insert)
+  - name: intake
+    description: Applications filling a pinned template version
+  - name: intake-uploads
+    description: Document uploads per application block
 paths:
   /healthz:
     get:
@@ -24,7 +34,343 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /templates:
+    get:
+      operationId: listTemplates
+      tags: [template-library]
+      summary: Library index derived from the template files on disk
+      responses:
+        "200":
+          description: All template versions grouped client-side by family
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TemplateListing"
+    post:
+      operationId: createTemplate
+      tags: [template-library]
+      summary: Create a new family as a v1 draft (blank scaffold)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateInput"
+      responses:
+        "201":
+          description: Created draft reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateRef"
+        "409":
+          description: Family already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /templates/{family}/{version}:
+    get:
+      operationId: getTemplate
+      tags: [template-editor]
+      summary: Full template JSON for one version
+      parameters:
+        - $ref: "#/components/parameters/Family"
+        - $ref: "#/components/parameters/Version"
+      responses:
+        "200":
+          description: The template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+    put:
+      operationId: saveTemplate
+      tags: [template-editor]
+      summary: Save a draft (active versions are immutable)
+      parameters:
+        - $ref: "#/components/parameters/Family"
+        - $ref: "#/components/parameters/Version"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Template"
+      responses:
+        "200":
+          description: Saved template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Template"
+        "400":
+          description: Contract validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Version is active and immutable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /templates/{family}/{version}/new-version:
+    post:
+      operationId: createNewVersion
+      tags: [template-library]
+      summary: Copy vN to v(N+1) as a draft; vN stays active
+      parameters:
+        - $ref: "#/components/parameters/Family"
+        - $ref: "#/components/parameters/Version"
+      responses:
+        "201":
+          description: The new draft reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateRef"
+        "409":
+          description: A newer version already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /templates/{family}/{version}/duplicate:
+    post:
+      operationId: duplicateTemplate
+      tags: [template-library]
+      summary: Copy this version into a brand-new family as v1 draft
+      parameters:
+        - $ref: "#/components/parameters/Family"
+        - $ref: "#/components/parameters/Version"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateDuplicateInput"
+      responses:
+        "201":
+          description: New family reference
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateRef"
+        "409":
+          description: Target family already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /templates/{family}/{version}/activate:
+    post:
+      operationId: activateTemplate
+      tags: [template-library]
+      summary: Draft to active (one-way); active versions accept applications
+      parameters:
+        - $ref: "#/components/parameters/Family"
+        - $ref: "#/components/parameters/Version"
+      responses:
+        "200":
+          description: Updated listing row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateListing"
+        "409":
+          description: Already active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /saved-sections:
+    get:
+      operationId: listSavedSections
+      tags: [saved-sections]
+      summary: Reusable section fragments for the builder palette
+      responses:
+        "200":
+          description: Fragments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedSection"
+    post:
+      operationId: createSavedSection
+      tags: [saved-sections]
+      summary: Save a section as a reusable fragment (a copy, never a link)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SavedSectionInput"
+      responses:
+        "201":
+          description: Saved fragment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedSection"
+  /applications:
+    get:
+      operationId: listApplications
+      tags: [intake]
+      summary: All applications with progress summary
+      responses:
+        "200":
+          description: Applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApplicationSummary"
+    post:
+      operationId: createApplication
+      tags: [intake]
+      summary: Start an application pinned to an active template version
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationInput"
+      responses:
+        "201":
+          description: Created application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "409":
+          description: Version is not active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}:
+    get:
+      operationId: getApplication
+      tags: [intake]
+      summary: Application with its intake state and pinned template
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "200":
+          description: Application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/fields/{blockId}:
+    put:
+      operationId: saveFieldValues
+      tags: [intake]
+      summary: Save the values of a field-group block
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/BlockId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldValues"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+  /applications/{applicationId}/uploads/{blockId}:
+    post:
+      operationId: uploadDocument
+      tags: [intake-uploads]
+      summary: Upload a file against a document block
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/BlockId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocumentUpload"
+      responses:
+        "201":
+          description: Stored file record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadedFile"
+        "400":
+          description: Format not accepted by the block
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/uploads/{blockId}/{filename}:
+    delete:
+      operationId: deleteDocument
+      tags: [intake-uploads]
+      summary: Remove an uploaded file
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/BlockId"
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
 components:
+  parameters:
+    Family:
+      name: family
+      in: path
+      required: true
+      schema:
+        type: string
+    Version:
+      name: version
+      in: path
+      required: true
+      schema:
+        type: integer
+    ApplicationId:
+      name: applicationId
+      in: path
+      required: true
+      schema:
+        type: string
+    BlockId:
+      name: blockId
+      in: path
+      required: true
+      schema:
+        type: string
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +379,244 @@ components:
           type: string
       required:
         - status
-
+    ApiMessage:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    ExpiryRule:
+      type: object
+      description: Null means no clock. staleness uses days; hard means valid through closing.
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [staleness, hard]
+        days:
+          type: integer
+    Field:
+      type: object
+      required: [id, type, label]
+      properties:
+        id: { type: string }
+        type:
+          type: string
+          enum: [text, number, date, select, yesno]
+        label: { type: string }
+        required: { type: boolean }
+        options:
+          type: array
+          items: { type: string }
+    Block:
+      type: object
+      description: kind=document uses document fields; kind=fields uses the fields array.
+      required: [kind, id, name]
+      properties:
+        kind:
+          type: string
+          enum: [document, fields]
+        id: { type: string }
+        name: { type: string }
+        formats:
+          type: array
+          items: { type: string }
+        requirement:
+          type: string
+          enum: [required, required_alt, recommended, optional]
+        criticality:
+          type: string
+          enum: [critical, standard, supporting]
+        sourcing:
+          type: string
+          enum: [readily_available, constrained, scarce]
+        multiPage: { type: boolean }
+        expiry:
+          oneOf:
+            - $ref: "#/components/schemas/ExpiryRule"
+            - type: "null"
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/Field"
+    Subsection:
+      type: object
+      required: [id, name, blocks]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Block"
+    Permission:
+      type: object
+      required: [role, view, upload]
+      properties:
+        role:
+          type: string
+          enum: [Applicant, Originator, Underwriter, Manager]
+        view: { type: boolean }
+        upload: { type: boolean }
+    Section:
+      type: object
+      required: [id, name, owner, permissions, subsections]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        owner:
+          type: string
+          enum: [Applicant, Originator, Escrow, Homium]
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+        subsections:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subsection"
+    AlternativeGroup:
+      type: object
+      description: Satisfied when any one of [primary, ...satisfiedBy] is filed.
+      required: [id, name, primary, satisfiedBy]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        primary: { type: string }
+        satisfiedBy:
+          type: array
+          items: { type: string }
+    Template:
+      type: object
+      required: [template, version, status, program, alternatives, sections]
+      properties:
+        template: { type: string }
+        version: { type: integer }
+        status:
+          type: string
+          enum: [draft, active]
+        program: { type: string }
+        alternatives:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlternativeGroup"
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/Section"
+    TemplateListing:
+      type: object
+      required: [family, name, program, version, status, sections, docs, updated, inUseBy]
+      properties:
+        family: { type: string }
+        name: { type: string }
+        program: { type: string }
+        version: { type: integer }
+        status:
+          type: string
+          enum: [draft, active]
+        sections: { type: integer }
+        docs: { type: integer }
+        updated: { type: string }
+        inUseBy: { type: integer }
+    TemplateRef:
+      type: object
+      required: [family, version]
+      properties:
+        family: { type: string }
+        version: { type: integer }
+    TemplateInput:
+      type: object
+      required: [name, program]
+      properties:
+        name: { type: string, minLength: 1 }
+        program: { type: string, minLength: 1 }
+    TemplateDuplicateInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+    SavedSection:
+      type: object
+      required: [id, name, source, section]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        source: { type: string }
+        section:
+          $ref: "#/components/schemas/Section"
+    SavedSectionInput:
+      type: object
+      required: [name, source, section]
+      properties:
+        name: { type: string, minLength: 1 }
+        source: { type: string }
+        section:
+          $ref: "#/components/schemas/Section"
+    FieldValues:
+      type: object
+      description: Map of field id to entered value for one field-group block.
+      required: [values]
+      properties:
+        values:
+          type: object
+          additionalProperties:
+            type: string
+    UploadedFile:
+      type: object
+      required: [filename, size, uploadedAt]
+      properties:
+        filename: { type: string }
+        size: { type: integer }
+        uploadedAt: { type: string }
+    DocumentUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+    ApplicationInput:
+      type: object
+      required: [family, version, applicantName]
+      properties:
+        family: { type: string }
+        version: { type: integer }
+        applicantName: { type: string, minLength: 1 }
+    ApplicationSummary:
+      type: object
+      required: [id, family, version, templateName, applicantName, createdAt, docsFiled, docsTotal]
+      properties:
+        id: { type: string }
+        family: { type: string }
+        version: { type: integer }
+        templateName: { type: string }
+        applicantName: { type: string }
+        createdAt: { type: string }
+        docsFiled: { type: integer }
+        docsTotal: { type: integer }
+    Application:
+      type: object
+      required: [id, family, version, applicantName, createdAt, fieldValues, uploads, template]
+      properties:
+        id: { type: string }
+        family: { type: string }
+        version: { type: integer }
+        applicantName: { type: string }
+        createdAt: { type: string }
+        fieldValues:
+          type: object
+          description: blockId -> field values map
+          additionalProperties:
+            type: object
+            additionalProperties:
+              type: string
+        uploads:
+          type: object
+          description: blockId -> uploaded files
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/UploadedFile"
+        template:
+          $ref: "#/components/schemas/Template"

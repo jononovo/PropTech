@@ -1,0 +1,96 @@
+{
+  "id": "std-application",
+  "name": "Standard Application",
+  "source": "from Purchase Loan — CA v3",
+  "section": {
+    "id": "initial-application",
+    "name": "Initial Application",
+    "owner": "Applicant",
+    "permissions": [
+      {
+        "role": "Applicant",
+        "view": true,
+        "upload": true
+      },
+      {
+        "role": "Originator",
+        "view": true,
+        "upload": true
+      },
+      {
+        "role": "Underwriter",
+        "view": true,
+        "upload": false
+      },
+      {
+        "role": "Manager",
+        "view": true,
+        "upload": false
+      }
+    ],
+    "subsections": [
+      {
+        "id": "application-forms",
+        "name": "Application forms",
+        "blocks": [
+          {
+            "kind": "document",
+            "id": "urla-1003",
+            "name": "URLA — Form 1003",
+            "formats": [
+              ".pdf"
+            ],
+            "requirement": "required",
+            "criticality": "critical",
+            "sourcing": "readily_available",
+            "multiPage": true,
+            "expiry": null
+          },
+          {
+            "kind": "document",
+            "id": "disclosures",
+            "name": "Disclosure Acknowledgments",
+            "formats": [
+              ".pdf"
+            ],
+            "requirement": "required",
+            "criticality": "standard",
+            "sourcing": "readily_available",
+            "multiPage": true,
+            "expiry": null
+          }
+        ]
+      },
+      {
+        "id": "employment",
+        "name": "Employment",
+        "blocks": [
+          {
+            "kind": "fields",
+            "id": "employment-details",
+            "name": "Employment details",
+            "fields": [
+              {
+                "id": "employer",
+                "type": "text",
+                "label": "Current employer",
+                "required": true
+              },
+              {
+                "id": "start-date",
+                "type": "date",
+                "label": "Start date",
+                "required": true
+              },
+              {
+                "id": "self-employed",
+                "type": "yesno",
+                "label": "Self-employed?"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

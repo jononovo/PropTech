@@ -6,3 +6,15 @@ id = "08JOIrjQfIS0ZQlK4rliB"
 uri = "file://docs/homium-template-schema-spec.md"
 type = "text"
 title = "Homium Template Schema — Technical Spec (dimensions, alternatives, analysis rules)"
+
+[[outputs]]
+id = "aOuQGoyoEHe86IR9GbUjh"
+uri = "file://docs/homium-portal-build-spec.md"
+type = "text"
+title = "Homium Portal — Build Spec (architecture, mirrored features, API, build order)"
+
+[[outputs]]
+id = "7K81bgDGnhGC9Q1Dfi7oI"
+uri = "file://docs/homium-product-spec.md"
+type = "text"
+title = "Homium Compliance Manager — Product Spec & AI Handoff"

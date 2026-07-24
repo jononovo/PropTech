@@ -1,0 +1,547 @@
+{
+  "id": "T6mirFrc3M",
+  "family": "purchase-loan-ca",
+  "version": 3,
+  "applicantName": "Ana Torres",
+  "createdAt": "2026-07-24T00:13:24.260Z",
+  "fieldValues": {},
+  "uploads": {
+    "urla-1003": [
+      {
+        "filename": "paystub.pdf",
+        "size": 14,
+        "uploadedAt": "2026-07-24T00:13:34.884Z"
+      }
+    ],
+    "disclosures": []
+  },
+  "template": {
+    "template": "Purchase Loan — CA",
+    "version": 3,
+    "status": "active",
+    "program": "Homium Deposit Assistance",
+    "alternatives": [
+      {
+        "id": "proof-of-identity",
+        "name": "Proof of Identity",
+        "primary": "gov-id",
+        "satisfiedBy": [
+          "passport"
+        ]
+      }
+    ],
+    "sections": [
+      {
+        "id": "initial-application",
+        "name": "Initial Application",
+        "owner": "Applicant",
+        "permissions": [
+          {
+            "role": "Applicant",
+            "view": true,
+            "upload": true
+          },
+          {
+            "role": "Originator",
+            "view": true,
+            "upload": true
+          },
+          {
+            "role": "Underwriter",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Manager",
+            "view": true,
+            "upload": false
+          }
+        ],
+        "subsections": [
+          {
+            "id": "application-forms",
+            "name": "Application forms",
+            "blocks": [
+              {
+                "kind": "document",
+                "id": "urla-1003",
+                "name": "URLA — Form 1003",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "critical",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": null
+              },
+              {
+                "kind": "document",
+                "id": "disclosures",
+                "name": "Disclosure Acknowledgments",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "standard",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": null
+              }
+            ]
+          },
+          {
+            "id": "employment",
+            "name": "Employment",
+            "blocks": [
+              {
+                "kind": "fields",
+                "id": "employment-details",
+                "name": "Employment details",
+                "fields": [
+                  {
+                    "id": "employer",
+                    "type": "text",
+                    "label": "Current employer",
+                    "required": true
+                  },
+                  {
+                    "id": "start-date",
+                    "type": "date",
+                    "label": "Start date",
+                    "required": true
+                  },
+                  {
+                    "id": "self-employed",
+                    "type": "yesno",
+                    "label": "Self-employed?"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "identity",
+        "name": "Identity Verification",
+        "owner": "Applicant",
+        "permissions": [
+          {
+            "role": "Applicant",
+            "view": true,
+            "upload": true
+          },
+          {
+            "role": "Originator",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Underwriter",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Manager",
+            "view": true,
+            "upload": false
+          }
+        ],
+        "subsections": [
+          {
+            "id": "identity-docs",
+            "name": "Identity documents",
+            "blocks": [
+              {
+                "kind": "document",
+                "id": "gov-id",
+                "name": "Government ID — Driver License",
+                "formats": [
+                  ".pdf",
+                  ".jpg",
+                  ".png"
+                ],
+                "requirement": "required_alt",
+                "criticality": "critical",
+                "sourcing": "constrained",
+                "multiPage": false,
+                "expiry": {
+                  "kind": "hard"
+                }
+              },
+              {
+                "kind": "document",
+                "id": "passport",
+                "name": "Passport",
+                "formats": [
+                  ".pdf",
+                  ".jpg",
+                  ".png"
+                ],
+                "requirement": "optional",
+                "criticality": "critical",
+                "sourcing": "constrained",
+                "multiPage": false,
+                "expiry": {
+                  "kind": "hard"
+                }
+              },
+              {
+                "kind": "document",
+                "id": "ssn-verify",
+                "name": "SSN Verification",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "critical",
+                "sourcing": "constrained",
+                "multiPage": false,
+                "expiry": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "income-assets",
+        "name": "Income & Assets",
+        "owner": "Applicant",
+        "permissions": [
+          {
+            "role": "Applicant",
+            "view": true,
+            "upload": true
+          },
+          {
+            "role": "Originator",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Underwriter",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Manager",
+            "view": true,
+            "upload": false
+          }
+        ],
+        "subsections": [
+          {
+            "id": "income",
+            "name": "Income",
+            "blocks": [
+              {
+                "kind": "document",
+                "id": "pay-stubs",
+                "name": "Pay Stubs — Last 30 Days",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "standard",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": {
+                  "kind": "staleness",
+                  "days": 30
+                }
+              },
+              {
+                "kind": "document",
+                "id": "w2-forms",
+                "name": "W-2 Forms (last 2 years)",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "standard",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": null
+              }
+            ]
+          },
+          {
+            "id": "assets",
+            "name": "Assets",
+            "blocks": [
+              {
+                "kind": "document",
+                "id": "bank-statements",
+                "name": "Bank Statements — Last 3 Months",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "standard",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": {
+                  "kind": "staleness",
+                  "days": 90
+                }
+              },
+              {
+                "kind": "document",
+                "id": "gift-letter",
+                "name": "Gift Letter",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "optional",
+                "criticality": "critical",
+                "sourcing": "readily_available",
+                "multiPage": false,
+                "expiry": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "property",
+        "name": "Property Valuation",
+        "owner": "Originator",
+        "permissions": [
+          {
+            "role": "Applicant",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Originator",
+            "view": true,
+            "upload": true
+          },
+          {
+            "role": "Underwriter",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Manager",
+            "view": true,
+            "upload": false
+          }
+        ],
+        "subsections": [
+          {
+            "id": "valuation",
+            "name": "Valuation",
+            "blocks": [
+              {
+                "kind": "document",
+                "id": "appraisal",
+                "name": "Appraisal Report",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "critical",
+                "sourcing": "constrained",
+                "multiPage": true,
+                "expiry": {
+                  "kind": "staleness",
+                  "days": 120
+                }
+              },
+              {
+                "kind": "document",
+                "id": "purchase-agreement",
+                "name": "Purchase Agreement",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "critical",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "title-escrow",
+        "name": "Title & Escrow",
+        "owner": "Escrow",
+        "permissions": [
+          {
+            "role": "Applicant",
+            "view": false,
+            "upload": false
+          },
+          {
+            "role": "Originator",
+            "view": true,
+            "upload": true
+          },
+          {
+            "role": "Underwriter",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Manager",
+            "view": true,
+            "upload": true
+          }
+        ],
+        "subsections": [
+          {
+            "id": "title-docs",
+            "name": "Title documents",
+            "blocks": [
+              {
+                "kind": "document",
+                "id": "prelim-title",
+                "name": "Preliminary Title Report",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "standard",
+                "sourcing": "constrained",
+                "multiPage": true,
+                "expiry": null
+              },
+              {
+                "kind": "document",
+                "id": "insurance-binder",
+                "name": "Insurance Binder",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "supporting",
+                "sourcing": "readily_available",
+                "multiPage": false,
+                "expiry": null
+              },
+              {
+                "kind": "document",
+                "id": "prelim-cd",
+                "name": "Preliminary Closing Disclosure",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "standard",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": null
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "credit-compliance",
+        "name": "Credit & Compliance",
+        "owner": "Homium",
+        "permissions": [
+          {
+            "role": "Applicant",
+            "view": false,
+            "upload": false
+          },
+          {
+            "role": "Originator",
+            "view": false,
+            "upload": false
+          },
+          {
+            "role": "Underwriter",
+            "view": true,
+            "upload": false
+          },
+          {
+            "role": "Manager",
+            "view": true,
+            "upload": true
+          }
+        ],
+        "subsections": [
+          {
+            "id": "credit",
+            "name": "Credit",
+            "blocks": [
+              {
+                "kind": "document",
+                "id": "credit-report",
+                "name": "Credit Report — Tri-Merge",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "critical",
+                "sourcing": "readily_available",
+                "multiPage": true,
+                "expiry": {
+                  "kind": "hard"
+                }
+              },
+              {
+                "kind": "document",
+                "id": "background-check",
+                "name": "Background Check — CA DOJ",
+                "formats": [
+                  ".pdf"
+                ],
+                "requirement": "required",
+                "criticality": "critical",
+                "sourcing": "constrained",
+                "multiPage": false,
+                "expiry": {
+                  "kind": "staleness",
+                  "days": 60
+                }
+              }
+            ]
+          },
+          {
+            "id": "attestations",
+            "name": "Attestations",
+            "blocks": [
+              {
+                "kind": "fields",
+                "id": "program-attestation",
+                "name": "Homium Program Attestation",
+                "fields": [
+                  {
+                    "id": "occupancy",
+                    "type": "select",
+                    "label": "Occupancy type",
+                    "required": true,
+                    "options": [
+                      "Primary residence",
+                      "Second home"
+                    ]
+                  },
+                  {
+                    "id": "consent",
+                    "type": "yesno",
+                    "label": "Equity-share terms acknowledged",
+                    "required": true
+                  },
+                  {
+                    "id": "signed-on",
+                    "type": "date",
+                    "label": "Signed on",
+                    "required": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

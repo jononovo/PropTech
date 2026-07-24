@@ -1,0 +1,104 @@
+{
+  "id": "income-employment",
+  "name": "Income & Assets",
+  "source": "from Purchase Loan — CA v3",
+  "section": {
+    "id": "income-assets",
+    "name": "Income & Assets",
+    "owner": "Applicant",
+    "permissions": [
+      {
+        "role": "Applicant",
+        "view": true,
+        "upload": true
+      },
+      {
+        "role": "Originator",
+        "view": true,
+        "upload": false
+      },
+      {
+        "role": "Underwriter",
+        "view": true,
+        "upload": false
+      },
+      {
+        "role": "Manager",
+        "view": true,
+        "upload": false
+      }
+    ],
+    "subsections": [
+      {
+        "id": "income",
+        "name": "Income",
+        "blocks": [
+          {
+            "kind": "document",
+            "id": "pay-stubs",
+            "name": "Pay Stubs — Last 30 Days",
+            "formats": [
+              ".pdf"
+            ],
+            "requirement": "required",
+            "criticality": "standard",
+            "sourcing": "readily_available",
+            "multiPage": true,
+            "expiry": {
+              "kind": "staleness",
+              "days": 30
+            }
+          },
+          {
+            "kind": "document",
+            "id": "w2-forms",
+            "name": "W-2 Forms (last 2 years)",
+            "formats": [
+              ".pdf"
+            ],
+            "requirement": "required",
+            "criticality": "standard",
+            "sourcing": "readily_available",
+            "multiPage": true,
+            "expiry": null
+          }
+        ]
+      },
+      {
+        "id": "assets",
+        "name": "Assets",
+        "blocks": [
+          {
+            "kind": "document",
+            "id": "bank-statements",
+            "name": "Bank Statements — Last 3 Months",
+            "formats": [
+              ".pdf"
+            ],
+            "requirement": "required",
+            "criticality": "standard",
+            "sourcing": "readily_available",
+            "multiPage": true,
+            "expiry": {
+              "kind": "staleness",
+              "days": 90
+            }
+          },
+          {
+            "kind": "document",
+            "id": "gift-letter",
+            "name": "Gift Letter",
+            "formats": [
+              ".pdf"
+            ],
+            "requirement": "optional",
+            "criticality": "critical",
+            "sourcing": "readily_available",
+            "multiPage": false,
+            "expiry": null
+          }
+        ]
+      }
+    ]
+  }
+}

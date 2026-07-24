@@ -7,8 +7,8 @@ home-loan packets. Originators upload large merged PDFs; the system splits, clas
 names, files, freshness-checks, and fraud-scores them against a per-loan checklist
 template. Deep field extraction is deliberately v2.
 
-- **Spec authority:** `attached_assets/homium-analyzer-spec-v0.6.3-FINAL.md` — the ONLY
-  spec. One spec authority at a time; superseded copies get deleted, never kept around.
+- **Spec authority:** `internal_docs/_context/homium-analyzer-spec-v0.6.3-FINAL.md` — the
+  ONLY spec. One spec authority at a time; superseded copies get deleted, never kept around.
 - **Parking lot:** `internal_docs/future.md` — decisions made but deferred. Don't
   relitigate; schedule.
 - **`.agents/memory/`** — the Replit builder agent's own notes (accurate; read them,

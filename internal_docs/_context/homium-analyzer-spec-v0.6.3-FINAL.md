@@ -1,5 +1,13 @@
 # Homium Analyzer — Build Spec v0.6.3 (FINAL — supersedes ALL prior copies)
 
+> **Provenance & status (housekeeping note added Jul 24, 2026 — not part of the spec text):**
+> Delivered Jul 24, 2026 as an upload to `attached_assets/`; moved here to
+> `internal_docs/_context/` (filename cleaned, content untouched). Still the ONLY spec
+> authority. Substantial parts are already built and running — pre-flight gate, split/
+> classify/judge pipeline with PaddleOCR-VL 1.6 parse, template pin/re-pin, human verdict
+> flow, analysis sidecar write-path. For what is actually built vs deferred at any moment,
+> trust the repo and `internal_docs/future.md`, not this note.
+
 **To the agent building the portal/engine:** this file replaces every earlier spec copy in your repo (`attached_assets/idcm-master-spec-v0.4.1*`, `homium-analyzer-spec-v0.6.2*`) and the parser lines in your `future.md`. Where any older document disagrees with this one, this one wins. Decisions here are current as of **Jul 24, 2026** and verified at source.
 
 ---

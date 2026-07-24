@@ -128,7 +128,7 @@ export function Dashboard() {
             needsYou.map((app, idx) => (
               <Link
                 key={app.id}
-                href={`/apply/${app.id}`}
+                href={`/applications/${app.id}`}
                 data-testid={`row-needs-you-${app.id}`}
                 className={`flex items-center px-4 py-3.5 hover:bg-[#F8FAFC] transition-colors ${
                   idx < needsYou.length - 1 ? "border-b border-[#F1F5F9]" : ""

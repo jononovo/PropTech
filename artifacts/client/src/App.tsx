@@ -9,6 +9,9 @@ import { TemplateLibrary } from './features/template-library/TemplateLibrary';
 import { TemplateEditor } from './features/template-editor/TemplateEditor';
 import { Applications } from './features/intake/Applications';
 import { IntakeForm } from './features/intake/IntakeForm';
+import { CaseFilePage } from './features/case-file/CaseFilePage';
+import { LoginPage } from './features/auth/LoginPage';
+import { ProfileProvider } from './features/auth/ProfileContext';
 
 const queryClient = new QueryClient();
 
@@ -22,12 +25,16 @@ function Router() {
           </AppShell>
         )}
       </Route>
+      <Route path="/login" component={LoginPage} />
       <Route path="/applications">
         {() => (
           <AppShell active="applications">
             <Applications />
           </AppShell>
         )}
+      </Route>
+      <Route path="/applications/:id/:lens?">
+        {(params) => <CaseFilePage id={params.id} lens={params.lens} />}
       </Route>
       <Route path="/templates">
         {() => (
@@ -47,10 +54,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
-        <Toaster />
+        <ProfileProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Router />
+          </WouterRouter>
+          <Toaster />
+        </ProfileProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

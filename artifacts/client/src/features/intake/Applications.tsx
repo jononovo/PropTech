@@ -119,7 +119,8 @@ export function Applications() {
               {apps.map((app, idx) => (
                 <Link 
                   key={app.id} 
-                  href={`/apply/${app.id}`}
+                  href={`/applications/${app.id}`}
+                  data-testid={`row-application-${app.id}`}
                   className={`flex items-center p-4 hover:bg-[#F8FAFC] transition-colors ${idx < apps.length - 1 ? 'border-b border-[#E2E8F0]' : ''}`}
                 >
                   <div className="w-1/3">

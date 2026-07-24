@@ -156,6 +156,10 @@ PUT    /api/applications/{id}/fields/{blockId} {values}  → 400 unless blockId 
 POST   /api/applications/{id}/uploads/{blockId}          → multipart "file"; validates block exists,
                                                            kind=document, extension ∈ block.formats (400 otherwise)
 DELETE /api/applications/{id}/uploads/{blockId}/{filename}
+PUT    /api/applications/{id}/closing-date               → via PUT /applications/{id} {projectedClosingDate}
+GET    /api/applications/{id}/analysis                   → AnalysisSidecar (empty shell if no run yet)
+POST   /api/applications/{id}/analysis/runs              → analyzer (or simulator) posts a full run; latest run wins
+PUT    /api/applications/{id}/verdicts/{blockId}         → human verdict {verdict, decidedBy, documentDate?, expiryDate?, datesEdited}
 ```
 - Version and status on save always come from the file system, never trusted from the client.
 - Server: pino structured logging, Express 5 conventions.
@@ -167,6 +171,8 @@ DELETE /api/applications/{id}/uploads/{blockId}/{filename}
 - `/builder/:family/:version` **Template Editor** — mirror of the approved FormBuilderA mockup: left palette (Section / Subsection / Document upload / Field group) + SAVED SECTIONS group; numbered collapsible sections with owner tag; per-section permissions strip ("WHO SEES · WHO ADDS", Role × view/upload); block rows with the three dimension dropdowns (Requirement/Weight/Sourcing) and satisfied-by captions; drafts save ("Save Draft"), active versions render read-only; header shows mono version token + status tag (Duplicate/Export live ONLY in the library menu, not here).
 - `/applications` **Applications** — list with progress (docs filed / total), start new application against an active version only.
 - `/apply/:applicationId` **Intake Form** — the segmented, section-by-section applicant view; header per the header doctrine (applicant name + template token + "VIEWING AS" role switcher); sections filtered by role view permission; document blocks show DocDimensions + upload dropzones restricted to allowed formats; field groups render typed inputs with save; uploads/deletes refetch application state.
+- `/applications/:id/:lens?` **Case File** (staff) — the four Backbone lenses as one route (`triage` default | `workfile` | `timeline` | `register`), all rendered from a single pure view model (`features/case-file/caseData.ts: buildCaseModel(app, sidecar, now)`) over `GET /applications/:id` + `GET /applications/:id/analysis`. Case header: applicant + mono id + template token, inline-editable closing target, alarm bell (live clocks ≤30d) → timeline. Verdicts everywhere use the armed two-step accept (arm → confirm document/expiry dates, edits recorded via `datesEdited`) and one-click request-re-scan; `decidedBy` comes from the signed-in test profile. Missing docs get real actions only (open intake / copy applicant link). No analyzer run yet ⇒ honest empty triage state; no fake processing theater (returns as real pre-flight later).
+- `/login` **Test sign-in** — 4 seeded staff profiles (click = signed in, localStorage); profile chip in the app shell header. Real auth later; never Clerk.
 
 ### B8. Seed data (in the file store now)
 - Family `purchase-loan-ca`: v3 **active**, v4 **draft** — 6 sections, 16 documents, 2 field groups, one alternatives group (`proof-of-identity`: gov-id ← passport), realistic dimensions on all documents (mirrors the approved mockup seed).
@@ -192,8 +198,8 @@ Everything below exists as user-approved high-fidelity mockups (canvas, `artifac
 - Unassigned pages that match no block land in an **unassigned bucket** for manual triage.
 
 ### C2. Intake / triage screen (mockup: Backbone "Intake" page)
-- Flow: drop the 300-page PDF → staged processing states → triage report.
-- Triage report contents: stat strip (counts derived from data helpers, never hand-computed), **exceptions queue** where each flagged document gets **paired verdict buttons** (accept / reject side by side — one gesture per exception), unassigned-pages bucket, quiet audit line ("whisper") recording what the AI did.
+- **Triage report half is BUILT** (see B7 Case File — stat strip, exceptions queue with paired verdicts, covered/unassigned buckets, whisper lines, audit trail — all from live sidecar data).
+- Remaining: the packet-drop flow. Locked choreography (user decision, Jul 2026): upload → **deterministic pre-flight** (page count, splits, checksum-level checks — no AI) → **gate approval** → only then does a run start; while the engine is simulated, simulated runs still POST through the real endpoint and are labeled simulated.
 - AI suggests classification and verdicts; a human confirms every one (A6 posture).
 
 ### C3. Review room / verification queue
@@ -202,10 +208,8 @@ Everything below exists as user-approved high-fidelity mockups (canvas, `artifac
 - Verdict actions follow the paired-buttons pattern from triage.
 - Accepting a document **stops its staleness clock** (see C5).
 
-### C4. Workfile (mockup: Backbone "Workfile" page)
-- The staff-side working view of one application: journey rail (stage chips) + a single working column. Forms, never tables.
-- "Waiting on others" bucket for items blocked on external parties.
-- Mobile: rail becomes a horizontally scrollable chip switcher pinned on top.
+### C4. Workfile (mockup: Backbone "Workfile" page) — BUILT
+- Live as the `workfile` lens (B7): section rail (collapse + mobile chips) from real template sections, status-typed requirement cards (accepted-locked / clean+clock / flagged red-rule with verdicts / missing→intake / covered / requested), "Waiting on others" from requested + missing-supporting docs.
 
 ### C5. Expiry engine — the two-clock model (core domain logic; schema already built)
 - **Staleness clocks** (`{kind:"staleness", days:N}`): document goes stale N days after its document date (bank statements ≤90d, pay stubs ≤30d). The clock **STOPS permanently when an underwriter accepts the doc**.
@@ -214,12 +218,13 @@ Everything below exists as user-approved high-fidelity mockups (canvas, `artifac
 - Escalation ladder per document: the 90/30/7 pattern — plain-language editable rules ("newer than [90] days — warn [30d] before, escalate [7d] before"). Criticality affects only the *ordering* of expiry alerts, never their timing.
 - Derived surfaces: live clocks vs "clocks stopped" shelf; blockers-first ranking feeds the header "needs you" dropdown (A5).
 
-### C6. Timeline & Register (mockups: Backbone pages; both desktop-only by explicit scope call)
-- **Timeline** — per-application validity chart: one row per document with a validity bar, today + closing-day markers, urgency-sorted, red/clay wash on docs that die before closing, "clocks stopped" shelf at the bottom. Pure-CSS in the mockup.
-- **Register** — the dense operations sheet: one row per document across the loan file; columns include REQ (four-level requirement), CRITICALITY, validity clock; inline row expansion for detail (no modals/pages); hover popovers for secondary info.
+### C6. Timeline & Register — BUILT (desktop-first; horizontal scroll on mobile)
+- **Timeline** (`timeline` lens) — validity chart from the two-clock model: today + closing markers, dies-before-deal wash, HARD-EXPIRY / STOPS-ON-ACCEPT chips, stopped-clocks shelf. Window spans the actionable horizon; far-out hard expiries run off the right edge (day chip carries the number).
+- **Register** (`register` lens) — dense sheet: section bands with owner + micro-progress, per-row document/received/checks/validity/status columns, "/" search, inline row expansion with scores + verdicts. Export button deliberately absent until it can be real.
 
 ### C7. Auth & roles (future)
-- Replace the header role switcher with real authentication; enforce section permissions server-side (v1 sends an advisory `x-role` header concept but does not enforce).
+- **Interim (built):** `/login` test sign-in with 4 seeded profiles; verdicts record the active profile as `decidedBy`. Schema stays auth-shaped so real accounts slot in later. **Never Clerk** (user decision).
+- Replace the test sign-in with real authentication; enforce section permissions server-side (v1 sends an advisory `x-role` header concept but does not enforce).
 - Same four permission roles; `Manager` is the approver persona for template activation (activation governance not yet specified — open question).
 
 ### C8. Known open items / not yet specified

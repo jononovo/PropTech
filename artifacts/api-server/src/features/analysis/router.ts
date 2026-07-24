@@ -64,6 +64,17 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
     res.status(409).json({ error: `runId "${parsed.data.runId}" already ingested` });
     return;
   }
+  // Asynchronous completion of the packet choreography: a landed run flips the
+  // packet processing→report and clears lastRunError. State-guarded — uploads
+  // are 409-blocked during processing, so the processing packet IS this run's.
+  await updateApplication(id, (app) => {
+    if (app.packet?.state === "processing") {
+      const next: NonNullable<Application["packet"]> = { ...app.packet, state: "report" };
+      delete next.lastRunError;
+      app.packet = next;
+    }
+    return app;
+  });
   res.status(201).json(IngestAnalysisRunResponse.parse(result));
 });
 

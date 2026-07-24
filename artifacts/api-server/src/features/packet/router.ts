@@ -3,13 +3,18 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync } from "node:fs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
-import { DecidePacketGateBody, DecidePacketGateResponse, UploadPacketResponse } from "@workspace/api-zod";
+import {
+  DecidePacketGateBody,
+  DecidePacketGateResponse,
+  ReportPacketRunFailureBody,
+  ReportPacketRunFailureResponse,
+  UploadPacketResponse,
+} from "@workspace/api-zod";
 import { DATA_DIR } from "../../lib/jsonStore";
 import { HttpError, isHttpError } from "../../lib/httpError";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
 import { readPdfInfo, runPreflight } from "./preflight";
-import { buildSimulatedRun, ingestViaRealEndpoint } from "./simulator";
 
 export const PACKETS_DIR = path.join(DATA_DIR, "packets");
 
@@ -30,9 +35,8 @@ const contexts = new WeakMap<Request, { app: Application }>();
  * Per-application serialization of packet DISK artifacts (packet.pdf, thumbs)
  * within this instance — uploads for the same app queue here so pre-flight
  * never reads a half-replaced file. Packet STATE atomicity does not rest on
- * this anymore: every state transition below is a SELECT ... FOR UPDATE
- * transaction (updateApplication), which holds across instances too. Disk
- * files stay instance-local until App Storage arrives with the real engine.
+ * this: every state transition below is a SELECT ... FOR UPDATE transaction
+ * (updateApplication) with sha-guarded flips, which holds across instances too.
  */
 const packetLocks = new Map<string, Promise<void>>();
 
@@ -49,6 +53,41 @@ async function withPacketLock(appId: string, fn: () => Promise<void>): Promise<v
   } finally {
     if (packetLocks.get(appId) === tail) packetLocks.delete(appId);
   }
+}
+
+/**
+ * Kick the analyzer worker (spec §5: the portal API is the only integration
+ * surface — the worker fetches the packet and POSTs the run back through the
+ * real ingest endpoint). 202 expected immediately; the run lands later.
+ * No ANALYZER_URL / unreachable worker = honest failure, never a silent skip.
+ */
+async function kickAnalyzer(applicationId: string, packetSha256: string, gate: "auto" | "confirmed" | "bypassed"): Promise<void> {
+  const base = process.env["ANALYZER_URL"];
+  if (!base) throw new Error("ANALYZER_URL is not configured — analyzer worker unreachable");
+  const res = await fetch(`${base.replace(/\/$/, "")}/runs`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ applicationId, packetSha256, gate }),
+    signal: AbortSignal.timeout(8000),
+  }).catch((err: unknown) => {
+    throw new Error(`Analyzer worker unreachable: ${err instanceof Error ? err.message : String(err)}`);
+  });
+  if (res.status !== 202) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Analyzer refused the run: ${res.status} ${body.slice(0, 200)}`);
+  }
+}
+
+/** Guarded revert processing→gated after a failed kick/run — only OUR packet (sha) flips. */
+async function revertToGated(appId: string, sha256: string, reason: string): Promise<void> {
+  await updateApplication(appId, (a) => {
+    if (a.packet?.state === "processing" && a.packet.sha256 === sha256) {
+      const reverted: PacketState = { ...a.packet, state: "gated", lastRunError: reason.slice(0, 500) };
+      delete reverted.gate;
+      a.packet = reverted;
+    }
+    return a;
+  });
 }
 
 async function validateTarget(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -94,6 +133,8 @@ const router: IRouter = Router();
  * Portal-owned packet state machine (C2 staged intake, analyzer spec §3):
  * preflight_running → gated → processing → report. Persisted server-side on the
  * application so the gate PHYSICALLY blocks — no client choreography can pass it.
+ * The processing→report flip happens in the analysis ingest route when the run
+ * lands; run-failed reverts processing→gated. Both are sha/state-guarded.
  */
 router.post(
   "/applications/:applicationId/packet",
@@ -181,10 +222,24 @@ router.post(
       const auto = info.pages < 20 && packet.preflight.flags.length === 0;
       if (!auto) {
         packet.state = "gated";
-        const app = await updateApplication(ctx.app.id, (a) => {
-          a.packet = packet;
-          return a;
-        });
+        let app: Application | undefined;
+        try {
+          // Guarded finalize: only OUR claim (sha, still preflight_running) may
+          // land — a concurrent re-upload that re-claimed wins over this one.
+          app = await updateApplication(ctx.app.id, (a) => {
+            if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
+              throw new HttpError(409, "This upload was superseded by a newer upload");
+            }
+            a.packet = packet;
+            return a;
+          });
+        } catch (err) {
+          if (isHttpError(err)) {
+            res.status(err.status).json({ error: err.message });
+            return;
+          }
+          throw err;
+        }
         if (!app) {
           res.status(404).json({ error: "Application not found" });
           return;
@@ -195,41 +250,39 @@ router.post(
 
       packet.gate = { decision: "auto", decidedAt: new Date().toISOString() };
       packet.state = "processing";
-      const processing = await updateApplication(ctx.app.id, (a) => {
-        a.packet = packet;
-        return a;
-      });
+      let processing: Application | undefined;
+      try {
+        // Same guard as above — only the winning upload may enter processing
+        // and kick the analyzer.
+        processing = await updateApplication(ctx.app.id, (a) => {
+          if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
+            throw new HttpError(409, "This upload was superseded by a newer upload");
+          }
+          a.packet = packet;
+          return a;
+        });
+      } catch (err) {
+        if (isHttpError(err)) {
+          res.status(err.status).json({ error: err.message });
+          return;
+        }
+        throw err;
+      }
       if (!processing) {
         res.status(404).json({ error: "Application not found" });
         return;
       }
       try {
-        await ingestViaRealEndpoint(processing.id, buildSimulatedRun(processing, packet, "auto"));
+        await kickAnalyzer(processing.id, packet.sha256, "auto");
       } catch (err) {
-        // Honest failure: fall back to the gate rather than pretending a run exists.
-        // Guarded flip — only OUR packet (sha) still processing reverts.
-        await updateApplication(ctx.app.id, (a) => {
-          if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
-            const reverted: PacketState = { ...a.packet, state: "gated" };
-            delete reverted.gate;
-            a.packet = reverted;
-          }
-          return a;
-        });
-        res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+        // Honest failure: fall back to the gate rather than pretending a run started.
+        const reason = err instanceof Error ? err.message : String(err);
+        await revertToGated(ctx.app.id, packet.sha256, reason);
+        res.status(502).json({ error: reason });
         return;
       }
-      const final = await updateApplication(ctx.app.id, (a) => {
-        if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
-          a.packet = { ...a.packet, state: "report" };
-        }
-        return a;
-      });
-      if (!final) {
-        res.status(404).json({ error: "Application not found" });
-        return;
-      }
-      res.json(UploadPacketResponse.parse(final));
+      // state=processing — the run lands asynchronously via the ingest endpoint.
+      res.json(UploadPacketResponse.parse(processing));
     });
   },
 );
@@ -267,11 +320,13 @@ router.post("/applications/:applicationId/packet/gate", validateTarget, async (r
       if (parsed.data.decision === "bypassed" && flags.length === 0) {
         throw new HttpError(400, 'Packet has no red flags — use "confirmed"');
       }
-      app.packet = {
+      const next: PacketState = {
         ...app.packet,
         gate: { decision: parsed.data.decision, decidedBy: parsed.data.decidedBy, decidedAt: new Date().toISOString() },
         state: "processing",
       };
+      delete next.lastRunError;
+      app.packet = next;
       return app;
     });
   } catch (err) {
@@ -287,33 +342,79 @@ router.post("/applications/:applicationId/packet/gate", validateTarget, async (r
   }
   const packet = decided.packet;
 
-  // Ingest OUTSIDE the transaction — the processing state itself is what
-  // blocks competing mutations while the run is in flight.
+  // Analyzer kick OUTSIDE the transaction — the persisted processing state is
+  // what blocks competing mutations while the run is in flight.
   try {
-    await ingestViaRealEndpoint(decided.id, buildSimulatedRun(decided, packet, parsed.data.decision));
+    await kickAnalyzer(decided.id, packet.sha256, parsed.data.decision);
   } catch (err) {
-    await updateApplication(ctx.app.id, (a) => {
-      if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
-        const reverted: PacketState = { ...a.packet, state: "gated" };
-        delete reverted.gate;
-        a.packet = reverted;
+    const reason = err instanceof Error ? err.message : String(err);
+    await revertToGated(ctx.app.id, packet.sha256, reason);
+    res.status(502).json({ error: reason });
+    return;
+  }
+  // state=processing — the run lands asynchronously via the ingest endpoint.
+  res.json(DecidePacketGateResponse.parse(decided));
+});
+
+/**
+ * The analyzer's input surface: the stored packet, byte-for-byte ("gate,
+ * don't retouch" — no enhancement ever).
+ */
+router.get("/applications/:applicationId/packet/file", validateTarget, async (req, res): Promise<void> => {
+  const ctx = contexts.get(req);
+  if (!ctx?.app.packet) {
+    res.status(404).json({ error: "No packet uploaded for this application" });
+    return;
+  }
+  const file = path.join(PACKETS_DIR, ctx.app.id, "packet.pdf");
+  if (!existsSync(file)) {
+    res.status(404).json({ error: "Packet file missing on disk" });
+    return;
+  }
+  res.type("application/pdf").sendFile(file);
+});
+
+/**
+ * Analyzer failure callback — honest revert, never a silent hang. Guarded:
+ * only the packet that is still processing THIS sha reverts; a stale worker
+ * can never clobber a newer packet.
+ */
+router.post("/applications/:applicationId/packet/run-failed", validateTarget, async (req, res): Promise<void> => {
+  const ctx = contexts.get(req);
+  if (!ctx) {
+    res.status(500).json({ error: "Request context missing" });
+    return;
+  }
+  const parsed = ReportPacketRunFailureBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    const app = await updateApplication(ctx.app.id, (a) => {
+      if (!a.packet) {
+        throw new HttpError(404, "No packet uploaded for this application");
       }
+      if (a.packet.state !== "processing" || a.packet.sha256 !== parsed.data.packetSha256) {
+        throw new HttpError(409, `Packet is not processing this sha (state: ${a.packet.state})`);
+      }
+      const reverted: PacketState = { ...a.packet, state: "gated", lastRunError: parsed.data.reason.slice(0, 500) };
+      delete reverted.gate;
+      a.packet = reverted;
       return a;
     });
-    res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
-    return;
-  }
-  const final = await updateApplication(ctx.app.id, (a) => {
-    if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
-      a.packet = { ...a.packet, state: "report" };
+    if (!app) {
+      res.status(404).json({ error: "Application not found" });
+      return;
     }
-    return a;
-  });
-  if (!final) {
-    res.status(404).json({ error: "Application not found" });
-    return;
+    res.json(ReportPacketRunFailureResponse.parse(app));
+  } catch (err) {
+    if (isHttpError(err)) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
   }
-  res.json(DecidePacketGateResponse.parse(final));
 });
 
 router.get("/applications/:applicationId/packet/thumbnails/:page", async (req, res): Promise<void> => {

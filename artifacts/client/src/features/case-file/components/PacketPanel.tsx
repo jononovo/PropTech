@@ -183,6 +183,18 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
           {pf.verdict}
         </div>
 
+        {packet.lastRunError && (
+          <div
+            className="flex items-start gap-2 rounded border bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)] p-2.5"
+            data-testid="text-run-error"
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-[var(--ops-warning-text)] shrink-0 mt-0.5" />
+            <div className="text-[12.5px] text-[var(--ops-warning-text)] leading-relaxed">
+              Last analyzer run failed — {packet.lastRunError}. The gate is open again; decide below to retry.
+            </div>
+          </div>
+        )}
+
         {flags.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {flags.map((f, i) => (

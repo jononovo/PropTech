@@ -21,4 +21,6 @@ export interface PacketState {
   state: PacketStateState;
   preflight?: PacketPreflight;
   gate?: PacketGateDecision;
+  /** Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest. */
+  lastRunError?: string;
 }

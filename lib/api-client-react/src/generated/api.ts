@@ -31,6 +31,7 @@ import type {
   FieldValues,
   HealthStatus,
   PacketGateInput,
+  PacketRunFailure,
   PacketUpload,
   SavedSection,
   SavedSectionInput,
@@ -1430,7 +1431,7 @@ export const getIngestAnalysisRunUrl = (applicationId: string,) => {
 }
 
 /**
- * The portal's store appends the run to the sidecar and sets latestRunId itself; the analyzer stays stateless toward the portal (single-writer semantics, no read-modify-write race). INVARIANT (analyzer spec §5): every documents[].suggestedBlockId must resolve to a document block in the application's PINNED template — otherwise the whole run is rejected with 400. A runId already present in the sidecar is rejected with 409 (idempotent replay protection). The analyzer never mutates the application file itself; verdicts stay human-only.
+ * The portal's store appends the run to the sidecar and sets latestRunId itself; the analyzer stays stateless toward the portal (single-writer semantics, no read-modify-write race). INVARIANT (analyzer spec §5): every documents[].suggestedBlockId must resolve to a document block in the application's PINNED template — otherwise the whole run is rejected with 400. A runId already present in the sidecar is rejected with 409 (idempotent replay protection). The analyzer never mutates the application file itself; verdicts stay human-only. Side effect: when the application's packet is mid-processing, a successful ingest flips packet.state to report and clears lastRunError — the asynchronous completion of the packet choreography.
  * @summary Analyzer write-path — one run object per call
  */
 export const ingestAnalysisRun = async (applicationId: string,
@@ -1503,7 +1504,7 @@ export const getUploadPacketUrl = (applicationId: string,) => {
 }
 
 /**
- * First staged state of the C2 intake flow (analyzer spec §3). Stores the PDF and runs the deterministic pre-flight (file validity, page count, metadata snapshot, per-page blank/contrast/duplicate/embedded-image-DPI checks — no model calls, no image enhancement). Invalid or encrypted PDFs are rejected with 400 and not stored. Outcome: state=gated awaiting a human gate decision, or — when the auto rule passes (fewer than 20 pages AND zero red flags) — the gate records decision=auto and the analyzer run is triggered immediately. Re-uploading replaces the packet and re-runs pre-flight; prior analysis runs remain in the sidecar (append-only, latest-run-wins). The pre-flight report is stored on the application as audit-trail material. The cost estimate covers the FULL pipeline (parse + judge + deep scans) and is staff-facing.
+ * First staged state of the C2 intake flow (analyzer spec §3). Stores the PDF and runs the deterministic pre-flight (file validity, page count, metadata snapshot, per-page blank/contrast/duplicate/embedded-image-DPI checks — no model calls, no image enhancement). Invalid or encrypted PDFs are rejected with 400 and not stored. Outcome: state=gated awaiting a human gate decision, or — when the auto rule passes (fewer than 20 pages AND zero red flags) — the gate records decision=auto and the analyzer is kicked ASYNCHRONOUSLY: the response returns state=processing and the run lands later through the ingest endpoint, which flips the state to report. Re-uploading replaces the packet and re-runs pre-flight; prior analysis runs remain in the sidecar (append-only, latest-run-wins). The pre-flight report is stored on the application as audit-trail material. The cost estimate covers the FULL pipeline (parse + judge + deep scans) and is staff-facing.
  * @summary Upload the full document packet; deterministic pre-flight runs immediately
  */
 export const uploadPacket = async (applicationId: string,
@@ -1578,7 +1579,7 @@ export const getDecidePacketGateUrl = (applicationId: string,) => {
 }
 
 /**
- * Valid only while packet.state=gated (409 otherwise). decision=confirmed ("Process") requires zero red flags; decision=bypassed ("Process anyway") requires at least one — the human explicitly overrides the flags. Decision, decider and time are stored for the audit trail, then the analyzer run is triggered — currently a deterministic simulator that POSTs through the real ingest endpoint (pipelineVersion prefixed "simulated"); the portal never fabricates analysis client-side. Nothing proceeds past the gate without this call or the auto rule.
+ * Valid only while packet.state=gated (409 otherwise). decision=confirmed ("Process") requires zero red flags; decision=bypassed ("Process anyway") requires at least one — the human explicitly overrides the flags. Decision, decider and time are stored for the audit trail, then the analyzer worker is kicked ASYNCHRONOUSLY: the response returns state=processing and the run lands later through the ingest endpoint (which flips the state to report). If the analyzer fails mid-run it calls the run-failed callback and the packet reverts to gated with lastRunError set — never a silent hang. Nothing proceeds past the gate without this call or the auto rule.
  * @summary Decide the pre-flight gate — the gate genuinely blocks
  */
 export const decidePacketGate = async (applicationId: string,
@@ -1640,6 +1641,157 @@ export const useDecidePacketGate = <TError = ErrorType<ApiMessage>,
         TContext
       > => {
       return useMutation(getDecidePacketGateMutationOptions(options));
+    }
+
+export const getGetPacketFileUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet/file`
+}
+
+/**
+ * Streams the uploaded packet exactly as stored (no enhancement — "gate, don't retouch"). Consumed by the analyzer worker at run start; also lets staff pull the original. 404 until a packet has been uploaded.
+ * @summary The stored packet PDF — the analyzer's input surface
+ */
+export const getPacketFile = async (applicationId: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPacketFileUrl(applicationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPacketFileQueryKey = (applicationId: string,) => {
+    return [
+    `/api/applications/${applicationId}/packet/file`
+    ] as const;
+    }
+
+
+export const getGetPacketFileQueryOptions = <TData = Awaited<ReturnType<typeof getPacketFile>>, TError = ErrorType<ApiMessage>>(applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPacketFileQueryKey(applicationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPacketFile>>> = ({ signal }) => getPacketFile(applicationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPacketFile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPacketFileQueryResult = NonNullable<Awaited<ReturnType<typeof getPacketFile>>>
+export type GetPacketFileQueryError = ErrorType<ApiMessage>
+
+
+/**
+ * @summary The stored packet PDF — the analyzer's input surface
+ */
+
+export function useGetPacketFile<TData = Awaited<ReturnType<typeof getPacketFile>>, TError = ErrorType<ApiMessage>>(
+ applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPacketFileQueryOptions(applicationId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getReportPacketRunFailureUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet/run-failed`
+}
+
+/**
+ * Called by the analyzer worker when a kicked run cannot complete (backend failure, timeout, unreadable packet). Guarded flip — only reverts when the packet is still processing AND packetSha256 matches, so a stale worker can never clobber a newer packet. Reverts state to gated, clears the gate decision, and records lastRunError for the staff UI. 409 when the guard does not match (nothing reverted).
+ * @summary Analyzer failure callback — honest revert, never a silent hang
+ */
+export const reportPacketRunFailure = async (applicationId: string,
+    packetRunFailure: PacketRunFailure, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getReportPacketRunFailureUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(packetRunFailure)
+  }
+);}
+
+
+
+
+
+export const getReportPacketRunFailureMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPacketRunFailure>>, TError,{applicationId: string;data: BodyType<PacketRunFailure>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportPacketRunFailure>>, TError,{applicationId: string;data: BodyType<PacketRunFailure>}, TContext> => {
+
+const mutationKey = ['reportPacketRunFailure'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportPacketRunFailure>>, {applicationId: string;data: BodyType<PacketRunFailure>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  reportPacketRunFailure(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportPacketRunFailureMutationResult = NonNullable<Awaited<ReturnType<typeof reportPacketRunFailure>>>
+    export type ReportPacketRunFailureMutationBody = BodyType<PacketRunFailure>
+    export type ReportPacketRunFailureMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Analyzer failure callback — honest revert, never a silent hang
+ */
+export const useReportPacketRunFailure = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPacketRunFailure>>, TError,{applicationId: string;data: BodyType<PacketRunFailure>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportPacketRunFailure>>,
+        TError,
+        {applicationId: string;data: BodyType<PacketRunFailure>},
+        TContext
+      > => {
+      return useMutation(getReportPacketRunFailureMutationOptions(options));
     }
 
 export const getGetPacketThumbnailUrl = (applicationId: string,

@@ -405,7 +405,9 @@ paths:
         must resolve to a document block in the application's PINNED template — otherwise the
         whole run is rejected with 400. A runId already present in the sidecar is rejected
         with 409 (idempotent replay protection). The analyzer never mutates the application
-        file itself; verdicts stay human-only.
+        file itself; verdicts stay human-only. Side effect: when the application's packet is
+        mid-processing, a successful ingest flips packet.state to report and clears
+        lastRunError — the asynchronous completion of the packet choreography.
       parameters:
         - $ref: "#/components/parameters/ApplicationId"
       requestBody:
@@ -451,8 +453,10 @@ paths:
         enhancement). Invalid or encrypted PDFs are rejected with 400 and not stored.
         Outcome: state=gated awaiting a human gate decision, or — when the auto rule passes
         (fewer than 20 pages AND zero red flags) — the gate records decision=auto and the
-        analyzer run is triggered immediately. Re-uploading replaces the packet and re-runs
-        pre-flight; prior analysis runs remain in the sidecar (append-only, latest-run-wins).
+        analyzer is kicked ASYNCHRONOUSLY: the response returns state=processing and the run
+        lands later through the ingest endpoint, which flips the state to report. Re-uploading
+        replaces the packet and re-runs pre-flight; prior analysis runs remain in the sidecar
+        (append-only, latest-run-wins).
         The pre-flight report is stored on the application as audit-trail material. The cost
         estimate covers the FULL pipeline (parse + judge + deep scans) and is staff-facing.
       parameters:
@@ -465,7 +469,7 @@ paths:
               $ref: "#/components/schemas/PacketUpload"
       responses:
         "200":
-          description: Updated application with packet state (gated, or report when auto-processed)
+          description: Updated application with packet state (gated, or processing when auto-proceed kicked the analyzer)
           content:
             application/json:
               schema:
@@ -489,7 +493,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
         "502":
-          description: Auto-proceed passed but run ingest failed — packet reverted to gated
+          description: Auto-proceed passed but the analyzer could not be reached — packet reverted to gated
           content:
             application/json:
               schema:
@@ -503,10 +507,11 @@ paths:
         Valid only while packet.state=gated (409 otherwise). decision=confirmed ("Process")
         requires zero red flags; decision=bypassed ("Process anyway") requires at least one —
         the human explicitly overrides the flags. Decision, decider and time are stored for
-        the audit trail, then the analyzer run is triggered — currently a deterministic
-        simulator that POSTs through the real ingest endpoint (pipelineVersion prefixed
-        "simulated"); the portal never fabricates analysis client-side. Nothing proceeds
-        past the gate without this call or the auto rule.
+        the audit trail, then the analyzer worker is kicked ASYNCHRONOUSLY: the response
+        returns state=processing and the run lands later through the ingest endpoint (which
+        flips the state to report). If the analyzer fails mid-run it calls the run-failed
+        callback and the packet reverts to gated with lastRunError set — never a silent hang.
+        Nothing proceeds past the gate without this call or the auto rule.
       parameters:
         - $ref: "#/components/parameters/ApplicationId"
       requestBody:
@@ -517,7 +522,7 @@ paths:
               $ref: "#/components/schemas/PacketGateInput"
       responses:
         "200":
-          description: Updated application (state=report; run ingested into the sidecar)
+          description: Updated application (state=processing; the run lands via the ingest endpoint)
           content:
             application/json:
               schema:
@@ -541,7 +546,70 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
         "502":
-          description: Run ingest failed — packet reverted to gated, decision not recorded
+          description: Analyzer could not be reached — packet reverted to gated, decision not recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet/file:
+    get:
+      operationId: getPacketFile
+      tags: [packet]
+      summary: The stored packet PDF — the analyzer's input surface
+      description: >
+        Streams the uploaded packet exactly as stored (no enhancement — "gate, don't
+        retouch"). Consumed by the analyzer worker at run start; also lets staff pull the
+        original. 404 until a packet has been uploaded.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "200":
+          description: The packet PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Application or packet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet/run-failed:
+    post:
+      operationId: reportPacketRunFailure
+      tags: [packet]
+      summary: Analyzer failure callback — honest revert, never a silent hang
+      description: >
+        Called by the analyzer worker when a kicked run cannot complete (backend failure,
+        timeout, unreadable packet). Guarded flip — only reverts when the packet is still
+        processing AND packetSha256 matches, so a stale worker can never clobber a newer
+        packet. Reverts state to gated, clears the gate decision, and records lastRunError
+        for the staff UI. 409 when the guard does not match (nothing reverted).
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PacketRunFailure"
+      responses:
+        "200":
+          description: Packet reverted to gated with lastRunError recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          description: Application or packet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Packet is not processing this sha — nothing reverted
           content:
             application/json:
               schema:
@@ -1023,6 +1091,12 @@ components:
           type: string
           enum: [confirmed, bypassed]
         decidedBy: { type: string }
+    PacketRunFailure:
+      type: object
+      required: [reason, packetSha256]
+      properties:
+        reason: { type: string }
+        packetSha256: { type: string }
     PacketState:
       type: object
       description: >
@@ -1044,6 +1118,11 @@ components:
           $ref: "#/components/schemas/PacketPreflight"
         gate:
           $ref: "#/components/schemas/PacketGateDecision"
+        lastRunError:
+          type: string
+          description: >
+            Plain-language reason the last analyzer kick failed (packet reverted to gated).
+            Cleared by the next successful upload, gate decision, or run ingest.
     AnalysisCoreFields:
       type: object
       description: >

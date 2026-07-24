@@ -47,6 +47,7 @@ export * from './packetGateInput';
 export * from './packetGateInputDecision';
 export * from './packetMetadata';
 export * from './packetPreflight';
+export * from './packetRunFailure';
 export * from './packetState';
 export * from './packetStateState';
 export * from './packetThumbnail';

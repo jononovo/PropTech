@@ -493,6 +493,13 @@ function buildAudit(app: Application, run: AnalysisRun | null, reqs: CaseReq[]):
     }
   }
 
+  for (const ev of app.templateHistory ?? []) {
+    entries.push({
+      when: new Date(ev.decidedAt),
+      text: `${ev.decidedBy} upgraded the template v${ev.fromVersion} → v${ev.toVersion} — additive-only, prior work untouched`,
+    });
+  }
+
   for (const r of reqs) {
     if (!r.verdict) continue;
     const when = new Date(r.verdict.decidedAt);

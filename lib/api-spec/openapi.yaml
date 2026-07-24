@@ -309,6 +309,50 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/template-version:
+    post:
+      operationId: upgradeTemplateVersion
+      tags: [intake]
+      summary: Re-pin the application to a newer active template version
+      description: >
+        Additive-only upgrade of the application's pinned template copy. The target must be
+        a NEWER, ACTIVE version of the same family, and every block on the current pin must
+        still exist in the target — uploads, verdicts and analysis mappings key on those
+        block ids, so downgrades, re-pins and block-removing moves are refused (409). Each
+        successful re-pin appends who/when/vN→vN to templateHistory for the audit trail.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TemplateUpgradeInput"
+      responses:
+        "200":
+          description: Application re-pinned to the target version
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Malformed body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application or template version not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Downgrade/re-pin, inactive target, or target removes blocks in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /applications/{applicationId}/fields/{blockId}:
     put:
       operationId: saveFieldValues
@@ -983,6 +1027,25 @@ components:
           $ref: "#/components/schemas/PacketState"
         template:
           $ref: "#/components/schemas/Template"
+        templateHistory:
+          type: array
+          description: Audit trail of template re-pins (who, when, vN→vN)
+          items:
+            $ref: "#/components/schemas/TemplateRepinEvent"
+    TemplateUpgradeInput:
+      type: object
+      required: [targetVersion, decidedBy]
+      properties:
+        targetVersion: { type: integer }
+        decidedBy: { type: string }
+    TemplateRepinEvent:
+      type: object
+      required: [fromVersion, toVersion, decidedBy, decidedAt]
+      properties:
+        fromVersion: { type: integer }
+        toVersion: { type: integer }
+        decidedBy: { type: string }
+        decidedAt: { type: string }
     Verdict:
       type: object
       description: >

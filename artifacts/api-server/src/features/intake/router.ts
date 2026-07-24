@@ -9,6 +9,8 @@ import {
   SaveFieldValuesResponse,
   UpdateApplicationBody,
   UpdateApplicationResponse,
+  UpgradeTemplateVersionBody,
+  UpgradeTemplateVersionResponse,
 } from "@workspace/api-zod";
 import { readTemplate } from "../template-library/store";
 import { HttpError, isHttpError } from "../../lib/httpError";
@@ -127,6 +129,72 @@ router.put("/applications/:applicationId/fields/:blockId", async (req, res): Pro
       return;
     }
     res.json(SaveFieldValuesResponse.parse(app));
+  } catch (err) {
+    if (isHttpError(err)) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+const templateBlockIds = (tpl: Application["template"]): string[] =>
+  tpl.sections.flatMap((s) => s.subsections.flatMap((ss) => ss.blocks.map((b) => b.id)));
+
+router.post("/applications/:applicationId/template-version", async (req, res): Promise<void> => {
+  const raw = req.params["applicationId"];
+  const id = Array.isArray(raw) ? raw[0] : raw;
+  const parsed = UpgradeTemplateVersionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  try {
+    const app = id
+      ? await updateApplication(id, (app) => {
+          const { targetVersion, decidedBy } = parsed.data;
+          if (targetVersion <= app.version) {
+            throw new HttpError(
+              409,
+              `Application pins v${app.version}; only upgrades to a newer version are allowed.`,
+            );
+          }
+          const tpl = readTemplate(app.family, targetVersion);
+          if (!tpl) {
+            throw new HttpError(404, "Template version not found");
+          }
+          if (tpl.status !== "active") {
+            throw new HttpError(409, "Applications can only be re-pinned to an active template version.");
+          }
+          // Additive-only: every block on the current pin must survive the move —
+          // uploads, verdicts and analysis mappings all key on these block ids.
+          const nextIds = new Set(templateBlockIds(tpl));
+          const missing = templateBlockIds(app.template).filter((b) => !nextIds.has(b));
+          if (missing.length > 0) {
+            throw new HttpError(
+              409,
+              `Target version removes blocks in use on this application: ${missing.join(", ")}`,
+            );
+          }
+          app.templateHistory = [
+            ...(app.templateHistory ?? []),
+            {
+              fromVersion: app.version,
+              toVersion: targetVersion,
+              decidedBy,
+              decidedAt: new Date().toISOString(),
+            },
+          ];
+          app.version = targetVersion;
+          app.template = tpl;
+          return app;
+        })
+      : undefined;
+    if (!app) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+    res.json(UpgradeTemplateVersionResponse.parse(app));
   } catch (err) {
     if (isHttpError(err)) {
       res.status(err.status).json({ error: err.message });

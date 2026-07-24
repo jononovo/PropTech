@@ -40,6 +40,7 @@ import type {
   TemplateInput,
   TemplateListing,
   TemplateRef,
+  TemplateUpgradeInput,
   UploadedFile,
   VerdictInput
 } from './api.schemas';
@@ -1117,6 +1118,79 @@ export const useUpdateApplication = <TError = ErrorType<ApiMessage>,
         TContext
       > => {
       return useMutation(getUpdateApplicationMutationOptions(options));
+    }
+
+export const getUpgradeTemplateVersionUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/template-version`
+}
+
+/**
+ * Additive-only upgrade of the application's pinned template copy. The target must be a NEWER, ACTIVE version of the same family, and every block on the current pin must still exist in the target — uploads, verdicts and analysis mappings key on those block ids, so downgrades, re-pins and block-removing moves are refused (409). Each successful re-pin appends who/when/vN→vN to templateHistory for the audit trail.
+ * @summary Re-pin the application to a newer active template version
+ */
+export const upgradeTemplateVersion = async (applicationId: string,
+    templateUpgradeInput: TemplateUpgradeInput, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getUpgradeTemplateVersionUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(templateUpgradeInput)
+  }
+);}
+
+
+
+
+
+export const getUpgradeTemplateVersionMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upgradeTemplateVersion>>, TError,{applicationId: string;data: BodyType<TemplateUpgradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upgradeTemplateVersion>>, TError,{applicationId: string;data: BodyType<TemplateUpgradeInput>}, TContext> => {
+
+const mutationKey = ['upgradeTemplateVersion'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upgradeTemplateVersion>>, {applicationId: string;data: BodyType<TemplateUpgradeInput>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  upgradeTemplateVersion(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpgradeTemplateVersionMutationResult = NonNullable<Awaited<ReturnType<typeof upgradeTemplateVersion>>>
+    export type UpgradeTemplateVersionMutationBody = BodyType<TemplateUpgradeInput>
+    export type UpgradeTemplateVersionMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Re-pin the application to a newer active template version
+ */
+export const useUpgradeTemplateVersion = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upgradeTemplateVersion>>, TError,{applicationId: string;data: BodyType<TemplateUpgradeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upgradeTemplateVersion>>,
+        TError,
+        {applicationId: string;data: BodyType<TemplateUpgradeInput>},
+        TContext
+      > => {
+      return useMutation(getUpgradeTemplateVersionMutationOptions(options));
     }
 
 export const getSaveFieldValuesUrl = (applicationId: string,

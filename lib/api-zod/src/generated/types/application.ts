@@ -10,6 +10,7 @@ import type { ApplicationUploads } from './applicationUploads';
 import type { ApplicationVerdicts } from './applicationVerdicts';
 import type { PacketState } from './packetState';
 import type { Template } from './template';
+import type { TemplateRepinEvent } from './templateRepinEvent';
 
 export interface Application {
   id: string;
@@ -26,4 +27,6 @@ export interface Application {
   verdicts?: ApplicationVerdicts;
   packet?: PacketState;
   template: Template;
+  /** Audit trail of template re-pins (who, when, vN→vN) */
+  templateHistory?: TemplateRepinEvent[];
 }

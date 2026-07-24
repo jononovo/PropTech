@@ -4,11 +4,13 @@ import {
   getGetAnalysisQueryKey,
   getGetApplicationQueryKey,
   getListApplicationsQueryKey,
+  getListTemplatesQueryKey,
   useDecidePacketGate,
   useGetAnalysis,
   useGetApplication,
   useRecordVerdict,
   useUpdateApplication,
+  useUpgradeTemplateVersion,
   useUploadPacket,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
@@ -115,6 +117,46 @@ export function useClosingDate(applicationId: string) {
     );
 
   return { setClosingDate, isPending: mutation.isPending };
+}
+
+/**
+ * Template re-pin — additive-only upgrade to a newer active version of the
+ * same family. The server refuses downgrades, inactive targets and moves that
+ * would orphan blocks; each success lands in the application's audit trail.
+ */
+export function useTemplateUpgrade(applicationId: string) {
+  const queryClient = useQueryClient();
+  const { profile } = useProfile();
+  const { toast } = useToast();
+
+  const mutation = useUpgradeTemplateVersion({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetApplicationQueryKey(applicationId) });
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(applicationId) });
+        queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
+        // inUseBy counts in the template library shift with the pin
+        queryClient.invalidateQueries({ queryKey: getListTemplatesQueryKey() });
+      },
+      onError: (err: unknown) => toast({ description: `Template not upgraded — ${errText(err)}` }),
+    },
+  });
+
+  const upgrade = (targetVersion: number) =>
+    mutation.mutate(
+      {
+        applicationId,
+        data: { targetVersion, decidedBy: `${profile.name} · ${profile.role}` },
+      },
+      {
+        onSuccess: () =>
+          toast({
+            description: `Template upgraded to v${targetVersion}. Recorded in the audit trail.`,
+          }),
+      },
+    );
+
+  return { upgrade, isPending: mutation.isPending };
 }
 
 /**

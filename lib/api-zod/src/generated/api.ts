@@ -540,7 +540,13 @@ export const CreateApplicationResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
-})
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 
@@ -651,7 +657,13 @@ export const GetApplicationResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
-})
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 
@@ -767,7 +779,136 @@ export const UpdateApplicationResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
+
+
+/**
+ * Additive-only upgrade of the application's pinned template copy. The target must be a NEWER, ACTIVE version of the same family, and every block on the current pin must still exist in the target — uploads, verdicts and analysis mappings key on those block ids, so downgrades, re-pins and block-removing moves are refused (409). Each successful re-pin appends who/when/vN→vN to templateHistory for the audit trail.
+ * @summary Re-pin the application to a newer active template version
+ */
+export const UpgradeTemplateVersionParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const UpgradeTemplateVersionBody = zod.object({
+  "targetVersion": zod.number(),
+  "decidedBy": zod.string()
+})
+
+export const UpgradeTemplateVersionResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string()
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 
@@ -883,7 +1024,13 @@ export const SaveFieldValuesResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
-})
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 
@@ -1218,7 +1365,13 @@ export const UploadPacketResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
-})
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 
@@ -1335,7 +1488,13 @@ export const DecidePacketGateResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
-})
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 
@@ -1463,7 +1622,13 @@ export const ReportPacketRunFailureResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
-})
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 
@@ -1597,7 +1762,13 @@ export const RecordVerdictResponse = zod.object({
 }).describe('kind=document uses document fields; kind=fields uses the fields array.'))
 }))
 }))
-})
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
 })
 
 

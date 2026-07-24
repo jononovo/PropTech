@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
 import { ArrowLeft, Bell, FolderOpen, History, Inbox, ListChecks } from 'lucide-react';
+import { useListTemplates } from '@workspace/api-client-react';
 import { fmt } from './caseData';
 import type { CaseModel } from './caseData';
-import { useClosingDate } from './useCaseFile';
+import { useClosingDate, useTemplateUpgrade } from './useCaseFile';
 
 export type Lens = 'triage' | 'workfile' | 'timeline' | 'register';
 
@@ -56,11 +57,14 @@ export function CaseShell({
                   </span>
                 )}
               </div>
-              <div className="text-[12px] text-[var(--ops-body-sec)] truncate">
-                {app.template.template}{' '}
-                <span className="ops-mono text-[10.5px] text-[var(--ops-muted)]">v{app.version}</span>
-                <span className="text-[var(--ops-faint)]"> · </span>
-                <span className="text-[var(--ops-muted)]">{app.template.program}</span>
+              <div className="text-[12px] text-[var(--ops-body-sec)] flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                <span className="truncate">
+                  {app.template.template}{' '}
+                  <span className="ops-mono text-[10.5px] text-[var(--ops-muted)]">v{app.version}</span>
+                  <span className="text-[var(--ops-faint)]"> · </span>
+                  <span className="text-[var(--ops-muted)]">{app.template.program}</span>
+                </span>
+                <TemplateUpgradeNudge model={model} />
               </div>
             </div>
 
@@ -127,6 +131,35 @@ export function CaseShell({
 
       <div className="flex-1 min-h-0">{children}</div>
     </div>
+  );
+}
+
+/**
+ * Shown only when a newer ACTIVE version of this application's template family
+ * exists. One click re-pins (server enforces additive-only) and records the
+ * upgrade in the audit trail.
+ */
+function TemplateUpgradeNudge({ model }: { model: CaseModel }) {
+  const { app } = model;
+  const templatesQ = useListTemplates();
+  const { upgrade, isPending } = useTemplateUpgrade(app.id);
+
+  const newest = (templatesQ.data ?? [])
+    .filter((t) => t.family === app.family && t.status === 'active' && t.version > app.version)
+    .reduce((max, t) => Math.max(max, t.version), 0);
+
+  if (newest === 0) return null;
+
+  return (
+    <button
+      onClick={() => upgrade(newest)}
+      disabled={isPending}
+      data-testid="button-upgrade-template"
+      title="Additive-only upgrade: existing uploads, verdicts and analysis stay attached. Recorded in the audit trail."
+      className="ops-mono text-[9px] px-1.5 py-0.5 rounded-[3px] bg-[var(--ops-warning-wash)] border border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] tracking-[0.06em] hover:bg-[#FEF3C7] transition-colors disabled:opacity-60"
+    >
+      {isPending ? 'UPGRADING…' : `TEMPLATE v${newest} AVAILABLE — UPGRADE`}
+    </button>
   );
 }
 

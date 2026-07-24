@@ -383,6 +383,13 @@ export interface PacketState {
   lastRunError?: string;
 }
 
+export interface TemplateRepinEvent {
+  fromVersion: number;
+  toVersion: number;
+  decidedBy: string;
+  decidedAt: string;
+}
+
 export interface Application {
   id: string;
   family: string;
@@ -398,6 +405,13 @@ export interface Application {
   verdicts?: ApplicationVerdicts;
   packet?: PacketState;
   template: Template;
+  /** Audit trail of template re-pins (who, when, vN→vN) */
+  templateHistory?: TemplateRepinEvent[];
+}
+
+export interface TemplateUpgradeInput {
+  targetVersion: number;
+  decidedBy: string;
 }
 
 export type VerdictInputVerdict = typeof VerdictInputVerdict[keyof typeof VerdictInputVerdict];

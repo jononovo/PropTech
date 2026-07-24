@@ -30,7 +30,7 @@ let body = await res.json();
 if (!res.ok) die(`upload failed ${res.status}: ${JSON.stringify(body)}`);
 // Packet endpoints return the full application document; packet fields are nested.
 let pkt = body.packet ?? {};
-console.log(`upload: ${res.status} state=${pkt.state} pages=${pkt.pages} flags=${JSON.stringify(pkt.preflightFlags ?? [])}`);
+console.log(`upload: ${res.status} state=${pkt.state} pages=${pkt.pages} flags=${JSON.stringify(pkt.preflight?.flags ?? [])}`);
 
 // 2. Gate (skip if upload auto-started processing)
 if (pkt.state === "gated") {

@@ -87,6 +87,7 @@ export const GetTemplateResponse = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -144,6 +145,7 @@ export const SaveTemplateBody = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -192,6 +194,7 @@ export const SaveTemplateResponse = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -293,6 +296,7 @@ export const ListSavedSectionsResponseItem = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -341,6 +345,7 @@ export const CreateSavedSectionBody = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -382,6 +387,7 @@ export const CreateSavedSectionResponse = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -415,7 +421,8 @@ export const ListApplicationsResponseItem = zod.object({
   "applicantName": zod.string(),
   "createdAt": zod.string(),
   "docsFiled": zod.number(),
-  "docsTotal": zod.number()
+  "docsTotal": zod.number(),
+  "projectedClosingDate": zod.string().optional()
 })
 export const ListApplicationsResponse = zod.array(ListApplicationsResponseItem)
 
@@ -429,7 +436,8 @@ export const ListApplicationsResponse = zod.array(ListApplicationsResponseItem)
 export const CreateApplicationBody = zod.object({
   "family": zod.string(),
   "version": zod.number(),
-  "applicantName": zod.string().min(1)
+  "applicantName": zod.string().min(1),
+  "projectedClosingDate": zod.string().optional()
 })
 
 export const CreateApplicationResponse = zod.object({
@@ -444,6 +452,17 @@ export const CreateApplicationResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string()
 }))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -471,6 +490,7 @@ export const CreateApplicationResponse = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -513,6 +533,17 @@ export const GetApplicationResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string()
 }))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -540,6 +571,93 @@ export const GetApplicationResponse = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+})
+})
+
+
+/**
+ * projectedClosingDate is a first-class portal-owned field (analyzer spec §8) — the hard-expiry clocks are judged against it. Null clears it.
+ * @summary Update portal-owned application fields
+ */
+export const UpdateApplicationParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const UpdateApplicationBody = zod.object({
+  "projectedClosingDate": zod.union([zod.string(),zod.null()]).optional()
+})
+
+export const UpdateApplicationResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string()
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -587,6 +705,17 @@ export const SaveFieldValuesResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string()
 }))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -614,6 +743,7 @@ export const SaveFieldValuesResponse = zod.object({
   "kind": zod.enum(['document', 'fields']),
   "id": zod.string(),
   "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
   "formats": zod.array(zod.string()).optional(),
   "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
   "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
@@ -666,5 +796,286 @@ export const DeleteDocumentParams = zod.object({
 })
 
 export const DeleteDocumentResponse = zod.void()
+
+
+/**
+ * Returns an empty shell (latestRunId null, runs []) when no run has been ingested yet.
+ * @summary Analyzer sidecar for an application
+ */
+export const GetAnalysisParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const getAnalysisResponseRunsItemDocumentsItemSegmentPagesMin = 2;
+export const getAnalysisResponseRunsItemDocumentsItemSegmentPagesMax = 2;
+
+export const getAnalysisResponseRunsItemUnassignedItemPagesMin = 2;
+export const getAnalysisResponseRunsItemUnassignedItemPagesMax = 2;
+
+
+
+export const GetAnalysisResponse = zod.object({
+  "applicationId": zod.string(),
+  "latestRunId": zod.union([zod.string(),zod.null()]),
+  "runs": zod.array(zod.object({
+  "runId": zod.string(),
+  "startedAt": zod.string(),
+  "pipelineVersion": zod.string(),
+  "preflight": zod.object({
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
+  "gate": zod.enum(['auto', 'confirmed', 'bypassed'])
+}),
+  "documents": zod.array(zod.object({
+  "segment": zod.object({
+  "pages": zod.array(zod.number()).min(getAnalysisResponseRunsItemDocumentsItemSegmentPagesMin).max(getAnalysisResponseRunsItemDocumentsItemSegmentPagesMax).describe('[firstPage, lastPage] within the source packet, 1-based inclusive.')
+}),
+  "suggestedBlockId": zod.string().describe('Must resolve to a document block in the application\'s pinned template.'),
+  "confidence": zod.number(),
+  "suggestedName": zod.string().describe('Derived, never hand-written. Human rename always wins and is recorded.'),
+  "coreFields": zod.object({
+  "document_date": zod.string(),
+  "expiry_date": zod.string().optional(),
+  "primary_party_name": zod.string(),
+  "issuing_party": zod.string().optional()
+}).describe('Universal core fields the judge emits per document (analyzer spec §1.4). Ungrounded in v1 — the verdict UI must display the dates for human confirmation at accept. Key names follow the analyzer contract verbatim.\n'),
+  "scores": zod.object({
+  "quality": zod.number(),
+  "formatting": zod.number(),
+  "fraud_signal": zod.number(),
+  "scrutinyTier": zod.enum(['critical', 'standard', 'supporting'])
+}),
+  "flags": zod.array(zod.object({
+  "code": zod.string(),
+  "detail": zod.string()
+})),
+  "extractions": zod.array(zod.record(zod.string(), zod.unknown())).describe('Always present — empty in v1, populated in v2 with zero contract change.'),
+  "artifacts": zod.object({
+  "md": zod.string(),
+  "pageRenders": zod.array(zod.string()),
+  "crops": zod.array(zod.string())
+}).describe('URLs into the analyzer\'s artifact store (md + renders + crops).')
+})),
+  "unassigned": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(getAnalysisResponseRunsItemUnassignedItemPagesMin).max(getAnalysisResponseRunsItemUnassignedItemPagesMax),
+  "description": zod.string()
+})),
+  "whisper": zod.array(zod.string())
+}))
+}).describe('Portal-owned sidecar file (data\/analysis\/<applicationId>.json). Append-only runs.')
+
+
+/**
+ * The portal's store appends the run to the sidecar and sets latestRunId itself; the analyzer stays stateless toward the portal (single-writer semantics, no read-modify-write race). INVARIANT (analyzer spec §5): every documents[].suggestedBlockId must resolve to a document block in the application's PINNED template — otherwise the whole run is rejected with 400. A runId already present in the sidecar is rejected with 409 (idempotent replay protection). The analyzer never mutates the application file itself; verdicts stay human-only.
+ * @summary Analyzer write-path — one run object per call
+ */
+export const IngestAnalysisRunParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const ingestAnalysisRunBodyDocumentsItemSegmentPagesMin = 2;
+export const ingestAnalysisRunBodyDocumentsItemSegmentPagesMax = 2;
+
+export const ingestAnalysisRunBodyUnassignedItemPagesMin = 2;
+export const ingestAnalysisRunBodyUnassignedItemPagesMax = 2;
+
+
+
+export const IngestAnalysisRunBody = zod.object({
+  "runId": zod.string(),
+  "startedAt": zod.string(),
+  "pipelineVersion": zod.string(),
+  "preflight": zod.object({
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
+  "gate": zod.enum(['auto', 'confirmed', 'bypassed'])
+}),
+  "documents": zod.array(zod.object({
+  "segment": zod.object({
+  "pages": zod.array(zod.number()).min(ingestAnalysisRunBodyDocumentsItemSegmentPagesMin).max(ingestAnalysisRunBodyDocumentsItemSegmentPagesMax).describe('[firstPage, lastPage] within the source packet, 1-based inclusive.')
+}),
+  "suggestedBlockId": zod.string().describe('Must resolve to a document block in the application\'s pinned template.'),
+  "confidence": zod.number(),
+  "suggestedName": zod.string().describe('Derived, never hand-written. Human rename always wins and is recorded.'),
+  "coreFields": zod.object({
+  "document_date": zod.string(),
+  "expiry_date": zod.string().optional(),
+  "primary_party_name": zod.string(),
+  "issuing_party": zod.string().optional()
+}).describe('Universal core fields the judge emits per document (analyzer spec §1.4). Ungrounded in v1 — the verdict UI must display the dates for human confirmation at accept. Key names follow the analyzer contract verbatim.\n'),
+  "scores": zod.object({
+  "quality": zod.number(),
+  "formatting": zod.number(),
+  "fraud_signal": zod.number(),
+  "scrutinyTier": zod.enum(['critical', 'standard', 'supporting'])
+}),
+  "flags": zod.array(zod.object({
+  "code": zod.string(),
+  "detail": zod.string()
+})),
+  "extractions": zod.array(zod.record(zod.string(), zod.unknown())).describe('Always present — empty in v1, populated in v2 with zero contract change.'),
+  "artifacts": zod.object({
+  "md": zod.string(),
+  "pageRenders": zod.array(zod.string()),
+  "crops": zod.array(zod.string())
+}).describe('URLs into the analyzer\'s artifact store (md + renders + crops).')
+})),
+  "unassigned": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(ingestAnalysisRunBodyUnassignedItemPagesMin).max(ingestAnalysisRunBodyUnassignedItemPagesMax),
+  "description": zod.string()
+})),
+  "whisper": zod.array(zod.string())
+})
+
+export const ingestAnalysisRunResponseRunsItemDocumentsItemSegmentPagesMin = 2;
+export const ingestAnalysisRunResponseRunsItemDocumentsItemSegmentPagesMax = 2;
+
+export const ingestAnalysisRunResponseRunsItemUnassignedItemPagesMin = 2;
+export const ingestAnalysisRunResponseRunsItemUnassignedItemPagesMax = 2;
+
+
+
+export const IngestAnalysisRunResponse = zod.object({
+  "applicationId": zod.string(),
+  "latestRunId": zod.union([zod.string(),zod.null()]),
+  "runs": zod.array(zod.object({
+  "runId": zod.string(),
+  "startedAt": zod.string(),
+  "pipelineVersion": zod.string(),
+  "preflight": zod.object({
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
+  "gate": zod.enum(['auto', 'confirmed', 'bypassed'])
+}),
+  "documents": zod.array(zod.object({
+  "segment": zod.object({
+  "pages": zod.array(zod.number()).min(ingestAnalysisRunResponseRunsItemDocumentsItemSegmentPagesMin).max(ingestAnalysisRunResponseRunsItemDocumentsItemSegmentPagesMax).describe('[firstPage, lastPage] within the source packet, 1-based inclusive.')
+}),
+  "suggestedBlockId": zod.string().describe('Must resolve to a document block in the application\'s pinned template.'),
+  "confidence": zod.number(),
+  "suggestedName": zod.string().describe('Derived, never hand-written. Human rename always wins and is recorded.'),
+  "coreFields": zod.object({
+  "document_date": zod.string(),
+  "expiry_date": zod.string().optional(),
+  "primary_party_name": zod.string(),
+  "issuing_party": zod.string().optional()
+}).describe('Universal core fields the judge emits per document (analyzer spec §1.4). Ungrounded in v1 — the verdict UI must display the dates for human confirmation at accept. Key names follow the analyzer contract verbatim.\n'),
+  "scores": zod.object({
+  "quality": zod.number(),
+  "formatting": zod.number(),
+  "fraud_signal": zod.number(),
+  "scrutinyTier": zod.enum(['critical', 'standard', 'supporting'])
+}),
+  "flags": zod.array(zod.object({
+  "code": zod.string(),
+  "detail": zod.string()
+})),
+  "extractions": zod.array(zod.record(zod.string(), zod.unknown())).describe('Always present — empty in v1, populated in v2 with zero contract change.'),
+  "artifacts": zod.object({
+  "md": zod.string(),
+  "pageRenders": zod.array(zod.string()),
+  "crops": zod.array(zod.string())
+}).describe('URLs into the analyzer\'s artifact store (md + renders + crops).')
+})),
+  "unassigned": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(ingestAnalysisRunResponseRunsItemUnassignedItemPagesMin).max(ingestAnalysisRunResponseRunsItemUnassignedItemPagesMax),
+  "description": zod.string()
+})),
+  "whisper": zod.array(zod.string())
+}))
+}).describe('Portal-owned sidecar file (data\/analysis\/<applicationId>.json). Append-only runs.')
+
+
+/**
+ * Verdicts are human-only (analyzer spec §1.6) — the analyzer suggests, staff decide. Accepting a document explicitly confirms document_date/expiry_date, the dates its clocks run on (spec §1.4); if the reviewer edited them, datesEdited must be true. The latest verdict per block is kept; re-recording replaces it. On accept, staleness clocks stop at decidedAt.
+ * @summary Record the human verdict for a document block
+ */
+export const RecordVerdictParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "blockId": zod.coerce.string()
+})
+
+export const RecordVerdictBody = zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+})
+
+export const RecordVerdictResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string()
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+})
+})
 
 

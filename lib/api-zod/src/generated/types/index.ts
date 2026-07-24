@@ -7,12 +7,27 @@
  */
 
 export * from './alternativeGroup';
+export * from './analysisArtifacts';
+export * from './analysisCoreFields';
+export * from './analysisDocument';
+export * from './analysisDocumentExtractionsItem';
+export * from './analysisFlag';
+export * from './analysisPreflight';
+export * from './analysisPreflightGate';
+export * from './analysisRun';
+export * from './analysisScores';
+export * from './analysisScoresScrutinyTier';
+export * from './analysisSegment';
+export * from './analysisSidecar';
+export * from './analysisUnassigned';
 export * from './apiMessage';
 export * from './application';
 export * from './applicationFieldValues';
 export * from './applicationInput';
 export * from './applicationSummary';
+export * from './applicationUpdate';
 export * from './applicationUploads';
+export * from './applicationVerdicts';
 export * from './block';
 export * from './blockCriticality';
 export * from './blockKind';
@@ -41,3 +56,9 @@ export * from './templateListingStatus';
 export * from './templateRef';
 export * from './templateStatus';
 export * from './uploadedFile';
+export * from './verdict';
+export * from './verdictDecidedBy';
+export * from './verdictInput';
+export * from './verdictInputDecidedBy';
+export * from './verdictInputVerdict';
+export * from './verdictVerdict';

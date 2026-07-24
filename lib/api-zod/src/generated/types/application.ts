@@ -7,6 +7,7 @@
  */
 import type { ApplicationFieldValues } from './applicationFieldValues';
 import type { ApplicationUploads } from './applicationUploads';
+import type { ApplicationVerdicts } from './applicationVerdicts';
 import type { Template } from './template';
 
 export interface Application {
@@ -19,5 +20,8 @@ export interface Application {
   fieldValues: ApplicationFieldValues;
   /** blockId -> uploaded files */
   uploads: ApplicationUploads;
+  projectedClosingDate?: string;
+  /** blockId -> latest human verdict */
+  verdicts?: ApplicationVerdicts;
   template: Template;
 }

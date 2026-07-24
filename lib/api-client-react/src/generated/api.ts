@@ -20,10 +20,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AnalysisRun,
+  AnalysisSidecar,
   ApiMessage,
   Application,
   ApplicationInput,
   ApplicationSummary,
+  ApplicationUpdate,
   DocumentUpload,
   FieldValues,
   HealthStatus,
@@ -34,7 +37,8 @@ import type {
   TemplateInput,
   TemplateListing,
   TemplateRef,
-  UploadedFile
+  UploadedFile,
+  VerdictInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -1039,6 +1043,79 @@ export function useGetApplication<TData = Awaited<ReturnType<typeof getApplicati
 
 
 
+export const getUpdateApplicationUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}`
+}
+
+/**
+ * projectedClosingDate is a first-class portal-owned field (analyzer spec §8) — the hard-expiry clocks are judged against it. Null clears it.
+ * @summary Update portal-owned application fields
+ */
+export const updateApplication = async (applicationId: string,
+    applicationUpdate: ApplicationUpdate, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getUpdateApplicationUrl(applicationId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(applicationUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateApplicationMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateApplication>>, TError,{applicationId: string;data: BodyType<ApplicationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateApplication>>, TError,{applicationId: string;data: BodyType<ApplicationUpdate>}, TContext> => {
+
+const mutationKey = ['updateApplication'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateApplication>>, {applicationId: string;data: BodyType<ApplicationUpdate>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  updateApplication(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateApplicationMutationResult = NonNullable<Awaited<ReturnType<typeof updateApplication>>>
+    export type UpdateApplicationMutationBody = BodyType<ApplicationUpdate>
+    export type UpdateApplicationMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Update portal-owned application fields
+ */
+export const useUpdateApplication = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateApplication>>, TError,{applicationId: string;data: BodyType<ApplicationUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateApplication>>,
+        TError,
+        {applicationId: string;data: BodyType<ApplicationUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateApplicationMutationOptions(options));
+    }
+
 export const getSaveFieldValuesUrl = (applicationId: string,
     blockId: string,) => {
 
@@ -1262,5 +1339,231 @@ export const useDeleteDocument = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteDocumentMutationOptions(options));
+    }
+
+export const getGetAnalysisUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/analysis`
+}
+
+/**
+ * Returns an empty shell (latestRunId null, runs []) when no run has been ingested yet.
+ * @summary Analyzer sidecar for an application
+ */
+export const getAnalysis = async (applicationId: string, options?: RequestInit): Promise<AnalysisSidecar> => {
+
+  return customFetch<AnalysisSidecar>(getGetAnalysisUrl(applicationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnalysisQueryKey = (applicationId: string,) => {
+    return [
+    `/api/applications/${applicationId}/analysis`
+    ] as const;
+    }
+
+
+export const getGetAnalysisQueryOptions = <TData = Awaited<ReturnType<typeof getAnalysis>>, TError = ErrorType<ApiMessage>>(applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAnalysis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnalysisQueryKey(applicationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalysis>>> = ({ signal }) => getAnalysis(applicationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnalysis>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAnalysisQueryResult = NonNullable<Awaited<ReturnType<typeof getAnalysis>>>
+export type GetAnalysisQueryError = ErrorType<ApiMessage>
+
+
+/**
+ * @summary Analyzer sidecar for an application
+ */
+
+export function useGetAnalysis<TData = Awaited<ReturnType<typeof getAnalysis>>, TError = ErrorType<ApiMessage>>(
+ applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAnalysis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAnalysisQueryOptions(applicationId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getIngestAnalysisRunUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/analysis`
+}
+
+/**
+ * The portal's store appends the run to the sidecar and sets latestRunId itself; the analyzer stays stateless toward the portal (single-writer semantics, no read-modify-write race). INVARIANT (analyzer spec §5): every documents[].suggestedBlockId must resolve to a document block in the application's PINNED template — otherwise the whole run is rejected with 400. A runId already present in the sidecar is rejected with 409 (idempotent replay protection). The analyzer never mutates the application file itself; verdicts stay human-only.
+ * @summary Analyzer write-path — one run object per call
+ */
+export const ingestAnalysisRun = async (applicationId: string,
+    analysisRun: AnalysisRun, options?: RequestInit): Promise<AnalysisSidecar> => {
+
+  return customFetch<AnalysisSidecar>(getIngestAnalysisRunUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(analysisRun)
+  }
+);}
+
+
+
+
+
+export const getIngestAnalysisRunMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestAnalysisRun>>, TError,{applicationId: string;data: BodyType<AnalysisRun>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof ingestAnalysisRun>>, TError,{applicationId: string;data: BodyType<AnalysisRun>}, TContext> => {
+
+const mutationKey = ['ingestAnalysisRun'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingestAnalysisRun>>, {applicationId: string;data: BodyType<AnalysisRun>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  ingestAnalysisRun(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngestAnalysisRunMutationResult = NonNullable<Awaited<ReturnType<typeof ingestAnalysisRun>>>
+    export type IngestAnalysisRunMutationBody = BodyType<AnalysisRun>
+    export type IngestAnalysisRunMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Analyzer write-path — one run object per call
+ */
+export const useIngestAnalysisRun = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingestAnalysisRun>>, TError,{applicationId: string;data: BodyType<AnalysisRun>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof ingestAnalysisRun>>,
+        TError,
+        {applicationId: string;data: BodyType<AnalysisRun>},
+        TContext
+      > => {
+      return useMutation(getIngestAnalysisRunMutationOptions(options));
+    }
+
+export const getRecordVerdictUrl = (applicationId: string,
+    blockId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/verdicts/${blockId}`
+}
+
+/**
+ * Verdicts are human-only (analyzer spec §1.6) — the analyzer suggests, staff decide. Accepting a document explicitly confirms document_date/expiry_date, the dates its clocks run on (spec §1.4); if the reviewer edited them, datesEdited must be true. The latest verdict per block is kept; re-recording replaces it. On accept, staleness clocks stop at decidedAt.
+ * @summary Record the human verdict for a document block
+ */
+export const recordVerdict = async (applicationId: string,
+    blockId: string,
+    verdictInput: VerdictInput, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getRecordVerdictUrl(applicationId,blockId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(verdictInput)
+  }
+);}
+
+
+
+
+
+export const getRecordVerdictMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordVerdict>>, TError,{applicationId: string;blockId: string;data: BodyType<VerdictInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordVerdict>>, TError,{applicationId: string;blockId: string;data: BodyType<VerdictInput>}, TContext> => {
+
+const mutationKey = ['recordVerdict'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordVerdict>>, {applicationId: string;blockId: string;data: BodyType<VerdictInput>}> = (props) => {
+          const {applicationId,blockId,data} = props ?? {};
+
+          return  recordVerdict(applicationId,blockId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordVerdictMutationResult = NonNullable<Awaited<ReturnType<typeof recordVerdict>>>
+    export type RecordVerdictMutationBody = BodyType<VerdictInput>
+    export type RecordVerdictMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Record the human verdict for a document block
+ */
+export const useRecordVerdict = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordVerdict>>, TError,{applicationId: string;blockId: string;data: BodyType<VerdictInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordVerdict>>,
+        TError,
+        {applicationId: string;blockId: string;data: BodyType<VerdictInput>},
+        TContext
+      > => {
+      return useMutation(getRecordVerdictMutationOptions(options));
     }
 

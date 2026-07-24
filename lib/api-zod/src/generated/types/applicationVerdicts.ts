@@ -5,11 +5,9 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { Verdict } from './verdict';
 
-export interface ApplicationInput {
-  family: string;
-  version: number;
-  /** @minLength 1 */
-  applicantName: string;
-  projectedClosingDate?: string;
-}
+/**
+ * blockId -> latest human verdict
+ */
+export type ApplicationVerdicts = {[key: string]: Verdict};

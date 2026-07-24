@@ -3,6 +3,6 @@ name: User interaction preferences
 description: How this user prefers to receive questions and updates from the agent.
 ---
 
-- **Prefers questions as plain chat text, not form UI.** Declined two consecutive AskQuestion forms (Jul 24, 2026) even after explicitly requesting "ask me the questions again" — they want to read questions in chat (likely to carry them into a parallel research thread that produces spec revisions), not fill out forms.
-  **Why:** two declines on content they asked for; after the first form, answers came back as a revised spec document rather than form input.
-  **How to apply:** put questions directly in the reply as a short numbered list, answerable inline and in any order. Reserve AskQuestion for cases where a form is clearly better (file uploads, style pickers) and even then keep it to one field.
+- **LIKES being asked questions — welcomes them and answers thoroughly ("I do like answering questions", Jul 24, 2026).** Just deliver them as plain chat text, never AskQuestion form UI. Declined two consecutive forms; answers may arrive later as a revised spec doc from a parallel research thread.
+  **Why:** user explicitly corrected an earlier note that under-asked; the objection was only ever to the form widget, not to questions.
+  **How to apply:** ask freely and completely — put questions directly in the reply as a short numbered list with my default noted per item, answerable inline and in any order. Don't sit on open questions; surface them. Avoid AskQuestion forms entirely with this user.

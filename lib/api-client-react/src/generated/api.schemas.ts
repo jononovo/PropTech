@@ -91,6 +91,8 @@ export interface Block {
   kind: BlockKind;
   id: string;
   name: string;
+  /** Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing. */
+  docType?: string;
   formats?: string[];
   requirement?: BlockRequirement;
   criticality?: BlockCriticality;
@@ -242,6 +244,11 @@ export interface ApplicationInput {
   version: number;
   /** @minLength 1 */
   applicantName: string;
+  projectedClosingDate?: string;
+}
+
+export interface ApplicationUpdate {
+  projectedClosingDate?: string | null;
 }
 
 export interface ApplicationSummary {
@@ -253,6 +260,7 @@ export interface ApplicationSummary {
   createdAt: string;
   docsFiled: number;
   docsTotal: number;
+  projectedClosingDate?: string;
 }
 
 /**
@@ -265,6 +273,42 @@ export type ApplicationFieldValues = {[key: string]: {[key: string]: string}};
  */
 export type ApplicationUploads = {[key: string]: UploadedFile[]};
 
+export type VerdictVerdict = typeof VerdictVerdict[keyof typeof VerdictVerdict];
+
+
+export const VerdictVerdict = {
+  accepted: 'accepted',
+  new_version_requested: 'new_version_requested',
+} as const;
+
+export type VerdictDecidedBy = typeof VerdictDecidedBy[keyof typeof VerdictDecidedBy];
+
+
+export const VerdictDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+/**
+ * Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate/expiryDate are the confirmed dates the block's clocks run on.
+ */
+export interface Verdict {
+  verdict: VerdictVerdict;
+  note?: string;
+  documentDate?: string;
+  expiryDate?: string;
+  datesEdited: boolean;
+  decidedAt: string;
+  decidedBy: VerdictDecidedBy;
+  runId?: string;
+}
+
+/**
+ * blockId -> latest human verdict
+ */
+export type ApplicationVerdicts = {[key: string]: Verdict};
+
 export interface Application {
   id: string;
   family: string;
@@ -275,6 +319,146 @@ export interface Application {
   fieldValues: ApplicationFieldValues;
   /** blockId -> uploaded files */
   uploads: ApplicationUploads;
+  projectedClosingDate?: string;
+  /** blockId -> latest human verdict */
+  verdicts?: ApplicationVerdicts;
   template: Template;
+}
+
+export type VerdictInputVerdict = typeof VerdictInputVerdict[keyof typeof VerdictInputVerdict];
+
+
+export const VerdictInputVerdict = {
+  accepted: 'accepted',
+  new_version_requested: 'new_version_requested',
+} as const;
+
+export type VerdictInputDecidedBy = typeof VerdictInputDecidedBy[keyof typeof VerdictInputDecidedBy];
+
+
+export const VerdictInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface VerdictInput {
+  verdict: VerdictInputVerdict;
+  note?: string;
+  documentDate?: string;
+  expiryDate?: string;
+  datesEdited?: boolean;
+  decidedBy: VerdictInputDecidedBy;
+  runId?: string;
+}
+
+/**
+ * Universal core fields the judge emits per document (analyzer spec §1.4). Ungrounded in v1 — the verdict UI must display the dates for human confirmation at accept. Key names follow the analyzer contract verbatim.
+ */
+export interface AnalysisCoreFields {
+  document_date: string;
+  expiry_date?: string;
+  primary_party_name: string;
+  issuing_party?: string;
+}
+
+export interface AnalysisSegment {
+  /**
+     * [firstPage, lastPage] within the source packet, 1-based inclusive.
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+}
+
+export type AnalysisScoresScrutinyTier = typeof AnalysisScoresScrutinyTier[keyof typeof AnalysisScoresScrutinyTier];
+
+
+export const AnalysisScoresScrutinyTier = {
+  critical: 'critical',
+  standard: 'standard',
+  supporting: 'supporting',
+} as const;
+
+export interface AnalysisScores {
+  quality: number;
+  formatting: number;
+  fraud_signal: number;
+  scrutinyTier: AnalysisScoresScrutinyTier;
+}
+
+export interface AnalysisFlag {
+  code: string;
+  detail: string;
+}
+
+/**
+ * URLs into the analyzer's artifact store (md + renders + crops).
+ */
+export interface AnalysisArtifacts {
+  md: string;
+  pageRenders: string[];
+  crops: string[];
+}
+
+export type AnalysisDocumentExtractionsItem = { [key: string]: unknown };
+
+export interface AnalysisDocument {
+  segment: AnalysisSegment;
+  /** Must resolve to a document block in the application's pinned template. */
+  suggestedBlockId: string;
+  confidence: number;
+  /** Derived, never hand-written. Human rename always wins and is recorded. */
+  suggestedName: string;
+  coreFields: AnalysisCoreFields;
+  scores: AnalysisScores;
+  flags: AnalysisFlag[];
+  /** Always present — empty in v1, populated in v2 with zero contract change. */
+  extractions: AnalysisDocumentExtractionsItem[];
+  artifacts: AnalysisArtifacts;
+}
+
+export interface AnalysisUnassigned {
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+  description: string;
+}
+
+export type AnalysisPreflightGate = typeof AnalysisPreflightGate[keyof typeof AnalysisPreflightGate];
+
+
+export const AnalysisPreflightGate = {
+  auto: 'auto',
+  confirmed: 'confirmed',
+  bypassed: 'bypassed',
+} as const;
+
+export interface AnalysisPreflight {
+  pages: number;
+  /** Plain-language pre-flight flags ("p.41–43 below 150 DPI"). */
+  flags: string[];
+  gate: AnalysisPreflightGate;
+}
+
+export interface AnalysisRun {
+  runId: string;
+  startedAt: string;
+  pipelineVersion: string;
+  preflight: AnalysisPreflight;
+  documents: AnalysisDocument[];
+  unassigned: AnalysisUnassigned[];
+  whisper: string[];
+}
+
+/**
+ * Portal-owned sidecar file (data/analysis/<applicationId>.json). Append-only runs.
+ */
+export interface AnalysisSidecar {
+  applicationId: string;
+  latestRunId: string | null;
+  runs: AnalysisRun[];
 }
 

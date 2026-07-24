@@ -1,0 +1,461 @@
+{
+  "applicationId": "T6mirFrc3M",
+  "latestRunId": "fixture-0724-01",
+  "runs": [
+    {
+      "runId": "fixture-0724-01",
+      "startedAt": "2026-07-24T02:10:00.000Z",
+      "pipelineVersion": "fixture-0.1 (analyzer not built — seeded stand-in run)",
+      "preflight": {
+        "pages": 312,
+        "flags": [
+          "p.41–43 below 150 DPI",
+          "p.120 blank page",
+          "p.201–203 skew above 6°"
+        ],
+        "gate": "confirmed"
+      },
+      "documents": [
+        {
+          "segment": {
+            "pages": [
+              1,
+              9
+            ]
+          },
+          "suggestedBlockId": "urla-1003",
+          "confidence": 0.93,
+          "suggestedName": "2026-07-08_urla-1003_homium-origination_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-07-08",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "Homium Origination"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/urla-1003.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/urla-1003/p1.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              10,
+              21
+            ]
+          },
+          "suggestedBlockId": "disclosures",
+          "confidence": 0.93,
+          "suggestedName": "2026-07-08_disclosures_homium-origination_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-07-08",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "Homium Origination"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "standard"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/disclosures.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/disclosures/p10.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              22,
+              23
+            ]
+          },
+          "suggestedBlockId": "passport",
+          "confidence": 0.97,
+          "suggestedName": "2018-03-15_passport_us-dept-of-state_torres.pdf",
+          "coreFields": {
+            "document_date": "2018-03-15",
+            "primary_party_name": "Ana Torres",
+            "expiry_date": "2028-03-14",
+            "issuing_party": "US Dept of State"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [
+            {
+              "code": "satisfied_by_alternative",
+              "detail": "Filed in place of Government ID — Driver License (Proof of Identity group). Substitution scrutiny applied."
+            }
+          ],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/passport.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/passport/p22.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              24,
+              25
+            ]
+          },
+          "suggestedBlockId": "ssn-verify",
+          "confidence": 0.93,
+          "suggestedName": "2026-06-12_ssn-verify_ssa_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-06-12",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "SSA"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/ssn-verify.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/ssn-verify/p24.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              26,
+              31
+            ]
+          },
+          "suggestedBlockId": "pay-stubs",
+          "confidence": 0.9,
+          "suggestedName": "2026-07-10_pay-stubs_coastal-analytics-llc_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-07-10",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "Coastal Analytics LLC"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.42,
+            "scrutinyTier": "standard"
+          },
+          "flags": [
+            {
+              "code": "metadata_anomaly",
+              "detail": "PDF producer differs from employer's other stubs; file created 3 days before pay-period end."
+            }
+          ],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/pay-stubs.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/pay-stubs/p26.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              32,
+              43
+            ]
+          },
+          "suggestedBlockId": "w2-forms",
+          "confidence": 0.93,
+          "suggestedName": "2026-01-31_w2-forms_coastal-analytics-llc_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-01-31",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "Coastal Analytics LLC"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "standard"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/w2-forms.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/w2-forms/p32.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              44,
+              67
+            ]
+          },
+          "suggestedBlockId": "bank-statements",
+          "confidence": 0.96,
+          "suggestedName": "2026-06-30_bank-statements_first-national-bank_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-06-30",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "First National Bank"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "standard"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/bank-statements.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/bank-statements/p44.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              68,
+              70
+            ]
+          },
+          "suggestedBlockId": "gift-letter",
+          "confidence": 0.93,
+          "suggestedName": "2026-07-05_gift-letter_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-07-05",
+            "primary_party_name": "Ana Torres"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/gift-letter.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/gift-letter/p68.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              71,
+              108
+            ]
+          },
+          "suggestedBlockId": "appraisal",
+          "confidence": 0.88,
+          "suggestedName": "2026-07-02_appraisal_pacific-valuation-group_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-07-02",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "Pacific Valuation Group"
+          },
+          "scores": {
+            "quality": 0.58,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [
+            {
+              "code": "scan_quality",
+              "detail": "p.41–43 of segment below 150 DPI; exhibits legible, addenda borderline."
+            }
+          ],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/appraisal.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/appraisal/p71.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              109,
+              126
+            ]
+          },
+          "suggestedBlockId": "purchase-agreement",
+          "confidence": 0.93,
+          "suggestedName": "2026-06-24_purchase-agreement_car-form-rpa_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-06-24",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "CAR Form RPA"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/purchase-agreement.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/purchase-agreement/p109.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              127,
+              140
+            ]
+          },
+          "suggestedBlockId": "prelim-title",
+          "confidence": 0.93,
+          "suggestedName": "2026-07-01_prelim-title_golden-state-title_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-07-01",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "Golden State Title"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "standard"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/prelim-title.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/prelim-title/p127.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              141,
+              154
+            ]
+          },
+          "suggestedBlockId": "credit-report",
+          "confidence": 0.93,
+          "suggestedName": "2026-05-22_credit-report_tri-merge-bureau_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-05-22",
+            "primary_party_name": "Ana Torres",
+            "expiry_date": "2026-08-20",
+            "issuing_party": "Tri-Merge Bureau"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/credit-report.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/credit-report/p141.png"
+            ],
+            "crops": []
+          }
+        },
+        {
+          "segment": {
+            "pages": [
+              155,
+              158
+            ]
+          },
+          "suggestedBlockId": "background-check",
+          "confidence": 0.93,
+          "suggestedName": "2026-06-20_background-check_ca-doj_torres.pdf",
+          "coreFields": {
+            "document_date": "2026-06-20",
+            "primary_party_name": "Ana Torres",
+            "issuing_party": "CA DOJ"
+          },
+          "scores": {
+            "quality": 0.92,
+            "formatting": 0.88,
+            "fraud_signal": 0.06,
+            "scrutinyTier": "critical"
+          },
+          "flags": [],
+          "extractions": [],
+          "artifacts": {
+            "md": "fixture://artifacts/fixture-0724-01/background-check.md",
+            "pageRenders": [
+              "fixture://artifacts/fixture-0724-01/background-check/p155.png"
+            ],
+            "crops": []
+          }
+        }
+      ],
+      "unassigned": [
+        {
+          "pages": [
+            201,
+            203
+          ],
+          "description": "Fax cover pages, no letterhead — likely transmission artifacts."
+        },
+        {
+          "pages": [
+            310,
+            312
+          ],
+          "description": "Handwritten note, unreadable signature — possibly a gift explanation letter."
+        }
+      ],
+      "whisper": [
+        "Split 312 pages into 13 documents; 2 unassigned; 3 flagged.",
+        "Passport filed in place of Driver License — substitution scrutiny applied (Proof of Identity group)."
+      ]
+    }
+  ]
+}

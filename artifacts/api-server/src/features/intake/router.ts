@@ -7,6 +7,8 @@ import {
   ListApplicationsResponse,
   SaveFieldValuesBody,
   SaveFieldValuesResponse,
+  UpdateApplicationBody,
+  UpdateApplicationResponse,
 } from "@workspace/api-zod";
 import { readTemplate } from "../template-library/store";
 import { listApplicationsRaw, readApplication, toSummary, writeApplication, type Application } from "./store";
@@ -45,6 +47,7 @@ router.post("/applications", async (req, res): Promise<void> => {
     createdAt: new Date().toISOString(),
     fieldValues: {},
     uploads: {},
+    ...(parsed.data.projectedClosingDate ? { projectedClosingDate: parsed.data.projectedClosingDate } : {}),
     template: tpl,
   };
   writeApplication(app);
@@ -60,6 +63,29 @@ router.get("/applications/:applicationId", async (req, res): Promise<void> => {
     return;
   }
   res.json(GetApplicationResponse.parse(app));
+});
+
+router.patch("/applications/:applicationId", async (req, res): Promise<void> => {
+  const raw = req.params["applicationId"];
+  const id = Array.isArray(raw) ? raw[0] : raw;
+  const app = id ? readApplication(id) : undefined;
+  if (!app) {
+    res.status(404).json({ error: "Application not found" });
+    return;
+  }
+  const parsed = UpdateApplicationBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  // projectedClosingDate is portal-owned (analyzer spec §8): string sets, null clears.
+  if (parsed.data.projectedClosingDate === null) {
+    delete app.projectedClosingDate;
+  } else if (parsed.data.projectedClosingDate !== undefined) {
+    app.projectedClosingDate = parsed.data.projectedClosingDate;
+  }
+  writeApplication(app);
+  res.json(UpdateApplicationResponse.parse(app));
 });
 
 router.put("/applications/:applicationId/fields/:blockId", async (req, res): Promise<void> => {

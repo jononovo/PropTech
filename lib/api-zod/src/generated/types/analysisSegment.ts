@@ -6,10 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ApplicationInput {
-  family: string;
-  version: number;
-  /** @minLength 1 */
-  applicantName: string;
-  projectedClosingDate?: string;
+export interface AnalysisSegment {
+  /**
+     * [firstPage, lastPage] within the source packet, 1-based inclusive.
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
 }

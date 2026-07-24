@@ -281,6 +281,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
+    patch:
+      operationId: updateApplication
+      tags: [intake]
+      summary: Update portal-owned application fields
+      description: >
+        projectedClosingDate is a first-class portal-owned field (analyzer spec §8) — the
+        hard-expiry clocks are judged against it. Null clears it.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplicationUpdate"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /applications/{applicationId}/fields/{blockId}:
     put:
       operationId: saveFieldValues
@@ -345,6 +373,111 @@ paths:
       responses:
         "204":
           description: Deleted
+  /applications/{applicationId}/analysis:
+    get:
+      operationId: getAnalysis
+      tags: [analysis]
+      summary: Analyzer sidecar for an application
+      description: Returns an empty shell (latestRunId null, runs []) when no run has been ingested yet.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "200":
+          description: Sidecar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisSidecar"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+    post:
+      operationId: ingestAnalysisRun
+      tags: [analysis]
+      summary: Analyzer write-path — one run object per call
+      description: >
+        The portal's store appends the run to the sidecar and sets latestRunId itself; the
+        analyzer stays stateless toward the portal (single-writer semantics, no
+        read-modify-write race). INVARIANT (analyzer spec §5): every documents[].suggestedBlockId
+        must resolve to a document block in the application's PINNED template — otherwise the
+        whole run is rejected with 400. A runId already present in the sidecar is rejected
+        with 409 (idempotent replay protection). The analyzer never mutates the application
+        file itself; verdicts stay human-only.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalysisRun"
+      responses:
+        "201":
+          description: Updated sidecar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisSidecar"
+        "400":
+          description: Unknown suggestedBlockId or invalid run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: runId already ingested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/verdicts/{blockId}:
+    put:
+      operationId: recordVerdict
+      tags: [analysis]
+      summary: Record the human verdict for a document block
+      description: >
+        Verdicts are human-only (analyzer spec §1.6) — the analyzer suggests, staff decide.
+        Accepting a document explicitly confirms document_date/expiry_date, the dates its
+        clocks run on (spec §1.4); if the reviewer edited them, datesEdited must be true.
+        The latest verdict per block is kept; re-recording replaces it. On accept, staleness
+        clocks stop at decidedAt.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/BlockId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerdictInput"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Not a document block on this application's template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
 components:
   parameters:
     Family:
@@ -418,6 +551,12 @@ components:
           enum: [document, fields]
         id: { type: string }
         name: { type: string }
+        docType:
+          type: string
+          description: >
+            Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is
+            exact; without it, the analyzer falls back to name-similarity matching
+            (analyzer spec §4). Never applicant-facing.
         formats:
           type: array
           items: { type: string }
@@ -583,6 +722,14 @@ components:
         family: { type: string }
         version: { type: integer }
         applicantName: { type: string, minLength: 1 }
+        projectedClosingDate: { type: string }
+    ApplicationUpdate:
+      type: object
+      properties:
+        projectedClosingDate:
+          oneOf:
+            - type: string
+            - type: "null"
     ApplicationSummary:
       type: object
       required: [id, family, version, templateName, applicantName, createdAt, docsFiled, docsTotal]
@@ -595,6 +742,7 @@ components:
         createdAt: { type: string }
         docsFiled: { type: integer }
         docsTotal: { type: integer }
+        projectedClosingDate: { type: string }
     Application:
       type: object
       required: [id, family, version, applicantName, createdAt, fieldValues, uploads, template]
@@ -618,5 +766,180 @@ components:
             type: array
             items:
               $ref: "#/components/schemas/UploadedFile"
+        projectedClosingDate: { type: string }
+        verdicts:
+          type: object
+          description: blockId -> latest human verdict
+          additionalProperties:
+            $ref: "#/components/schemas/Verdict"
         template:
           $ref: "#/components/schemas/Template"
+    Verdict:
+      type: object
+      description: >
+        Human verdict on a document block. Portal-owned; the analyzer never writes these.
+        documentDate/expiryDate are the confirmed dates the block's clocks run on.
+      required: [verdict, datesEdited, decidedAt, decidedBy]
+      properties:
+        verdict:
+          type: string
+          enum: [accepted, new_version_requested]
+        note: { type: string }
+        documentDate: { type: string }
+        expiryDate: { type: string }
+        datesEdited: { type: boolean }
+        decidedAt: { type: string }
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
+        runId: { type: string }
+    VerdictInput:
+      type: object
+      required: [verdict, decidedBy]
+      properties:
+        verdict:
+          type: string
+          enum: [accepted, new_version_requested]
+        note: { type: string }
+        documentDate: { type: string }
+        expiryDate: { type: string }
+        datesEdited: { type: boolean }
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
+        runId: { type: string }
+    AnalysisCoreFields:
+      type: object
+      description: >
+        Universal core fields the judge emits per document (analyzer spec §1.4). Ungrounded
+        in v1 — the verdict UI must display the dates for human confirmation at accept.
+        Key names follow the analyzer contract verbatim.
+      required: [document_date, primary_party_name]
+      properties:
+        document_date: { type: string }
+        expiry_date: { type: string }
+        primary_party_name: { type: string }
+        issuing_party: { type: string }
+    AnalysisSegment:
+      type: object
+      required: [pages]
+      properties:
+        pages:
+          type: array
+          description: "[firstPage, lastPage] within the source packet, 1-based inclusive."
+          items: { type: integer }
+          minItems: 2
+          maxItems: 2
+    AnalysisScores:
+      type: object
+      required: [quality, formatting, fraud_signal, scrutinyTier]
+      properties:
+        quality: { type: number }
+        formatting: { type: number }
+        fraud_signal: { type: number }
+        scrutinyTier:
+          type: string
+          enum: [critical, standard, supporting]
+    AnalysisFlag:
+      type: object
+      required: [code, detail]
+      properties:
+        code: { type: string }
+        detail: { type: string }
+    AnalysisArtifacts:
+      type: object
+      description: URLs into the analyzer's artifact store (md + renders + crops).
+      required: [md, pageRenders, crops]
+      properties:
+        md: { type: string }
+        pageRenders:
+          type: array
+          items: { type: string }
+        crops:
+          type: array
+          items: { type: string }
+    AnalysisDocument:
+      type: object
+      required: [segment, suggestedBlockId, confidence, suggestedName, coreFields, scores, flags, extractions, artifacts]
+      properties:
+        segment:
+          $ref: "#/components/schemas/AnalysisSegment"
+        suggestedBlockId:
+          type: string
+          description: Must resolve to a document block in the application's pinned template.
+        confidence: { type: number }
+        suggestedName:
+          type: string
+          description: Derived, never hand-written. Human rename always wins and is recorded.
+        coreFields:
+          $ref: "#/components/schemas/AnalysisCoreFields"
+        scores:
+          $ref: "#/components/schemas/AnalysisScores"
+        flags:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisFlag"
+        extractions:
+          type: array
+          description: Always present — empty in v1, populated in v2 with zero contract change.
+          items:
+            type: object
+            additionalProperties: true
+        artifacts:
+          $ref: "#/components/schemas/AnalysisArtifacts"
+    AnalysisUnassigned:
+      type: object
+      required: [pages, description]
+      properties:
+        pages:
+          type: array
+          items: { type: integer }
+          minItems: 2
+          maxItems: 2
+        description: { type: string }
+    AnalysisPreflight:
+      type: object
+      required: [pages, flags, gate]
+      properties:
+        pages: { type: integer }
+        flags:
+          type: array
+          description: Plain-language pre-flight flags ("p.41–43 below 150 DPI").
+          items: { type: string }
+        gate:
+          type: string
+          enum: [auto, confirmed, bypassed]
+    AnalysisRun:
+      type: object
+      required: [runId, startedAt, pipelineVersion, preflight, documents, unassigned, whisper]
+      properties:
+        runId: { type: string }
+        startedAt: { type: string }
+        pipelineVersion: { type: string }
+        preflight:
+          $ref: "#/components/schemas/AnalysisPreflight"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisDocument"
+        unassigned:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisUnassigned"
+        whisper:
+          type: array
+          items: { type: string }
+    AnalysisSidecar:
+      type: object
+      description: Portal-owned sidecar file (data/analysis/<applicationId>.json). Append-only runs.
+      required: [applicationId, latestRunId, runs]
+      properties:
+        applicationId: { type: string }
+        latestRunId:
+          oneOf:
+            - type: string
+            - type: "null"
+        runs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisRun"

@@ -15,4 +15,5 @@ export interface ApplicationSummary {
   createdAt: string;
   docsFiled: number;
   docsTotal: number;
+  projectedClosingDate?: string;
 }

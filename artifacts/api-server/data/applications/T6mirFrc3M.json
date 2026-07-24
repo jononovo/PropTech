@@ -73,7 +73,8 @@
                 "criticality": "critical",
                 "sourcing": "readily_available",
                 "multiPage": true,
-                "expiry": null
+                "expiry": null,
+                "docType": "application_form"
               },
               {
                 "kind": "document",
@@ -86,7 +87,8 @@
                 "criticality": "standard",
                 "sourcing": "readily_available",
                 "multiPage": true,
-                "expiry": null
+                "expiry": null,
+                "docType": "disclosure_acknowledgment"
               }
             ]
           },
@@ -168,7 +170,8 @@
                 "multiPage": false,
                 "expiry": {
                   "kind": "hard"
-                }
+                },
+                "docType": "government_id"
               },
               {
                 "kind": "document",
@@ -185,7 +188,8 @@
                 "multiPage": false,
                 "expiry": {
                   "kind": "hard"
-                }
+                },
+                "docType": "government_id"
               },
               {
                 "kind": "document",
@@ -198,7 +202,8 @@
                 "criticality": "critical",
                 "sourcing": "constrained",
                 "multiPage": false,
-                "expiry": null
+                "expiry": null,
+                "docType": "ssn_verification"
               }
             ]
           }
@@ -249,7 +254,8 @@
                 "expiry": {
                   "kind": "staleness",
                   "days": 30
-                }
+                },
+                "docType": "pay_stub"
               },
               {
                 "kind": "document",
@@ -262,7 +268,8 @@
                 "criticality": "standard",
                 "sourcing": "readily_available",
                 "multiPage": true,
-                "expiry": null
+                "expiry": null,
+                "docType": "w2_or_tax_return"
               }
             ]
           },
@@ -284,7 +291,8 @@
                 "expiry": {
                   "kind": "staleness",
                   "days": 90
-                }
+                },
+                "docType": "bank_statement"
               },
               {
                 "kind": "document",
@@ -297,7 +305,8 @@
                 "criticality": "critical",
                 "sourcing": "readily_available",
                 "multiPage": false,
-                "expiry": null
+                "expiry": null,
+                "docType": "gift_letter"
               }
             ]
           }
@@ -348,7 +357,8 @@
                 "expiry": {
                   "kind": "staleness",
                   "days": 120
-                }
+                },
+                "docType": "appraisal_report"
               },
               {
                 "kind": "document",
@@ -361,7 +371,8 @@
                 "criticality": "critical",
                 "sourcing": "readily_available",
                 "multiPage": true,
-                "expiry": null
+                "expiry": null,
+                "docType": "purchase_agreement"
               }
             ]
           }
@@ -409,7 +420,8 @@
                 "criticality": "standard",
                 "sourcing": "constrained",
                 "multiPage": true,
-                "expiry": null
+                "expiry": null,
+                "docType": "title_report"
               },
               {
                 "kind": "document",
@@ -422,7 +434,8 @@
                 "criticality": "supporting",
                 "sourcing": "readily_available",
                 "multiPage": false,
-                "expiry": null
+                "expiry": null,
+                "docType": "insurance_binder"
               },
               {
                 "kind": "document",
@@ -435,7 +448,8 @@
                 "criticality": "standard",
                 "sourcing": "readily_available",
                 "multiPage": true,
-                "expiry": null
+                "expiry": null,
+                "docType": "closing_disclosure"
               }
             ]
           }
@@ -485,7 +499,8 @@
                 "multiPage": true,
                 "expiry": {
                   "kind": "hard"
-                }
+                },
+                "docType": "credit_report"
               },
               {
                 "kind": "document",
@@ -501,7 +516,8 @@
                 "expiry": {
                   "kind": "staleness",
                   "days": 60
-                }
+                },
+                "docType": "background_check"
               }
             ]
           },
@@ -543,5 +559,33 @@
         ]
       }
     ]
+  },
+  "projectedClosingDate": "2026-09-04",
+  "verdicts": {
+    "urla-1003": {
+      "verdict": "accepted",
+      "datesEdited": false,
+      "decidedAt": "2026-07-24T02:25:00.000Z",
+      "decidedBy": "Underwriter",
+      "documentDate": "2026-07-08",
+      "runId": "fixture-0724-01"
+    },
+    "bank-statements": {
+      "verdict": "accepted",
+      "datesEdited": false,
+      "decidedAt": "2026-07-24T02:28:00.000Z",
+      "decidedBy": "Underwriter",
+      "documentDate": "2026-06-30",
+      "runId": "fixture-0724-01",
+      "note": "Three complete statements; balances consistent with stated deposits."
+    },
+    "disclosures": {
+      "verdict": "accepted",
+      "datesEdited": false,
+      "decidedAt": "2026-07-24T02:01:22.444Z",
+      "decidedBy": "Originator",
+      "documentDate": "2026-07-08",
+      "runId": "fixture-0724-01"
+    }
   }
 }

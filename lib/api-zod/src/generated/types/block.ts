@@ -19,6 +19,8 @@ export interface Block {
   kind: BlockKind;
   id: string;
   name: string;
+  /** Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing. */
+  docType?: string;
   formats?: string[];
   requirement?: BlockRequirement;
   criticality?: BlockCriticality;

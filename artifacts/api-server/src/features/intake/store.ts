@@ -58,5 +58,6 @@ export function toSummary(app: Application): ApplicationSummary {
     createdAt: app.createdAt,
     docsFiled: filed,
     docsTotal: total,
+    ...(app.projectedClosingDate ? { projectedClosingDate: app.projectedClosingDate } : {}),
   };
 }

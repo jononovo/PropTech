@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "Analyzer Worker"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Spike Local VL"
+
 [[workflows.workflow]]
 name = "Analyzer Worker"
 author = "agent"
@@ -31,6 +35,17 @@ outputType = "console"
 task = "shell.exec"
 args = "bash services/analyzer/run.sh"
 waitForPort = 8000
+
+[[workflows.workflow]]
+name = "Spike Local VL"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash /tmp/spike/spike_run.sh"
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [agent]
 stack = "PNPM_WORKSPACE"

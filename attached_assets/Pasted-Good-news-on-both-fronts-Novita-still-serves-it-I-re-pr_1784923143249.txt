@@ -1,0 +1,60 @@
+Good news on both fronts:
+
+Novita still serves it — I re-probed their live API 30 seconds ago. paddlepaddle/paddleocr-vl is in the catalog right now at $0.02/1M, alongside deepseek/deepseek-ocr and deepseek-ocr-2 at $0.03/1M. The trap you likely hit: their model-detail/GPU pages say "Deploy on Demand — serverless not supported" (I hit the same wall earlier), but the LLM Model API catalog (api.novita.ai/v3/openai, OpenAI-compatible) is a separate product and has it. A free Novita account + API key is all it takes; our pipeline points at it with env vars only.
+
+And the "someone just give us an API" answer exists: Mistral OCR 4. Dedicated document-parsing API, genuinely available, zero deployment, $4 per 1,000 pages ($2 batch) — a 300-page packet costs ~$1.20. Output shape is the closest match to ours of anything on the market: markdown + bounding boxes + typed blocks (titles/tables/signatures) + per-word confidence — that's our md and our elements JSON, natively, arguably richer than what we assemble from Paddle. Integration is a small new PARSE_BACKEND=mistral in parse.py (which is already multi-backend by design), not a rewrite.
+
+The honest ladder now:
+
+Unblock today — Novita paddle v1.0 (env-only, sanctioned pipeline path, pennies). Caveat: v1.0 quality, not 1.6.
+Evaluate Mistral OCR 4 as the strategic replacement — most available, similar-or-better output shape, per-page pricing, EU/enterprise-grade ops. Needs one packet eval against our v1/v2 samples before trusting it on degraded scans.
+DeepSeek-OCR via Novita — dirt cheap, chat-shaped (its intended usage), may even run through our existing generic hosted-VLM parse path with env vars alone. Quality on dense forms unproven — eval needed.
+Replit x86 self-host — pending the smoke test; Mac verdict is in: works correctly (blank page → empty output, duplicate detected byte-identical, tables right) at ~40 s/page, 9 GB RAM. Fine for patient batch testing, fails your 20 s/doc bar interactively.
+My recommendation: Novita key now to unblock testing this hour, Mistral OCR 4 eval this week as the real "stop fighting infrastructure" candidate. Both need zero deployments, zero warm-ups. Say which and I'll spec or build the swap. (10-page benchmark finishes shortly — full timing table then; and the Claude-parse interim remains a proven zero-work fallback throughout.)
+
+Sources: live api.novita.ai/v3/openai/models probe · Mistral pricing · Mistral OCR 4 guide · Mistral OCR 3 announcement
+
+The benchmark finished — pulling the actual timing numbers now:
+
+Bash Extract final benchmark timing lines
+IN
+grep -E "INIT|WARMUP|PACKET|SKIP|DONE" "/private/tmp/claude-501/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/tasks/bgc2pd39q.output"
+
+OUT
+INIT 298.5s (import + pipeline init incl. any downloads)
+WARMUP-1PAGE 162.8s
+PACKET clean-3p: 3 pages in 483.4s = 161.1s/page (5079 md chars)
+PACKET v1-9p: 9 pages in 319.3s = 35.5s/page (9819 md chars)
+PACKET v2-10p: 10 pages in 709.6s = 71.0s/page (19182 md chars)
+BENCH DONE
+Can you look at the latest deployment that we wanna run and deploy and what has been merged on the repo?
+Basically, they kind of modularization and selection of different options by the user for the scan of the packet.
+
+And perhaps we can just add these other options and test them as we go along, but we could start with just Novita does that make sense?
+
+And just added it as an option that I can select and then just run a test through right?
+
+Are we logging anything for these tests like internally if I like deploy it and run some of these tests do we get kind of results of things that we could compare or do we need to build sort of a test module that has certain outcomes and benchmarks so that we can compare internally what's working well?
+
+What do you think about that?
+
+Guess it's a few separate points
+Benchmark done. Straight answer to "did it actually work": yes, functionally — but it's too slow to use.
+
+It worked (quality): correct markdown, tables parsed cleanly, SSN redaction preserved, blank page → empty output, duplicate page byte-identical. The model does its job.
+
+It failed (speed) — measured on this Mac:
+
+One-time init + 2 GB download: 298s
+Per page: 35s (simplest packet) to 161s (first batch, paying compile costs); ~71s/page on the dense v2 packet
+Even the best number, 35s/page, blows past your "20s per document" bar the moment a document has more than one page. A 3-page doc = minutes.
+Verdict on CPU self-host: dead for interactive use. Apple Silicon is the worst case (paddle's CPU accel is x86-tuned), so Replit x86 might be 2–4× faster — but 2–4× on 35–71s/page is still 10–35s per page, not per document. A 16 GB Replit VM buys you a working-but-slow batch parser, not the snappy tool you want. I'd not spend on that VM.
+
+The "just give us an API" answer you keep asking for — it exists:
+
+Mistral OCR 4 — purpose-built document API, zero deployment, zero warm-up. $4 per 1,000 pages ($2 batch). Output is the closest match on the market to what we build: markdown + bounding boxes + typed blocks + per-page/word confidence — that's our md and our elements JSON, natively. This is the strategic replacement. Needs one eval pass on our v1/v2 sample packets before trusting it on skewed/photocopied scans.
+Novita — still live (I re-probed 2 min ago; you hit their GPU/deploy page, but their OpenAI-compatible LLM API catalog has paddleocr-vl at $0.02/1M and also deepseek-ocr at $0.03/1M). Keeps our exact pipeline, unblocks testing this hour, but it's v1.0 quality, not 1.6.
+My recommendation: Novita key now to unblock (pennies, env-only swap), Mistral OCR 4 as the real target — evaluate it against our sample packets this week and, if it holds up, make it the parser and retire the whole Fireworks-deployment saga.
+
+This changes a locked spec decision (the parser), so it's yours to call. Which do you want me to spec/build — Novita swap, Mistral eval, or both in that order?
+

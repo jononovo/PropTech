@@ -411,6 +411,42 @@ export const CreateSavedSectionResponse = zod.object({
 
 
 /**
+ * @summary Seeded demo users for the sign-in page
+ */
+export const ListUsersResponseItem = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "role": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "org": zod.string(),
+  "initials": zod.string()
+})
+export const ListUsersResponse = zod.array(ListUsersResponseItem)
+
+
+/**
+ * @summary Validate demo credentials (no session — the client keeps the user)
+ */
+
+
+
+
+export const LoginBody = zod.object({
+  "username": zod.string().min(1),
+  "password": zod.string().min(1)
+})
+
+export const LoginResponse = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "role": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "org": zod.string(),
+  "initials": zod.string()
+})
+
+
+/**
  * @summary All applications with progress summary
  */
 export const ListApplicationsResponseItem = zod.object({

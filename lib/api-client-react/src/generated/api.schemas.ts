@@ -220,6 +220,31 @@ export interface SavedSectionInput {
   section: Section;
 }
 
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+
+export const UserRole = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface User {
+  id: string;
+  username: string;
+  name: string;
+  role: UserRole;
+  org: string;
+  initials: string;
+}
+
+export interface LoginInput {
+  /** @minLength 1 */
+  username: string;
+  /** @minLength 1 */
+  password: string;
+}
+
 export type FieldValuesValues = {[key: string]: string};
 
 /**

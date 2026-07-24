@@ -1,8 +1,18 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { db, savedSectionsTable, templatesTable } from "@workspace/db";
+import { db, savedSectionsTable, templatesTable, usersTable } from "@workspace/db";
 import { DATA_DIR, listDirs, listFiles, readJson } from "./jsonStore";
 import { logger } from "./logger";
+
+interface UserFixture {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+  role: string;
+  org: string;
+  initials: string;
+}
 
 /**
  * One-time import of the committed JSON fixtures into Postgres. Runs at boot;
@@ -41,5 +51,17 @@ export async function seedStoresFromDisk(): Promise<void> {
       n++;
     }
     logger.info({ seeded: n }, "saved_sections table was empty — seeded from disk fixtures");
+  }
+
+  const usersFile = path.join(DATA_DIR, "users.json");
+  const hasUsers = (await db.select({ id: usersTable.id }).from(usersTable).limit(1)).length > 0;
+  if (!hasUsers && existsSync(usersFile)) {
+    const users = readJson<UserFixture[]>(usersFile) ?? [];
+    let n = 0;
+    for (const u of users) {
+      await db.insert(usersTable).values(u).onConflictDoNothing();
+      n++;
+    }
+    logger.info({ seeded: n }, "users table was empty — seeded from disk fixtures");
   }
 }

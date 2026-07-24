@@ -1,0 +1,6 @@
+[
+  { "id": "ron", "username": "ron", "password": "1234", "name": "Ron Alvarez", "role": "Originator", "org": "Golden State Home Loans", "initials": "RA" },
+  { "id": "dana", "username": "dana", "password": "1234", "name": "Dana Whitfield", "role": "Underwriter", "org": "Homium Underwriting", "initials": "DW" },
+  { "id": "priya", "username": "priya", "password": "1234", "name": "Priya Nair", "role": "Underwriter", "org": "Homium Underwriting", "initials": "PN" },
+  { "id": "marcus", "username": "marcus", "password": "1234", "name": "Marcus Cole", "role": "Manager", "org": "Homium Compliance", "initials": "MC" }
+]

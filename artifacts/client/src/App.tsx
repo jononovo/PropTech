@@ -11,7 +11,7 @@ import { Applications } from './features/intake/Applications';
 import { IntakeForm } from './features/intake/IntakeForm';
 import { CaseFilePage } from './features/case-file/CaseFilePage';
 import { LoginPage } from './features/auth/LoginPage';
-import { ProfileProvider } from './features/auth/ProfileContext';
+import { ProfileProvider, useProfileState } from './features/auth/ProfileContext';
 
 const queryClient = new QueryClient();
 
@@ -50,13 +50,20 @@ function Router() {
   );
 }
 
+/** Login gate: no signed-in user -> only the sign-in screen, whatever the URL. */
+function Gated() {
+  const { profile } = useProfileState();
+  if (!profile) return <LoginPage />;
+  return <Router />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ProfileProvider>
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <Router />
+            <Gated />
           </WouterRouter>
           <Toaster />
         </ProfileProvider>

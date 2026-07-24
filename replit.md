@@ -24,13 +24,13 @@ Document-ops platform for lending compliance: define document templates, collect
 
 ## Architecture decisions
 
-- **Persistence is hybrid (Jul 2026 migration, user-approved):** operational data — applications (one jsonb document per row) and analysis runs (append-only rows, unique `(application_id, run_id)` = replay protection) — lives in **Postgres** via `lib/db`. **Templates and saved sections stay JSON files** (authored artifacts; version/status truth stays the file system). Packet PDFs/thumbnails/uploads stay on disk until App Storage arrives with the engine — and packet bytes are gitignored (`services/analyzer/store/`, `artifacts/api-server/data/packets|uploads/`): loan-document bytes never enter git history (spec-author directive, Jul 2026).
+- **Persistence is Postgres-first (Jul 2026 migrations, user-approved):** applications (one jsonb document per row), analysis runs (append-only rows, unique `(application_id, run_id)` = replay protection), templates, saved sections, and demo users all live in **Postgres** via `lib/db`. Committed JSON fixtures under `artifacts/api-server/data/` seed empty tables at boot (dev and prod). Packet PDFs/thumbnails/uploads stay on disk until App Storage arrives with the engine — and packet bytes are gitignored (`services/analyzer/store/`, `artifacts/api-server/data/packets|uploads/`): loan-document bytes never enter git history (spec-author directive, Jul 2026).
 - All application mutations go through `updateApplication(id, mutate)` — a `SELECT ... FOR UPDATE` transaction (`mutate` throws `HttpError` to abort). Packet gate/state transitions are therefore atomic across instances; the in-process packet lock only serializes per-app disk-file work.
 - **Contract-first:** OpenAPI spec → codegen → implementation. Server validates all IO with generated Zod schemas.
 - **Packet choreography is asynchronous and honest (Jul 2026):** upload/gate claims `processing` and kicks the worker (expects 202); the run lands later through the ingest endpoint, which flips state to `report`. Any worker failure calls the run-failed callback → revert to `gated` + `lastRunError` — never a silent hang. Analyzer models are env-driven (`PARSE_*`/`JUDGE_*`/`TEXT_*`) and labeled in `pipelineVersion`; interim = Claude parse+judge on the user's own Anthropic key (account-linked secret), GLM for text passes. PaddleOCR-VL 1.6 deployment is the next engine task (`internal_docs/future.md`).
 - Template lifecycle: draft = editable, active = immutable (409); new version copies vN → v(N+1) draft; applications pin a full template copy forever; saved sections are copies, never links.
 - Mirrored feature folders client/server; ≤~250 lines per file; no utils dumping grounds (user mandate).
-- No auth in v1 — role simulated by a client-side switcher, not enforced server-side.
+- Demo auth only (v1): seeded `users` table (all passwords "1234", plaintext by design), `GET /users` + `POST /login`, login page pre-fills credentials on click. No sessions/tokens — signed-in user lives in localStorage; nothing enforced server-side. Real auth replaces this edge later.
 
 ## User preferences
 

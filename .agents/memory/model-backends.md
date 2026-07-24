@@ -5,6 +5,11 @@ description: Fireworks key scope, Paddle 1.6 deployment path, judge requirements
 
 # Model backend facts (spec v0.6.3, verified Jul 24, 2026)
 
+- **Local-CPU paddle RULED OUT** (Jul 24 spike: >6min/page, 6.4GiB RSS on 8vCPU dev box) — serverless API-only direction confirmed by user.
+- **Mistral OCR 4 VALIDATED as parse backend** (Jul 24 eve): `mistral-ocr-latest` via document-native `/v1/ocr` (whole PDF base64, one call/packet, NOT chat-shaped — dedicated adapter). 10p stress packet ~104s, best table fidelity, ~$4/1k pages, blocks+bboxes+page confidence saved as elements JSON. Response page index is 0-based.
+- **Novita** (OpenAI-compat, api.novita.ai/v3/openai): catalog ids confirmed live — `paddlepaddle/paddleocr-vl`, `deepseek/deepseek-ocr-2`. BLOCKED Jul 24: `403 NOT_ENOUGH_BALANCE` (key valid, no credits) — retest after user tops up.
+- Orphaned-run recovery: worker restart mid-run strands packet in `processing`; POST `/applications/:id/packet/run-failed` with the packet sha (from run config.json) reverts to `gated`.
+
 - User-facing model docs live at internal_docs/models/ (stage docs + dated comparisons) — update them whenever backends or observed behavior change; this file stays the operational cheat-sheet.
 
 - The Fireworks key's serverless catalog = 6 models: kimi-k2p6, glm-5p1, glm-5p2, deepseek-v4-pro, gpt-oss-120b (text) + flux-1-schnell-fp8 (image gen). No serverless vision model — every VLM probe (qwen*-vl, llama4, paddleocr*) 404s. Fireworks' pay-per-token tier does NOT carry PaddleOCR-VL.

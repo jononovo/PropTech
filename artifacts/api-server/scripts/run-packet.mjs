@@ -2,7 +2,10 @@
 // and print the resulting analysis. Replaces the throwaway /tmp e2e script —
 // lives in the repo so it survives container recycles.
 //
-//   node artifacts/api-server/scripts/run-packet.mjs <applicationId> <pdfPath> [--auto]
+//   node artifacts/api-server/scripts/run-packet.mjs <applicationId> <pdfPath> [--auto] [--parse=<id>] [--text=<id>] [--judge=<id>]
+//
+// --parse/--text/--judge pick run-plan option ids (see GET /api/models/options);
+// omitted stages use the worker defaults.
 //
 // Uploads the packet, decides the gate (bypassed by default — the sample packet
 // carries preflight flags; --auto for clean packets), then polls until the run
@@ -11,7 +14,15 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const API = process.env.API_BASE ?? "http://127.0.0.1:80/api";
-const [appId, pdfPath, flag] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const plan = {};
+for (const a of args) {
+  const m = a.match(/^--(parse|text|judge)=(.+)$/);
+  if (m) plan[m[1]] = m[2];
+}
+const positional = args.filter((a) => !a.startsWith("--"));
+const [appId, pdfPath] = positional;
+const flag = args.includes("--auto") ? "--auto" : undefined;
 if (!appId || !pdfPath) {
   console.error("usage: node run-packet.mjs <applicationId> <pdfPath> [--auto]");
   process.exit(2);
@@ -35,6 +46,7 @@ console.log(`upload: ${res.status} state=${pkt.state} pages=${pkt.pages} flags=$
 // 2. Gate (skip if upload auto-started processing)
 if (pkt.state === "gated") {
   const decision = flag === "--auto" ? { decision: "auto" } : { decision: "bypassed", decidedBy: "Underwriter" };
+  if (Object.keys(plan).length) decision.plan = plan;
   res = await fetch(`${API}/applications/${appId}/packet/gate`, {
     method: "POST",
     headers: { "content-type": "application/json" },

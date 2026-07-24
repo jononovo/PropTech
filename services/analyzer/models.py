@@ -61,8 +61,8 @@ def _registry() -> dict[str, dict]:
             "missing": lambda: [] if config.ANTHROPIC_API_KEY else ["Anthropic credentials"],
         },
         "mistral-ocr-4": {
-            "stage": "parse", "label": "Mistral OCR 4 (Document AI)", "status": "experimental",
-            "note": "Native document OCR — $4/1,000 pages, markdown + typed blocks + confidence. Quality unproven on our packets.",
+            "stage": "parse", "label": "Mistral OCR 4 (Document AI)", "status": "validated",
+            "note": "Native document OCR — $4/1,000 pages, markdown + typed blocks + confidence. Validated Jul 24, 2026: best table fidelity, ~100x cheaper than Claude parse.",
             "choice": lambda: ModelChoice("mistral", config.MISTRAL_OCR_MODEL, config.MISTRAL_BASE,
                                           config.MISTRAL_API_KEY),
             "missing": lambda: [] if config.MISTRAL_API_KEY else ["MISTRAL_API_KEY"],

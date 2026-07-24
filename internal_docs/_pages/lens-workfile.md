@@ -4,6 +4,8 @@
 
 **The thinking.** Ops staff get **dense sheets with inline expansion** (doctrine) — one section in focus, a rail for orientation, blockers first. The lens opens on the first section that needs attention (`defaultSection`), not section 1.
 
+**History.** DNA from the "Flow" mock — journey rail + single working column, the ops answer to *working* a file (vs Register's bird's-eye; the founding two-views doctrine allows lenses of the schema, never new paradigms). Rail collapse and the mobile chip switcher landed in the menu-doctrine round.
+
 **How it works.**
 - Rail: per-section status nodes — three renderings (desktop expanded, collapsed, mobile horizontal scroll).
 - `ReqCard` branches on requirement status: `accepted / requested / covered / flagged / missing / filed / clean` — each with its own affordances (VerdictButtons on flagged, MissingActions on missing, dimension chips throughout).

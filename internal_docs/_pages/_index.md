@@ -2,6 +2,8 @@
 
 Feature docs one level up explain **subsystems** (packet pipeline, persistence, models…). These explain each **page as the user meets it**: why it exists, the thinking behind its main function, how it works, its peculiarities, and an honest ledger of done vs open (hardcoded / awaiting a decision / awaiting a feature).
 
+Each doc includes a **History** block — the decision trail (mockup rounds, user rulings, pivots) distilled from the design record.
+
 **Keep these in sync when a page changes.** Status labels used throughout: *Done* · *Stand-in* (hardcoded/decorative on purpose) · *Open — decision* (needs a product ruling) · *Open — feature* (waiting on a build-out).
 
 | Route | File |

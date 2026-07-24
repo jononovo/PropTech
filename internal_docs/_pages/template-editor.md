@@ -4,6 +4,8 @@
 
 **The thinking.** The template JSON contract (`docs/homium-template-schema-spec.md`) is the real product — the editor is a *view* over it. Drafts are editable; an `active` version renders read-only (inputs become text, palette hides). Document **dimensions** (requirement/criticality/sourcing/expiry + alternatives) are the analyzer's steering input, so the editor surfaces them on every document block.
 
+**History.** The project's longest design exploration. Builder-as-table was rejected outright (the "Schema" mock) → form-style mandate. FormBuilderA (palette-drag hypothesis) beat B (inline inserters); the old Composer mock was mined for the live preview pane and WHO SEES · WHO ADDS permissions; the dimensions round made requirement/criticality/sourcing orthogonal axes ("hotel amenity" exception display; sourcing never applicant-facing). The real editor ported A's *approved look* — the drag/add wiring was always a next build-out, which is why those affordances render but no-op.
+
 **How it works.**
 - `useGetTemplate` → local clone (`initializedFor` ref guards one-time sync) → mutate locally → explicit `useSaveTemplate`.
 - Saved-sections library (`useListSavedSections`) for reuse.

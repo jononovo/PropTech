@@ -4,6 +4,8 @@
 
 **The thinking.** Single-header redesign (Jul 24, 2026, per the Backbone mockup): **inside a case the global nav disappears** — the header says only *whose file / where you can go / what needs doing next*. Everything the old two-row header held moved one reveal deeper into the applicant-name panel. Dashboard/Applications/Templates live in the avatar menu everywhere.
 
+**History.** The Backbone round established "lenses over one file" and top tabs over a sidebar — a sidebar would duplicate the tabs and steal width from the width-hungry lenses; it earns its place only when app-level destinations exist. The header took three user corrections to land: the first draft was rejected for treating six metadata pieces as equals → the three-things doctrine; the spelled-out next-action trigger was demoted to a quiet bell count ("chrome whispers a count; the queue speaks"); Jul 24, 2026 folded the two-row chrome into the single bar + case panel.
+
 **How it works.**
 - One 52px bar: Sheaf logo (→ `/`) | **applicant name ⌄** | uppercase lens tabs (right-aligned; triage carries a red attention count, timeline an amber alarm count) | bell | avatar menu.
 - **Case panel** (name dropdown): app id + `SIMULATED RUN` chip (when `pipelineVersion` says so), applicant/template·version/program rows, template-upgrade nudge (only when a newer active family version exists; additive-only repin), closing-target row (click → inline date edit), "← All applications".

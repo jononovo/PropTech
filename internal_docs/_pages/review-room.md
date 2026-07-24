@@ -4,6 +4,8 @@
 
 **The thinking.** Direction A from the filmstrip exploration (shipped Jul 24, 2026): reviewing 300 pages must feel like walking, not filing. Priority mode walks only what needs a decision; all-pages mode exists for the skeptic who wants to see everything. **Humans place, AI never does** — placements are the manual counterpart to classification, and "your assignments win" (overlap rule: a new placement drops older overlapping ones).
 
+**History.** Spec'd as the verification queue (humans issue final verdicts, criticality-ordered). Three interaction hypotheses were built side-by-side with the Ops Desk skin held fixed — A Filmstrip (conveyor momentum), B Queue+Inspector (inbox command), C Spotlight (AI narrates one concern at a time). User chose A ("by far the best," Jul 24, 2026); C's armed-verdict pattern survived into every verdict surface; region callouts were liked but explicitly deferred to v2. The real build landed the same day.
+
 **How it works.**
 - Own route (not a lens; must precede `:lens?` in App.tsx). Entry: Intake "Review pages", triage links, and auto-pivot when a run lands while watching processing.
 - `buildReviewModel` (pure, `review/reviewModel.ts`): stops = docs with actionable flags or fraud ≥ 0.3 (band hold/attend) + open unassigned ranges; cells = pages 1..N.

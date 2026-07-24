@@ -4,6 +4,8 @@
 
 **The thinking.** Exception-first — staff read exceptions, not successes. AI output is framed as *whispers* (display-only commentary) and suggestions; **verdicts are humans-only**, and the armed two-step click pattern prevents accidental decisions. Unassigned is an honest bucket, not shame — "every page found a home" is the goal state.
 
+**History.** Born as the report half of the Backbone Intake page — stat strip, paired verdicts, unassigned bucket all adopted from the Sheaf reference. The armed two-layer verdict was born in review-room variant C and back-propagated to every verdict surface. Split into its own lens (and made the default landing) in the real build.
+
 **How it works.**
 - Stat strip: found / filed quietly / need you / unassigned (the unassigned count is **open** ranges — manual placements shrink it).
 - Exceptions: per-document rows with judge flags + page evidence → `VerdictButtons` (first click arms — siblings dim, note field opens, extracted dates shown *editable*; explicit confirm logs, edits recorded).

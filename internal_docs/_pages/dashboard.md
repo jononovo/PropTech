@@ -4,6 +4,8 @@
 
 **The thinking.** Blockers-first doctrine — one urgency surface, no vanity charts. A dashboard that opens with successes buries the job. Counts are **always derived** from live data, never hardcoded; if the number is wrong, the data is wrong, loudly.
 
+**History.** Front-door doctrine (Jul 24, 2026): the user rejected landing on the template library ("impotent, no logo") — `/` became a dashboard. Blockers-first ranking descends from the header-doctrine round: anything stalling underwriting outranks expiring clocks, and clocks >30d out earn no space.
+
 **How it works.**
 - `useListApplications` + `useListTemplates`, nothing else.
 - "Needs you" = applications where `docsFiled < docsTotal`, sorted by open-document count, then recency.

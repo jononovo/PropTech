@@ -4,6 +4,8 @@
 
 **The thinking.** "Quiet automation — you'll only be asked about exceptions." Two-step choreography is a product value: **no AI before the gate**, a human approves spend, and every state is honest (failures revert and surface; no silent hangs, no fake progress). The gate is also where cost is shown (Originator and above).
 
+**History.** The Backbone Intake page adopted the staged-processing arc from the user's own Sheaf reference ("adopt the arc, reject the styling") and was re-expressed in house style. Two-step choreography was locked *while analysis was still simulated* — the gate is a product value, not scaffolding. Auto-proceed (<20pp, 0 flags) shipped, then was suspended when per-run model plans arrived so staff always pick the plan.
+
 **How it works.**
 - `PacketPanel` renders the persisted state machine: `uploaded → preflight_running → gated → processing → report` (run-failed → back to `gated` + error).
 - Gate card: preflight flags in plain language, evidence thumbnails (flagged pages only), full-pipeline cost, **run-plan picker** — per-stage dropdowns from the worker's option registry (`GET /api/models/options`); the chosen plan travels with the approval and freezes into the run. **Auto-proceed is suspended** — every packet gates so staff pick the plan.

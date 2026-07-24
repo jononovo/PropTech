@@ -4,6 +4,8 @@
 
 **The thinking.** Excel-energy on purpose: when someone asks "show me everything," this is the sheet. Table, not cards; strict column alignment (`colgroup`); mono for data. Search is the primary interaction — `/` focuses it from anywhere on the page.
 
+**History.** The founding view. The product architecture began as "one schema, two renderings": **Register** — the dense ops sheet ("Excel energy," the view the user absolutely loved) — and the segmented contributor form. The *name* is a fossil of the retired Ledger visual language ("a fine-press printed register that came alive"); the Ops Desk pivot killed the aesthetic, the label survived. Export was deliberately absent until it can be real; desktop-only by scope call. **Rename under consideration** (Index / Stack / Table candidates — pending user pick, Jul 24, 2026).
+
 **How it works.**
 - Local `query` filters sections/requirements by name, filename, or doc type.
 - Rows expand inline to the full metadata panel (scores from `req.doc.scores`, parties, dates, generated filename).

@@ -4,6 +4,8 @@
 
 **The thinking.** Templates are **versioned per family**; `active` = assignable to applications and frozen (read-only in the editor), `draft` = editable and unassignable. Case upgrades are pull-based (nudge inside the case panel), never pushed from here. Rollback = copy-old-into-new-draft-and-activate — a version-management screen (view/diff/rollback) is parked v2/v3 in `_future.md`; don't relitigate.
 
+**History.** Direct port of the FormLibrary mockup: family × version rows, outline-only status tags (no green fills — Ops Desk rule), the mono "copies v3 → v4 draft · v3 stays active" hint, and Retire already disabled *there* (never specified — the port is faithful, not lazy). Duplicate/Export were deliberately moved out of the builder header into this row menu.
+
 **How it works.**
 - `useListTemplates` grouped by `family`; per-version menus keyed `${family}-v${version}`.
 - Actions: `useCreateTemplate` (new family) · `useCreateNewVersion` (clone vN → vN+1 draft) · `useActivateTemplate` · `useDuplicateTemplate`. The API owns version numbering; UI only displays `nextVersionNumber`.

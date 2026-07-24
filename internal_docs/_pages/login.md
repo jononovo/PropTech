@@ -4,6 +4,8 @@
 
 **The thinking.** Demo auth is a fixture, not a shortcut to fix later by accident — the schema is kept auth-shaped so *real* auth replaces only the edge (login mechanism + server enforcement), never the data model. Decided: **never Clerk**. Honesty over theater: passwords are plaintext `"1234"` *by design*, and nothing is enforced server-side — better an obviously-fake gate than a half-real one.
 
+**History.** Jul 24, 2026 ruling: test sign-in, **never Clerk**. The driver was `decidedBy` — verdicts needed a real person attached, so 4 seeded profiles became the identity system while the schema stays auth-shaped. One-click cards came later the same day for tester speed.
+
 **How it works.**
 - `GET /users` lists the 4 seeded profiles (Ron/Originator, Dana/Underwriter, Priya/Underwriter, Marcus/Manager) as cards.
 - **One-click sign-in** (Jul 24, 2026, for testing speed): clicking a card auto-submits the demo password through the real `POST /login`. The manual username/password form below still works; 401 renders inline.

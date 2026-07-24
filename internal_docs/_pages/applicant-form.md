@@ -4,6 +4,8 @@
 
 **The thinking.** Doctrine split: ops staff get dense sheets; **contributors get one-thing-at-a-time forms — never tables**. Sections render only what the viewer's role may see (`section.permissions`); uploads enable only where the role may upload. There is deliberately no big "Submit" — every block persists on its own, so a half-done session is never lost and staff see progress live.
 
+**History.** The second half of the founding split — contributors get one-thing-at-a-time, and this page is also the mobile story (the ops sheet was never expected to work on phones). WHO SEES · WHO ADDS permissions were mined from the old Composer mock; the role switcher implements the original "v1 has no auth — role simulated in the UI" ruling.
+
 **How it works.**
 - `useGetApplication` → sections filtered by role permissions; field groups save per-block (`useSaveFieldValues`), documents upload/delete per-block (`useUploadDocument`/`useDeleteDocument`).
 - `initializedFor` ref syncs server `fieldValues` into local state exactly once per application.

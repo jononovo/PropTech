@@ -16,20 +16,26 @@ import { objectStorageClient } from "./objectStorage";
  * Two roots, resolved once at boot:
  *   - App Storage (GCS) when PRIVATE_OBJECT_DIR is set — the Replit path,
  *     unchanged. That env var only exists where App Storage is provisioned.
- *   - Local disk under DATA_DIR/object-store otherwise — off-Replit dev,
+ *   - Local disk under DATA_DIR/object-store ONLY off-Replit (no REPL_ID),
  *     where the GCS credential sidecar (127.0.0.1:1106) cannot exist. Same
  *     key layout, so nothing above this module can tell the difference.
+ *   - On Replit WITHOUT PRIVATE_OBJECT_DIR (misconfiguration): no fallback —
+ *     every call fails loudly, exactly as before this module had a disk mode.
+ *     Prod must never silently write document bytes to an ephemeral disk.
  *
  * Callers hand in ids/filenames and get streams back — no GCS types leak out
  * of this module except Readable.
  */
 
 const DISK_ROOT = path.join(DATA_DIR, "object-store");
-const USE_DISK = !process.env["PRIVATE_OBJECT_DIR"];
+const ON_REPLIT = Boolean(process.env["REPL_ID"]);
+const USE_DISK = !process.env["PRIVATE_OBJECT_DIR"] && !ON_REPLIT;
 console.log(
   USE_DISK
-    ? `[packetObjectStore] PRIVATE_OBJECT_DIR not set — document bytes on local disk at ${DISK_ROOT}`
-    : "[packetObjectStore] document bytes in App Storage (GCS)",
+    ? `[packetObjectStore] off-Replit, PRIVATE_OBJECT_DIR not set — document bytes on local disk at ${DISK_ROOT}`
+    : process.env["PRIVATE_OBJECT_DIR"]
+      ? "[packetObjectStore] document bytes in App Storage (GCS)"
+      : "[packetObjectStore] MISCONFIGURED: on Replit without PRIVATE_OBJECT_DIR — storage calls will fail loudly",
 );
 
 const diskPath = (key: string): string => path.join(DISK_ROOT, key);

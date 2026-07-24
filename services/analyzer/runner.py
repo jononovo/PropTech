@@ -18,10 +18,18 @@ from scrutiny import apply_substitution_scrutiny, block_index, deep_scan, needs_
 from split_classify import (classify_segment, deterministic_boundaries,
                             llm_refine_boundaries, map_to_block, to_segments)
 from taxonomy import TAXONOMY
+from vl_ready import ensure_vl_ready
 
 
 async def execute_run(app_id: str, packet_sha256: str, gate: str) -> None:
     try:
+        # Readiness gate BEFORE the run budget: a scale-to-zero cold start must
+        # not eat RUN_TIMEOUT_S. Skipped when backends are misconfigured so the
+        # pipeline's own honest config error stays the one that surfaces.
+        if config.PARSE_BACKEND == "paddle" and not config.missing_backends():
+            waited = await ensure_vl_ready()
+            if waited:
+                print(f"vl_ready: deployment served after {waited}s warm-up", flush=True)
         await asyncio.wait_for(_pipeline(app_id, packet_sha256, gate), timeout=config.RUN_TIMEOUT_S)
     except Exception as e:  # noqa: BLE001 — every failure reverts the portal state honestly
         reason = f"{type(e).__name__}: {e}" if not isinstance(e, asyncio.TimeoutError) else \

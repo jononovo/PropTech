@@ -32,6 +32,11 @@ TEXT_MODEL = os.environ.get("TEXT_MODEL", "accounts/fireworks/models/glm-5p2")
 RENDER_DPI = int(os.environ.get("RENDER_DPI", "150"))
 PARSE_CONCURRENCY = int(os.environ.get("PARSE_CONCURRENCY", "3"))
 RUN_TIMEOUT_S = int(os.environ.get("RUN_TIMEOUT_S", "900"))
+
+# VL deployment readiness gate (vl_ready.py) — scale-to-zero cold starts get
+# their own budget, separate from RUN_TIMEOUT_S (measured 10+ min on 2026-07-24).
+VL_READY_POLL_S = float(os.environ.get("VL_READY_POLL_S", "15"))
+VL_READY_TIMEOUT_S = float(os.environ.get("VL_READY_TIMEOUT_S", "1200"))
 STORE_DIR = os.environ.get("ANALYZER_STORE", os.path.join(os.path.dirname(__file__), "store"))
 
 _PARSE_LABEL = (

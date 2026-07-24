@@ -108,3 +108,10 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 - **Sample packet**: assemble 3–10 pages from public sample mortgage docs; no 300-page packet.
 - Run history: latest-run-wins in the UI; every run stays on disk in the sidecar. **Why:** ops users act on the current state of the packet, not archaeology; keeping history preserves auditability without UI cost.
 - Case-file honesty rule extends to failures: a failed analysis fetch must render an error, never the "no run yet" empty state.
+
+## Locked (Jul 24, 2026, follow-up)
+- **Judge = Anthropic**, user's own key. Parser = Fireworks-hosted PaddleOCR-VL (key requested from user).
+- Verified at source: Fireworks lists PaddleOCR-VL 1.6 as on-demand deploy → 1.6 upgrade is config-only once the key exists; time it on accuracy-vs-GPU-hour cost. Spec v0.6.2's "self-hosted only" endpoint line is stale on exactly this point; user confirmed no newer spec exists — v0.6.2 still governs everything else.
+- Run history: latest-run-wins confirmed. No history UI.
+- Gate state machine adopted for Stage 3: uploaded → preflight_running → gated → processing → report, persisted server-side; pre-flight checks real from day one (pages/splits/format/blank-detect), skew detection stays parser-tier. Test packet recipe: URLA sample + 2p fake bank stmt + ID + deed page + one blank page (pre-flight proof) + one skewed page (parser proof).
+- Deferred-work parking lot lives at internal_docs/future.md (user convention). Closing-date edits stay unattributed until real auth — noted there.

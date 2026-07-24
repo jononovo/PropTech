@@ -1,14 +1,11 @@
 import path from "node:path";
-import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import { UploadDocumentResponse } from "@workspace/api-zod";
-import { DATA_DIR } from "../../lib/jsonStore";
 import { HttpError, isHttpError } from "../../lib/httpError";
+import { deleteIntakeUpload, putIntakeUpload } from "../../lib/packetObjectStore";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { extensionAllowed, findBlock, isSafeSegment } from "../intake/blocks";
-
-const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 
 type UploadedFileRecord = { filename: string; size: number; uploadedAt: string };
 
@@ -49,21 +46,8 @@ async function validateUploadTarget(req: Request, res: Response, next: NextFunct
   next();
 }
 
-const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const ctx = contexts.get(req);
-    if (!ctx) {
-      cb(new Error("Upload context missing"), "");
-      return;
-    }
-    const dir = path.join(UPLOADS_DIR, ctx.app.id, ctx.blockId);
-    mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => cb(null, sanitizeFilename(file.originalname)),
-});
-
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+// Bytes buffer in memory (50 MB cap), then land in App Storage — no local disk.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const router: IRouter = Router();
 
@@ -83,16 +67,24 @@ router.post(
     }
     // Block lookup against the PINNED template (immutable per application) — the
     // context read is race-free for this check.
+    const filename = sanitizeFilename(req.file.originalname);
     const block = findBlock(ctx.app, ctx.blockId);
-    if (!block || !extensionAllowed(block, req.file.filename)) {
-      // Contract: 400 when the format is not accepted by the block. Remove the stored file.
-      if (existsSync(req.file.path)) unlinkSync(req.file.path);
+    if (!block || !extensionAllowed(block, filename)) {
+      // Contract: 400 when the format is not accepted by the block. Nothing was stored yet.
       const formats = (block?.formats ?? []).join(", ");
       res.status(400).json({ error: `Format not accepted. Allowed: ${formats || "any"}` });
       return;
     }
+    // Bytes land in App Storage FIRST, the record second — an orphaned object
+    // is harmless, a dangling record is not.
+    try {
+      await putIntakeUpload(ctx.app.id, ctx.blockId, filename, req.file.buffer, req.file.mimetype || "application/octet-stream");
+    } catch (err) {
+      res.status(500).json({ error: `Upload storage write failed: ${err instanceof Error ? err.message : String(err)}` });
+      return;
+    }
     const record: UploadedFileRecord = {
-      filename: req.file.filename,
+      filename,
       size: req.file.size,
       uploadedAt: new Date().toISOString(),
     };
@@ -106,7 +98,8 @@ router.post(
       return app;
     });
     if (!app) {
-      if (existsSync(req.file.path)) unlinkSync(req.file.path);
+      // Best-effort undo of the just-stored object; an orphan is harmless anyway.
+      await deleteIntakeUpload(ctx.app.id, ctx.blockId, filename).catch(() => undefined);
       res.status(404).json({ error: "Application not found" });
       return;
     }
@@ -137,10 +130,9 @@ router.delete(
         res.status(404).json({ error: "Application not found" });
         return;
       }
-      // Record removed transactionally first; the disk file goes second (an
-      // orphaned file is harmless, a dangling record is not).
-      const filePath = path.join(UPLOADS_DIR, id, blockId, filename);
-      if (existsSync(filePath)) unlinkSync(filePath);
+      // Record removed transactionally first; the stored object goes second (an
+      // orphaned object is harmless, a dangling record is not).
+      await deleteIntakeUpload(id, blockId, filename);
       res.sendStatus(204);
     } catch (err) {
       if (isHttpError(err)) {

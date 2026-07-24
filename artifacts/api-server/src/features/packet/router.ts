@@ -1,6 +1,7 @@
 import path from "node:path";
+import os from "node:os";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync } from "node:fs";
+import { readFileSync, rmSync, unlinkSync } from "node:fs";
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import {
@@ -10,13 +11,16 @@ import {
   ReportPacketRunFailureResponse,
   UploadPacketResponse,
 } from "@workspace/api-zod";
-import { DATA_DIR } from "../../lib/jsonStore";
 import { HttpError, isHttpError } from "../../lib/httpError";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
 import { readPdfInfo, runPreflight } from "./preflight";
-
-export const PACKETS_DIR = path.join(DATA_DIR, "packets");
+import {
+  openPacketPdfStream,
+  openPageThumbnailStream,
+  putPacketPdf,
+  putPageThumbnail,
+} from "../../lib/packetObjectStore";
 
 type PacketState = NonNullable<Application["packet"]>;
 
@@ -32,9 +36,9 @@ function param(req: Request, key: string): string | undefined {
 const contexts = new WeakMap<Request, { app: Application }>();
 
 /**
- * Per-application serialization of packet DISK artifacts (packet.pdf, thumbs)
- * within this instance — uploads for the same app queue here so pre-flight
- * never reads a half-replaced file. Packet STATE atomicity does not rest on
+ * Per-application serialization of packet byte handling (temp staging +
+ * App Storage writes) within this instance — uploads for the same app queue
+ * here so pre-flight never reads a half-replaced file. Packet STATE atomicity does not rest on
  * this: every state transition below is a SELECT ... FOR UPDATE transaction
  * (updateApplication) with sha-guarded flips, which holds across instances too.
  */
@@ -105,22 +109,12 @@ async function validateTarget(req: Request, res: Response, next: NextFunction): 
   next();
 }
 
-// The packet is stored under a fixed name — re-upload REPLACES it and re-runs
-// pre-flight (state machine restarts). Prior analysis runs stay in the sidecar.
+// Uploads stage in the OS temp dir — only an ACCEPTED upload is copied to
+// App Storage (inside the lock) under the fixed key packet.pdf, so rejected
+// or racing uploads never clobber the packet a previous pre-flight reported
+// on. Re-upload REPLACES it and re-runs pre-flight (state machine restarts).
 const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const ctx = contexts.get(req);
-    if (!ctx) {
-      cb(new Error("Upload context missing"), "");
-      return;
-    }
-    const dir = path.join(PACKETS_DIR, ctx.app.id);
-    mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  // Written to a temp name first — only an ACCEPTED upload is renamed to
-  // packet.pdf (inside the lock), so rejected or racing uploads never clobber
-  // the packet a previous pre-flight reported on.
+  destination: (_req, _file, cb) => cb(null, os.tmpdir()),
   filename: (_req, _file, cb) =>
     cb(null, `packet.upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`),
 });
@@ -206,17 +200,34 @@ router.post(
       }
 
       // Pre-flight runs OUTSIDE any transaction — never hold a row lock across
-      // page rasterization.
+      // page rasterization. Thumbnails rasterize into local staging first.
       const packet: PacketState = { ...base };
+      const thumbsStagingDir = path.join(
+        os.tmpdir(),
+        `packet-thumbs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      );
       try {
-        packet.preflight = await runPreflight(tempPath, info, path.join(PACKETS_DIR, ctx.app.id, "thumbs"));
+        packet.preflight = await runPreflight(tempPath, info, thumbsStagingDir);
       } catch (err) {
+        rmSync(thumbsStagingDir, { recursive: true, force: true });
         unlinkSync(tempPath);
         res.status(500).json({ error: `Pre-flight failed: ${err instanceof Error ? err.message : String(err)}` });
         return;
       }
-      // Accepted — this file IS the packet now; re-upload replaces (state machine restarts).
-      renameSync(tempPath, path.join(PACKETS_DIR, ctx.app.id, "packet.pdf"));
+      // Accepted — bytes go to App Storage BEFORE any state the client can see
+      // lands, so a visible packet always references durable bytes.
+      try {
+        await putPacketPdf(ctx.app.id, tempPath);
+        for (const t of packet.preflight.thumbnails) {
+          await putPageThumbnail(ctx.app.id, t.page, path.join(thumbsStagingDir, `page-${t.page}.png`));
+        }
+      } catch (err) {
+        res.status(500).json({ error: `Packet storage write failed: ${err instanceof Error ? err.message : String(err)}` });
+        return;
+      } finally {
+        rmSync(thumbsStagingDir, { recursive: true, force: true });
+        rmSync(tempPath, { force: true });
+      }
 
       // Gate rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.
       const auto = info.pages < 20 && packet.preflight.flags.length === 0;
@@ -366,12 +377,17 @@ router.get("/applications/:applicationId/packet/file", validateTarget, async (re
     res.status(404).json({ error: "No packet uploaded for this application" });
     return;
   }
-  const file = path.join(PACKETS_DIR, ctx.app.id, "packet.pdf");
-  if (!existsSync(file)) {
-    res.status(404).json({ error: "Packet file missing on disk" });
+  const stream = await openPacketPdfStream(ctx.app.id);
+  if (!stream) {
+    res.status(404).json({ error: "Packet bytes missing from App Storage" });
     return;
   }
-  res.type("application/pdf").sendFile(file);
+  res.type("application/pdf");
+  stream.on("error", () => {
+    if (res.headersSent) res.destroy();
+    else res.status(502).json({ error: "Packet stream from App Storage failed" });
+  });
+  stream.pipe(res);
 });
 
 /**
@@ -428,12 +444,17 @@ router.get("/applications/:applicationId/packet/thumbnails/:page", async (req, r
     res.status(400).json({ error: "Invalid page number" });
     return;
   }
-  const file = path.join(PACKETS_DIR, id, "thumbs", `page-${page}.png`);
-  if (!existsSync(file)) {
+  const stream = await openPageThumbnailStream(id, page);
+  if (!stream) {
     res.status(404).json({ error: "No thumbnail for this page" });
     return;
   }
-  res.type("png").sendFile(file);
+  res.type("png");
+  stream.on("error", () => {
+    if (res.headersSent) res.destroy();
+    else res.status(502).json({ error: "Thumbnail stream from App Storage failed" });
+  });
+  stream.pipe(res);
 });
 
 export default router;

@@ -1,27 +1,27 @@
 kind = "web"
 previewPath = "/"
-title = "Homium Compliance Portal"
+title = "Homium Compliance Manager"
 version = "1.0.0"
-id = "artifacts/portal"
+id = "artifacts/client"
 router = "path"
 
 [[services]]
 name = "web"
 paths = [ "/" ]
-localPort = 25265
+localPort = 20517
 
 [services.development]
-run = "pnpm --filter @workspace/portal run dev"
+run = "pnpm --filter @workspace/client run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/portal", "run", "build" ]
+build = [ "pnpm", "--filter", "@workspace/client", "run", "build" ]
 serve = "static"
-publicDir = "artifacts/portal/dist/public"
+publicDir = "artifacts/client/dist/public"
 
 [[services.production.rewrites]]
 from = "/*"
 to = "/index.html"
 
 [services.env]
-PORT = "25265"
+PORT = "20517"
 BASE_PATH = "/"

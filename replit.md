@@ -1,45 +1,33 @@
-# [Project name]
+# Homium Compliance Manager
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Internal compliance platform for Homium (home-loan deposit assistance): define document templates for loans, collect applicant documents, and (in later phases) AI-analyze and human-verify them.
+
+## Architecture map — READ THIS FIRST
+
+| Folder | Role |
+| --- | --- |
+| `artifacts/client/` | **The entire frontend** (React + Vite). All product pages live in `src/features/`. Served at `/`. |
+| `artifacts/api-server/` | **The entire backend** (Express 5). Platform-fixed name — this is the "server" folder. Serves `/api`. Feature routers in `src/features/`, data on disk in `data/`. |
+| `lib/api-spec/openapi.yaml` | **The API contract** — single source of truth. Change it first, then run codegen. |
+| `lib/api-zod/`, `lib/api-client-react/` | Generated from the spec (Zod schemas for the server, React Query hooks for the client). Never hand-edit. |
+| `artifacts/mockup-sandbox/` | Design mockups only — historical record of the approved designs. NOT production code. |
+| `docs/` | Product specs. `homium-product-spec.md` is the full handoff spec; `homium-template-schema-spec.md` defines the template JSON contract. |
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Workflows (managed): `artifacts/client: web`, `artifacts/api-server: API Server`
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
-
-## Stack
-
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
-
-## Where things live
-
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas after any spec change
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
-
-## Product
-
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Persistence is JSON files on disk** (`artifacts/api-server/data/`), no database — explicit user choice. Atomic temp-file writes; indexes always derived by directory scan.
+- **Contract-first:** OpenAPI spec → codegen → implementation. Server validates all IO with generated Zod schemas.
+- Template lifecycle: draft = editable, active = immutable (409); new version copies vN → v(N+1) draft; applications pin a full template copy forever; saved sections are copies, never links.
+- Mirrored feature folders client/server; ≤~250 lines per file; no utils dumping grounds (user mandate).
+- No auth in v1 — role simulated by a client-side switcher, not enforced server-side.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
-
-## Gotchas
-
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Folder names must read as standard client/server architecture; frontend folder is `client` (renamed from `portal` at user's request, Jul 2026). Any new top-level piece needs an obvious architectural name.
+- Serious production mindset: no mockup shortcuts in app code; terse professional communication.

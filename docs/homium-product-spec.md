@@ -50,7 +50,7 @@ Companion docs: `docs/homium-template-schema-spec.md` (JSON contract deep-dive),
 
 ---
 
-## Part B — BUILT AND RUNNING (v1 portal)
+## Part B — BUILT AND RUNNING (v1)
 
 ### B1. Scope of v1 (deliberate)
 - Template **library**, template **builder/editor**, **saved sections**, **applications + applicant intake form** (with uploads).
@@ -58,7 +58,7 @@ Companion docs: `docs/homium-template-schema-spec.md` (JSON contract deep-dive),
 - Persistence: **literal JSON files on disk — no database** (user's explicit choice over the recommended DB).
 
 ### B2. Architecture
-- pnpm monorepo. Frontend `artifacts/portal` (React + Vite + wouter + TanStack Query, served at `/`). Backend features inside the shared Express 5 server `artifacts/api-server` (served at `/api`).
+- pnpm monorepo. Frontend `artifacts/client` (React + Vite + wouter + TanStack Query, served at `/`). Backend features inside the shared Express 5 server `artifacts/api-server` (served at `/api`).
 - **Contract-first:** `lib/api-spec/openapi.yaml` is the single source of truth. Codegen produces Zod schemas (`@workspace/api-zod`, used by the server for all input/output validation) and typed React Query hooks (`@workspace/api-client-react`, used by the frontend). There is no separate hand-written shared types package — the OpenAPI spec IS the shared contract.
 - **Hard modularity rules (user mandate):** mirrored feature folders with identical names on both sides; no file over ~250 lines; no cross-feature imports (except small shared helpers); no `utils.ts` dumping grounds; routes are wiring only; disk IO lives only in store modules.
 
@@ -71,7 +71,7 @@ artifacts/api-server/src/
     saved-sections/    store.ts router.ts
     intake/            store.ts router.ts blocks.ts
     intake-uploads/    router.ts           # multer, 50MB cap
-artifacts/portal/src/
+artifacts/client/src/
   features/
     template-library/  TemplateLibrary.tsx
     template-editor/   TemplateEditor.tsx

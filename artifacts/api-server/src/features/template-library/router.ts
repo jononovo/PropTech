@@ -23,7 +23,7 @@ import { parseVersionParams } from "./params";
 const router: IRouter = Router();
 
 router.get("/templates", async (_req, res): Promise<void> => {
-  res.json(ListTemplatesResponse.parse(listAllListings()));
+  res.json(ListTemplatesResponse.parse(await listAllListings()));
 });
 
 router.post("/templates", async (req, res): Promise<void> => {
@@ -104,7 +104,7 @@ router.post("/templates/:family/:version/activate", async (req, res): Promise<vo
   }
   const activated: Template = { ...tpl, status: "active" };
   writeTemplate(p.family, activated);
-  res.json(ActivateTemplateResponse.parse(toListing(p.family, activated)));
+  res.json(ActivateTemplateResponse.parse(await toListing(p.family, activated)));
 });
 
 export default router;

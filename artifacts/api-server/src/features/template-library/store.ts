@@ -41,7 +41,7 @@ function countDocs(tpl: Template): number {
   );
 }
 
-export function toListing(family: string, tpl: Template): TemplateListing {
+export async function toListing(family: string, tpl: Template): Promise<TemplateListing> {
   const mtime = fileMtime(templatePath(family, tpl.version));
   return {
     family,
@@ -52,17 +52,17 @@ export function toListing(family: string, tpl: Template): TemplateListing {
     sections: tpl.sections.length,
     docs: countDocs(tpl),
     updated: (mtime ?? new Date()).toISOString(),
-    inUseBy: countApplicationsFor(family, tpl.version),
+    inUseBy: await countApplicationsFor(family, tpl.version),
   };
 }
 
 /** The library index is always derived by scanning the directory tree. */
-export function listAllListings(): TemplateListing[] {
+export async function listAllListings(): Promise<TemplateListing[]> {
   const out: TemplateListing[] = [];
   for (const family of listDirs(TEMPLATES_DIR)) {
     for (const version of familyVersions(family)) {
       const tpl = readTemplate(family, version);
-      if (tpl) out.push(toListing(family, tpl));
+      if (tpl) out.push(await toListing(family, tpl));
     }
   }
   out.sort((a, b) => (a.family === b.family ? b.version - a.version : a.family.localeCompare(b.family)));

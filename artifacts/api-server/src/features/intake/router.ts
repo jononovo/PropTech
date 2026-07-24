@@ -11,13 +11,21 @@ import {
   UpdateApplicationResponse,
 } from "@workspace/api-zod";
 import { readTemplate } from "../template-library/store";
-import { listApplicationsRaw, readApplication, toSummary, writeApplication, type Application } from "./store";
+import { HttpError, isHttpError } from "../../lib/httpError";
+import {
+  insertApplication,
+  listApplicationsRaw,
+  readApplication,
+  toSummary,
+  updateApplication,
+  type Application,
+} from "./store";
 import { findBlock, isSafeSegment } from "./blocks";
 
 const router: IRouter = Router();
 
 router.get("/applications", async (_req, res): Promise<void> => {
-  const summaries = listApplicationsRaw()
+  const summaries = (await listApplicationsRaw())
     .map(toSummary)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   res.json(ListApplicationsResponse.parse(summaries));
@@ -50,14 +58,14 @@ router.post("/applications", async (req, res): Promise<void> => {
     ...(parsed.data.projectedClosingDate ? { projectedClosingDate: parsed.data.projectedClosingDate } : {}),
     template: tpl,
   };
-  writeApplication(app);
+  await insertApplication(app);
   res.status(201).json(CreateApplicationResponse.parse(app));
 });
 
 router.get("/applications/:applicationId", async (req, res): Promise<void> => {
   const raw = req.params["applicationId"];
   const id = Array.isArray(raw) ? raw[0] : raw;
-  const app = id ? readApplication(id) : undefined;
+  const app = id ? await readApplication(id) : undefined;
   if (!app) {
     res.status(404).json({ error: "Application not found" });
     return;
@@ -68,23 +76,26 @@ router.get("/applications/:applicationId", async (req, res): Promise<void> => {
 router.patch("/applications/:applicationId", async (req, res): Promise<void> => {
   const raw = req.params["applicationId"];
   const id = Array.isArray(raw) ? raw[0] : raw;
-  const app = id ? readApplication(id) : undefined;
-  if (!app) {
-    res.status(404).json({ error: "Application not found" });
-    return;
-  }
   const parsed = UpdateApplicationBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  // projectedClosingDate is portal-owned (analyzer spec §8): string sets, null clears.
-  if (parsed.data.projectedClosingDate === null) {
-    delete app.projectedClosingDate;
-  } else if (parsed.data.projectedClosingDate !== undefined) {
-    app.projectedClosingDate = parsed.data.projectedClosingDate;
+  const app = id
+    ? await updateApplication(id, (app) => {
+        // projectedClosingDate is portal-owned (analyzer spec §8): string sets, null clears.
+        if (parsed.data.projectedClosingDate === null) {
+          delete app.projectedClosingDate;
+        } else if (parsed.data.projectedClosingDate !== undefined) {
+          app.projectedClosingDate = parsed.data.projectedClosingDate;
+        }
+        return app;
+      })
+    : undefined;
+  if (!app) {
+    res.status(404).json({ error: "Application not found" });
+    return;
   }
-  writeApplication(app);
   res.json(UpdateApplicationResponse.parse(app));
 });
 
@@ -97,24 +108,32 @@ router.put("/applications/:applicationId/fields/:blockId", async (req, res): Pro
     res.status(400).json({ error: "Invalid application or block id" });
     return;
   }
-  const app = readApplication(id);
-  if (!app) {
-    res.status(404).json({ error: "Application not found" });
-    return;
-  }
-  const block = findBlock(app, blockId);
-  if (!block || block.kind !== "fields") {
-    res.status(400).json({ error: "Block is not a field-group block on this application's template" });
-    return;
-  }
   const parsed = SaveFieldValuesBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  app.fieldValues[blockId] = parsed.data.values;
-  writeApplication(app);
-  res.json(SaveFieldValuesResponse.parse(app));
+  try {
+    const app = await updateApplication(id, (app) => {
+      const block = findBlock(app, blockId);
+      if (!block || block.kind !== "fields") {
+        throw new HttpError(400, "Block is not a field-group block on this application's template");
+      }
+      app.fieldValues[blockId] = parsed.data.values;
+      return app;
+    });
+    if (!app) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+    res.json(SaveFieldValuesResponse.parse(app));
+  } catch (err) {
+    if (isHttpError(err)) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
 });
 
 export default router;

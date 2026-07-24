@@ -5,7 +5,8 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import multer from "multer";
 import { DecidePacketGateBody, DecidePacketGateResponse, UploadPacketResponse } from "@workspace/api-zod";
 import { DATA_DIR } from "../../lib/jsonStore";
-import { readApplication, writeApplication, type Application } from "../intake/store";
+import { HttpError, isHttpError } from "../../lib/httpError";
+import { readApplication, updateApplication, type Application } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
 import { readPdfInfo, runPreflight } from "./preflight";
 import { buildSimulatedRun, ingestViaRealEndpoint } from "./simulator";
@@ -26,10 +27,12 @@ function param(req: Request, key: string): string | undefined {
 const contexts = new WeakMap<Request, { app: Application }>();
 
 /**
- * Per-application serialization for packet mutations. "The gate physically
- * blocks" only holds if check-then-write is atomic per application — uploads
- * and gate decisions for the same app queue here. Single-process server, so
- * an in-memory promise chain is sufficient.
+ * Per-application serialization of packet DISK artifacts (packet.pdf, thumbs)
+ * within this instance — uploads for the same app queue here so pre-flight
+ * never reads a half-replaced file. Packet STATE atomicity does not rest on
+ * this anymore: every state transition below is a SELECT ... FOR UPDATE
+ * transaction (updateApplication), which holds across instances too. Disk
+ * files stay instance-local until App Storage arrives with the real engine.
  */
 const packetLocks = new Map<string, Promise<void>>();
 
@@ -48,13 +51,13 @@ async function withPacketLock(appId: string, fn: () => Promise<void>): Promise<v
   }
 }
 
-function validateTarget(req: Request, res: Response, next: NextFunction): void {
+async function validateTarget(req: Request, res: Response, next: NextFunction): Promise<void> {
   const id = param(req, "applicationId");
   if (!isSafeSegment(id)) {
     res.status(400).json({ error: "Invalid application id" });
     return;
   }
-  const app = readApplication(id);
+  const app = await readApplication(id);
   if (!app) {
     res.status(404).json({ error: "Application not found" });
     return;
@@ -127,24 +130,10 @@ router.post(
     }
 
     await withPacketLock(ctx.app.id, async () => {
-      let app = readApplication(ctx.app.id);
-      if (!app) {
-        unlinkSync(tempPath);
-        res.status(404).json({ error: "Application not found" });
-        return;
-      }
-      if (app.packet?.state === "processing") {
-        // An analyzer run is mid-flight — replacing the packet now would let an
-        // older request overwrite newer state. Let the run land, then re-drop.
-        unlinkSync(tempPath);
-        res.status(409).json({
-          error: "Analyzer is running for this packet — wait for the run to land, then re-upload",
-        });
-        return;
-      }
-
-      // State 1: preflight_running — persisted before the work starts (crash-honest).
-      const packet: PacketState = {
+      // State 1: preflight_running — claimed ATOMICALLY before the work starts
+      // (crash-honest). A packet mid-analysis refuses replacement: an older
+      // request must never overwrite newer state.
+      const base: PacketState = {
         filename: originalName,
         sizeBytes,
         pages: info.pages,
@@ -152,51 +141,95 @@ router.post(
         uploadedAt: new Date().toISOString(),
         state: "preflight_running",
       };
-      app.packet = packet;
-      writeApplication(app);
-
+      let claimed: Application | undefined;
       try {
-        packet.preflight = await runPreflight(tempPath, info, path.join(PACKETS_DIR, app.id, "thumbs"));
+        claimed = await updateApplication(ctx.app.id, (app) => {
+          if (app.packet?.state === "processing") {
+            throw new HttpError(409, "Analyzer is running for this packet — wait for the run to land, then re-upload");
+          }
+          app.packet = base;
+          return app;
+        });
+      } catch (err) {
+        unlinkSync(tempPath);
+        if (isHttpError(err)) {
+          res.status(err.status).json({ error: err.message });
+          return;
+        }
+        throw err;
+      }
+      if (!claimed) {
+        unlinkSync(tempPath);
+        res.status(404).json({ error: "Application not found" });
+        return;
+      }
+
+      // Pre-flight runs OUTSIDE any transaction — never hold a row lock across
+      // page rasterization.
+      const packet: PacketState = { ...base };
+      try {
+        packet.preflight = await runPreflight(tempPath, info, path.join(PACKETS_DIR, ctx.app.id, "thumbs"));
       } catch (err) {
         unlinkSync(tempPath);
         res.status(500).json({ error: `Pre-flight failed: ${err instanceof Error ? err.message : String(err)}` });
         return;
       }
       // Accepted — this file IS the packet now; re-upload replaces (state machine restarts).
-      renameSync(tempPath, path.join(PACKETS_DIR, app.id, "packet.pdf"));
+      renameSync(tempPath, path.join(PACKETS_DIR, ctx.app.id, "packet.pdf"));
 
       // Gate rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.
       const auto = info.pages < 20 && packet.preflight.flags.length === 0;
       if (!auto) {
         packet.state = "gated";
-        app = readApplication(app.id) ?? app;
-        app.packet = packet;
-        writeApplication(app);
+        const app = await updateApplication(ctx.app.id, (a) => {
+          a.packet = packet;
+          return a;
+        });
+        if (!app) {
+          res.status(404).json({ error: "Application not found" });
+          return;
+        }
         res.json(UploadPacketResponse.parse(app));
         return;
       }
+
       packet.gate = { decision: "auto", decidedAt: new Date().toISOString() };
       packet.state = "processing";
-      app = readApplication(app.id) ?? app;
-      app.packet = packet;
-      writeApplication(app);
+      const processing = await updateApplication(ctx.app.id, (a) => {
+        a.packet = packet;
+        return a;
+      });
+      if (!processing) {
+        res.status(404).json({ error: "Application not found" });
+        return;
+      }
       try {
-        await ingestViaRealEndpoint(app.id, buildSimulatedRun(app, packet, "auto"));
+        await ingestViaRealEndpoint(processing.id, buildSimulatedRun(processing, packet, "auto"));
       } catch (err) {
         // Honest failure: fall back to the gate rather than pretending a run exists.
-        packet.state = "gated";
-        delete packet.gate;
-        app = readApplication(app.id) ?? app;
-        app.packet = packet;
-        writeApplication(app);
+        // Guarded flip — only OUR packet (sha) still processing reverts.
+        await updateApplication(ctx.app.id, (a) => {
+          if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
+            const reverted: PacketState = { ...a.packet, state: "gated" };
+            delete reverted.gate;
+            a.packet = reverted;
+          }
+          return a;
+        });
         res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
         return;
       }
-      packet.state = "report";
-      app = readApplication(app.id) ?? app;
-      app.packet = packet;
-      writeApplication(app);
-      res.json(UploadPacketResponse.parse(app));
+      const final = await updateApplication(ctx.app.id, (a) => {
+        if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
+          a.packet = { ...a.packet, state: "report" };
+        }
+        return a;
+      });
+      if (!final) {
+        res.status(404).json({ error: "Application not found" });
+        return;
+      }
+      res.json(UploadPacketResponse.parse(final));
     });
   },
 );
@@ -213,53 +246,74 @@ router.post("/applications/:applicationId/packet/gate", validateTarget, async (r
     return;
   }
 
-  await withPacketLock(ctx.app.id, async () => {
-    // Fresh read INSIDE the lock — two simultaneous gate calls serialize here,
-    // so the second one sees processing/report and gets a 409, never a double run.
-    let app = readApplication(ctx.app.id);
-    if (!app?.packet) {
-      res.status(404).json({ error: "No packet uploaded for this application" });
+  // Check-then-decide is one row-locked transaction: two simultaneous gate
+  // calls serialize at the DB — the second sees processing/report and gets a
+  // 409, never a double run. Holds across server instances, not just this one.
+  let decided: Application | undefined;
+  try {
+    decided = await updateApplication(ctx.app.id, (app) => {
+      if (!app.packet) {
+        throw new HttpError(404, "No packet uploaded for this application");
+      }
+      if (app.packet.state !== "gated") {
+        throw new HttpError(409, `Packet is not awaiting a gate decision (state: ${app.packet.state})`);
+      }
+      const flags = app.packet.preflight?.flags ?? [];
+      // Spec §3: "Process" (confirmed) only when clean; "Process anyway" (bypassed) is an
+      // explicit human override of standing red flags — the two are not interchangeable.
+      if (parsed.data.decision === "confirmed" && flags.length > 0) {
+        throw new HttpError(400, `Packet has ${flags.length} red flag(s) — use "bypassed" (Process anyway) to override them`);
+      }
+      if (parsed.data.decision === "bypassed" && flags.length === 0) {
+        throw new HttpError(400, 'Packet has no red flags — use "confirmed"');
+      }
+      app.packet = {
+        ...app.packet,
+        gate: { decision: parsed.data.decision, decidedBy: parsed.data.decidedBy, decidedAt: new Date().toISOString() },
+        state: "processing",
+      };
+      return app;
+    });
+  } catch (err) {
+    if (isHttpError(err)) {
+      res.status(err.status).json({ error: err.message });
       return;
     }
-    if (app.packet.state !== "gated") {
-      res.status(409).json({ error: `Packet is not awaiting a gate decision (state: ${app.packet.state})` });
-      return;
-    }
-    const flags = app.packet.preflight?.flags ?? [];
-    // Spec §3: "Process" (confirmed) only when clean; "Process anyway" (bypassed) is an
-    // explicit human override of standing red flags — the two are not interchangeable.
-    if (parsed.data.decision === "confirmed" && flags.length > 0) {
-      res.status(400).json({ error: `Packet has ${flags.length} red flag(s) — use "bypassed" (Process anyway) to override them` });
-      return;
-    }
-    if (parsed.data.decision === "bypassed" && flags.length === 0) {
-      res.status(400).json({ error: 'Packet has no red flags — use "confirmed"' });
-      return;
-    }
+    throw err;
+  }
+  if (!decided?.packet) {
+    res.status(404).json({ error: "Application not found" });
+    return;
+  }
+  const packet = decided.packet;
 
-    const packet: PacketState = { ...app.packet };
-    packet.gate = { decision: parsed.data.decision, decidedBy: parsed.data.decidedBy, decidedAt: new Date().toISOString() };
-    packet.state = "processing";
-    app.packet = packet;
-    writeApplication(app);
-
-    try {
-      await ingestViaRealEndpoint(app.id, buildSimulatedRun(app, packet, parsed.data.decision));
-    } catch (err) {
-      packet.state = "gated";
-      delete packet.gate;
-      app = readApplication(app.id) ?? app;
-      app.packet = packet;
-      writeApplication(app);
-      res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
-      return;
+  // Ingest OUTSIDE the transaction — the processing state itself is what
+  // blocks competing mutations while the run is in flight.
+  try {
+    await ingestViaRealEndpoint(decided.id, buildSimulatedRun(decided, packet, parsed.data.decision));
+  } catch (err) {
+    await updateApplication(ctx.app.id, (a) => {
+      if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
+        const reverted: PacketState = { ...a.packet, state: "gated" };
+        delete reverted.gate;
+        a.packet = reverted;
+      }
+      return a;
+    });
+    res.status(502).json({ error: err instanceof Error ? err.message : String(err) });
+    return;
+  }
+  const final = await updateApplication(ctx.app.id, (a) => {
+    if (a.packet?.state === "processing" && a.packet.sha256 === packet.sha256) {
+      a.packet = { ...a.packet, state: "report" };
     }
-    packet.state = "report";
-    app = readApplication(app.id) ?? app;
-    app.packet = packet;
-    writeApplication(app);
-    res.json(DecidePacketGateResponse.parse(app));
+    return a;
   });
+  if (!final) {
+    res.status(404).json({ error: "Application not found" });
+    return;
+  }
+  res.json(DecidePacketGateResponse.parse(final));
 });
 
 router.get("/applications/:applicationId/packet/thumbnails/:page", async (req, res): Promise<void> => {

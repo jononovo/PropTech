@@ -7,7 +7,8 @@ Document-ops platform for lending compliance: define document templates, collect
 | Folder | Role |
 | --- | --- |
 | `artifacts/client/` | **The entire frontend** (React + Vite). All product pages live in `src/features/`. Served at `/`. |
-| `artifacts/api-server/` | **The entire backend** (Express 5). Platform-fixed name — this is the "server" folder. Serves `/api`. Feature routers in `src/features/`, data on disk in `data/`. |
+| `artifacts/api-server/` | **The entire backend** (Express 5). Platform-fixed name — this is the "server" folder. Serves `/api`. Feature routers in `src/features/`; templates + packet/upload files in `data/`, operational data in Postgres. |
+| `lib/db/` | Drizzle schema + client for the Postgres operational store (`applications`, `analysis_runs`). After schema changes: `pnpm --filter @workspace/db run push` AND `pnpm --filter @workspace/db exec tsc -b` (composite project — stale `dist/` d.ts otherwise). |
 | `lib/api-spec/openapi.yaml` | **The API contract** — single source of truth. Change it first, then run codegen. |
 | `lib/api-zod/`, `lib/api-client-react/` | Generated from the spec (Zod schemas for the server, React Query hooks for the client). Never hand-edit. |
 | `artifacts/mockup-sandbox/` | Design mockups only — historical record of the approved designs. NOT production code. |
@@ -21,7 +22,8 @@ Document-ops platform for lending compliance: define document templates, collect
 
 ## Architecture decisions
 
-- **Persistence is JSON files on disk** (`artifacts/api-server/data/`), no database — explicit user choice. Atomic temp-file writes; indexes always derived by directory scan.
+- **Persistence is hybrid (Jul 2026 migration, user-approved):** operational data — applications (one jsonb document per row) and analysis runs (append-only rows, unique `(application_id, run_id)` = replay protection) — lives in **Postgres** via `lib/db`. **Templates and saved sections stay JSON files** (authored artifacts; version/status truth stays the file system). Packet PDFs/thumbnails/uploads stay on disk until App Storage arrives with the engine.
+- All application mutations go through `updateApplication(id, mutate)` — a `SELECT ... FOR UPDATE` transaction (`mutate` throws `HttpError` to abort). Packet gate/state transitions are therefore atomic across instances; the in-process packet lock only serializes per-app disk-file work.
 - **Contract-first:** OpenAPI spec → codegen → implementation. Server validates all IO with generated Zod schemas.
 - Template lifecycle: draft = editable, active = immutable (409); new version copies vN → v(N+1) draft; applications pin a full template copy forever; saved sections are copies, never links.
 - Mirrored feature folders client/server; ≤~250 lines per file; no utils dumping grounds (user mandate).

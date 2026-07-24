@@ -6,7 +6,8 @@ import {
   RecordVerdictBody,
   RecordVerdictResponse,
 } from "@workspace/api-zod";
-import { readApplication, writeApplication, type Application } from "../intake/store";
+import { HttpError, isHttpError } from "../../lib/httpError";
+import { readApplication, updateApplication, type Application } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
 import { appendRun, readSidecar } from "./store";
 
@@ -22,12 +23,12 @@ router.get("/applications/:applicationId/analysis", async (req, res): Promise<vo
     res.status(400).json({ error: "Invalid application id" });
     return;
   }
-  const app = readApplication(id);
+  const app = await readApplication(id);
   if (!app) {
     res.status(404).json({ error: "Application not found" });
     return;
   }
-  res.json(GetAnalysisResponse.parse(readSidecar(id)));
+  res.json(GetAnalysisResponse.parse(await readSidecar(id)));
 });
 
 router.post("/applications/:applicationId/analysis", async (req, res): Promise<void> => {
@@ -36,7 +37,7 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
     res.status(400).json({ error: "Invalid application id" });
     return;
   }
-  const app = readApplication(id);
+  const app = await readApplication(id);
   if (!app) {
     res.status(404).json({ error: "Application not found" });
     return;
@@ -48,6 +49,7 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
   }
   // INVARIANT (analyzer spec §5): every suggestedBlockId must resolve to a document
   // block in the application's PINNED template — the whole run is rejected otherwise.
+  // The pinned template is immutable, so validating against this read is race-free.
   for (const doc of parsed.data.documents) {
     const block = findBlock(app, doc.suggestedBlockId);
     if (!block || block.kind !== "document") {
@@ -57,7 +59,7 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
       return;
     }
   }
-  const result = appendRun(id, parsed.data);
+  const result = await appendRun(id, parsed.data);
   if (result === "duplicate") {
     res.status(409).json({ error: `runId "${parsed.data.runId}" already ingested` });
     return;
@@ -72,36 +74,44 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
     res.status(400).json({ error: "Invalid application or block id" });
     return;
   }
-  const app = readApplication(id);
-  if (!app) {
-    res.status(404).json({ error: "Application not found" });
-    return;
-  }
-  const block = findBlock(app, blockId);
-  if (!block || block.kind !== "document") {
-    res.status(400).json({ error: "Block is not a document block on this application's template" });
-    return;
-  }
   const parsed = RecordVerdictBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  // Verdicts are human-only (spec §1.6); accepting confirms the dates the block's clocks
-  // run on (spec §1.4). Latest verdict per block is kept; re-recording replaces it.
-  const verdict: NonNullable<Application["verdicts"]>[string] = {
-    verdict: parsed.data.verdict,
-    datesEdited: parsed.data.datesEdited ?? false,
-    decidedAt: new Date().toISOString(),
-    decidedBy: parsed.data.decidedBy,
-    ...(parsed.data.note !== undefined ? { note: parsed.data.note } : {}),
-    ...(parsed.data.documentDate !== undefined ? { documentDate: parsed.data.documentDate } : {}),
-    ...(parsed.data.expiryDate !== undefined ? { expiryDate: parsed.data.expiryDate } : {}),
-    ...(parsed.data.runId !== undefined ? { runId: parsed.data.runId } : {}),
-  };
-  app.verdicts = { ...(app.verdicts ?? {}), [blockId]: verdict };
-  writeApplication(app);
-  res.json(RecordVerdictResponse.parse(app));
+  try {
+    const app = await updateApplication(id, (app) => {
+      const block = findBlock(app, blockId);
+      if (!block || block.kind !== "document") {
+        throw new HttpError(400, "Block is not a document block on this application's template");
+      }
+      // Verdicts are human-only (spec §1.6); accepting confirms the dates the block's clocks
+      // run on (spec §1.4). Latest verdict per block is kept; re-recording replaces it.
+      const verdict: NonNullable<Application["verdicts"]>[string] = {
+        verdict: parsed.data.verdict,
+        datesEdited: parsed.data.datesEdited ?? false,
+        decidedAt: new Date().toISOString(),
+        decidedBy: parsed.data.decidedBy,
+        ...(parsed.data.note !== undefined ? { note: parsed.data.note } : {}),
+        ...(parsed.data.documentDate !== undefined ? { documentDate: parsed.data.documentDate } : {}),
+        ...(parsed.data.expiryDate !== undefined ? { expiryDate: parsed.data.expiryDate } : {}),
+        ...(parsed.data.runId !== undefined ? { runId: parsed.data.runId } : {}),
+      };
+      app.verdicts = { ...(app.verdicts ?? {}), [blockId]: verdict };
+      return app;
+    });
+    if (!app) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+    res.json(RecordVerdictResponse.parse(app));
+  } catch (err) {
+    if (isHttpError(err)) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
 });
 
 export default router;

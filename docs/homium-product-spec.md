@@ -57,7 +57,7 @@ Companion docs: `docs/homium-template-schema-spec.md` (JSON contract deep-dive),
 ### B1. Scope of v1 (deliberate)
 - Template **library**, template **builder/editor**, **saved sections**, **applications + applicant intake form** (with uploads).
 - Explicitly OUT of v1: analyzer, review room, register view, timeline, workfile, auth, escalation engine.
-- Persistence: **literal JSON files on disk — no database** (user's explicit choice over the recommended DB).
+- Persistence: **hybrid** (since Jul 2026; originally all-files by user choice, migration to DB user-approved). Operational data — applications and analysis runs — lives in Postgres (`lib/db`, Drizzle): one jsonb document per application, runs as append-only rows. Templates and saved sections remain literal JSON files on disk; packet PDFs/thumbnails/uploads remain disk files until App Storage.
 
 ### B2. Architecture
 - pnpm monorepo. Frontend `artifacts/client` (React + Vite + wouter + TanStack Query, served at `/`). Backend features inside the shared Express 5 server `artifacts/api-server` (served at `/api`).
@@ -239,7 +239,7 @@ Everything below exists as user-approved high-fidelity mockups (canvas, `artifac
 - Analyzer's write-path into the portal (verdicts, scores, flags are not in the application JSON yet — the contract will need extending; keep it additive).
 - Escalation notifications (who gets warned at 30d/7d and how).
 - Multi-applicant / co-borrower files.
-- Storage migration path from JSON files to a database if/when scale demands (file-store rules in B3 were designed to keep this clean: derived indexes, single-writer semantics).
+- ~~Storage migration path from JSON files to a database if/when scale demands~~ **Done (Jul 2026)** for operational data: applications + analysis runs moved to Postgres with the API contract unchanged — the B3 rules (derived indexes, single-writer semantics) carried over as row-locked transactions (`updateApplication`) and an append-only runs table. Templates/saved sections deliberately stayed files.
 
 ---
 

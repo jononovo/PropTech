@@ -1,34 +1,75 @@
-import path from "node:path";
 import { z } from "zod";
+import { asc, eq, sql } from "drizzle-orm";
+import { db, applicationsTable } from "@workspace/db";
 import type { GetApplicationResponse, ListApplicationsResponseItem } from "@workspace/api-zod";
-import { DATA_DIR, listFiles, readJson, writeJsonAtomic } from "../../lib/jsonStore";
 
 export type Application = z.infer<typeof GetApplicationResponse>;
 export type ApplicationSummary = z.infer<typeof ListApplicationsResponseItem>;
 
-const APPLICATIONS_DIR = path.join(DATA_DIR, "applications");
+/**
+ * Postgres-backed operational store: one jsonb document per application — the
+ * OpenAPI contract is the schema, the row exists for atomicity. Templates and
+ * saved sections stay file-based (authored artifacts, versioned like code);
+ * packet PDFs/thumbnails stay on disk until App Storage arrives with the engine.
+ */
 
-export function applicationPath(id: string): string {
-  return path.join(APPLICATIONS_DIR, `${id}.json`);
+export async function readApplication(id: string): Promise<Application | undefined> {
+  const rows = await db
+    .select({ data: applicationsTable.data })
+    .from(applicationsTable)
+    .where(eq(applicationsTable.id, id))
+    .limit(1);
+  return rows[0]?.data as Application | undefined;
 }
 
-export function readApplication(id: string): Application | undefined {
-  return readJson<Application>(applicationPath(id));
+export async function insertApplication(app: Application): Promise<void> {
+  await db.insert(applicationsTable).values({ id: app.id, data: app });
 }
 
-export function writeApplication(app: Application): void {
-  writeJsonAtomic(applicationPath(app.id), app);
+/**
+ * Atomic read-modify-write: SELECT ... FOR UPDATE serializes concurrent
+ * mutations of one application across requests AND server instances — the
+ * packet state machine's "the gate physically blocks" rests on this, and it
+ * kills the whole-document clobber class for every mutating route.
+ *
+ * `mutate` may throw (e.g. HttpError) to abort; the transaction rolls back.
+ * Returns undefined when the application does not exist.
+ */
+export async function updateApplication(
+  id: string,
+  mutate: (app: Application) => Application | Promise<Application>,
+): Promise<Application | undefined> {
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .select({ data: applicationsTable.data })
+      .from(applicationsTable)
+      .where(eq(applicationsTable.id, id))
+      .for("update")
+      .limit(1);
+    if (!rows[0]) return undefined;
+    const next = await mutate(rows[0].data as Application);
+    await tx.update(applicationsTable).set({ data: next }).where(eq(applicationsTable.id, id));
+    return next;
+  });
 }
 
-export function listApplicationsRaw(): Application[] {
-  return listFiles(APPLICATIONS_DIR)
-    .map((f) => readJson<Application>(path.join(APPLICATIONS_DIR, f)))
-    .filter((a): a is Application => Boolean(a));
+export async function listApplicationsRaw(): Promise<Application[]> {
+  const rows = await db
+    .select({ data: applicationsTable.data })
+    .from(applicationsTable)
+    .orderBy(asc(applicationsTable.createdAt));
+  return rows.map((r) => r.data as Application);
 }
 
-/** inUseBy is always derived by counting application files pinned to a version. */
-export function countApplicationsFor(family: string, version: number): number {
-  return listApplicationsRaw().filter((a) => a.family === family && a.version === version).length;
+/** inUseBy is always derived by counting applications pinned to a version. */
+export async function countApplicationsFor(family: string, version: number): Promise<number> {
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(applicationsTable)
+    .where(
+      sql`${applicationsTable.data}->>'family' = ${family} and (${applicationsTable.data}->>'version')::int = ${version}`,
+    );
+  return rows[0]?.n ?? 0;
 }
 
 function countDocBlocks(app: Application): { total: number; filed: number } {

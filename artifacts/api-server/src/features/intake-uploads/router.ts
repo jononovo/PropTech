@@ -4,7 +4,8 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import multer from "multer";
 import { UploadDocumentResponse } from "@workspace/api-zod";
 import { DATA_DIR } from "../../lib/jsonStore";
-import { readApplication, writeApplication, type Application } from "../intake/store";
+import { HttpError, isHttpError } from "../../lib/httpError";
+import { readApplication, updateApplication, type Application } from "../intake/store";
 import { extensionAllowed, findBlock, isSafeSegment } from "../intake/blocks";
 
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
@@ -27,14 +28,14 @@ const contexts = new WeakMap<Request, UploadContext>();
  * Business validation BEFORE multer touches disk:
  * safe path segments, application exists, block exists and is a document block.
  */
-function validateUploadTarget(req: Request, res: Response, next: NextFunction): void {
+async function validateUploadTarget(req: Request, res: Response, next: NextFunction): Promise<void> {
   const id = param(req, "applicationId");
   const blockId = param(req, "blockId");
   if (!isSafeSegment(id) || !isSafeSegment(blockId)) {
     res.status(400).json({ error: "Invalid application or block id" });
     return;
   }
-  const app = readApplication(id);
+  const app = await readApplication(id);
   if (!app) {
     res.status(404).json({ error: "Application not found" });
     return;
@@ -80,6 +81,8 @@ router.post(
       res.status(400).json({ error: "No file provided (multipart field name must be \"file\")" });
       return;
     }
+    // Block lookup against the PINNED template (immutable per application) — the
+    // context read is race-free for this check.
     const block = findBlock(ctx.app, ctx.blockId);
     if (!block || !extensionAllowed(block, req.file.filename)) {
       // Contract: 400 when the format is not accepted by the block. Remove the stored file.
@@ -93,14 +96,20 @@ router.post(
       size: req.file.size,
       uploadedAt: new Date().toISOString(),
     };
-    // Re-read to avoid clobbering concurrent writes since validation.
-    const app = readApplication(ctx.app.id) ?? ctx.app;
-    const files = ((app.uploads[ctx.blockId] ?? []) as UploadedFileRecord[]).filter(
-      (f) => f.filename !== record.filename,
-    );
-    files.push(record);
-    app.uploads[ctx.blockId] = files;
-    writeApplication(app);
+    // Atomic append — no clobbering of concurrent writes to other parts of the app.
+    const app = await updateApplication(ctx.app.id, (app) => {
+      const files = ((app.uploads[ctx.blockId] ?? []) as UploadedFileRecord[]).filter(
+        (f) => f.filename !== record.filename,
+      );
+      files.push(record);
+      app.uploads[ctx.blockId] = files;
+      return app;
+    });
+    if (!app) {
+      if (existsSync(req.file.path)) unlinkSync(req.file.path);
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
     res.status(201).json(UploadDocumentResponse.parse(record));
   },
 );
@@ -115,21 +124,31 @@ router.delete(
       return;
     }
     const filename = sanitizeFilename(param(req, "filename") ?? "");
-    const app = readApplication(id);
-    if (!app) {
-      res.status(404).json({ error: "Application not found" });
-      return;
+    try {
+      const app = await updateApplication(id, (app) => {
+        const files = (app.uploads[blockId] ?? []) as UploadedFileRecord[];
+        if (!files.some((f) => f.filename === filename)) {
+          throw new HttpError(404, "File not found");
+        }
+        app.uploads[blockId] = files.filter((f) => f.filename !== filename);
+        return app;
+      });
+      if (!app) {
+        res.status(404).json({ error: "Application not found" });
+        return;
+      }
+      // Record removed transactionally first; the disk file goes second (an
+      // orphaned file is harmless, a dangling record is not).
+      const filePath = path.join(UPLOADS_DIR, id, blockId, filename);
+      if (existsSync(filePath)) unlinkSync(filePath);
+      res.sendStatus(204);
+    } catch (err) {
+      if (isHttpError(err)) {
+        res.status(err.status).json({ error: err.message });
+        return;
+      }
+      throw err;
     }
-    const files = (app.uploads[blockId] ?? []) as UploadedFileRecord[];
-    if (!files.some((f) => f.filename === filename)) {
-      res.status(404).json({ error: "File not found" });
-      return;
-    }
-    const filePath = path.join(UPLOADS_DIR, app.id, blockId, filename);
-    if (existsSync(filePath)) unlinkSync(filePath);
-    app.uploads[blockId] = files.filter((f) => f.filename !== filename);
-    writeApplication(app);
-    res.sendStatus(204);
   },
 );
 

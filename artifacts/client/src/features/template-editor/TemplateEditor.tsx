@@ -20,6 +20,30 @@ const PALETTE = [
   { kind: "fields" as const,     label: "Field group",    hint: "Typed inputs — text, date, select" },
 ];
 
+// Analyzer taxonomy ids (analyzer spec v0.6.2 §4–6, plus the ids the seed
+// templates were tagged with on creation). docType is an OPEN string in the
+// contract — absent/unknown values fall back to name-matching — so this list
+// is a UI affordance, not enforcement. The engine's taxonomy registry becomes
+// the source of truth when it lands.
+const DOC_TYPES = [
+  { id: "application_form",          label: "Application form" },
+  { id: "appraisal_report",          label: "Appraisal report" },
+  { id: "background_check",          label: "Background check" },
+  { id: "bank_statement",            label: "Bank statement" },
+  { id: "closing_disclosure",        label: "Closing disclosure" },
+  { id: "credit_report",             label: "Credit report" },
+  { id: "disclosure_acknowledgment", label: "Disclosure acknowledgment" },
+  { id: "gift_letter",               label: "Gift letter" },
+  { id: "government_id",             label: "Government ID" },
+  { id: "insurance_binder",          label: "Insurance binder" },
+  { id: "pay_stub",                  label: "Pay stub" },
+  { id: "property_deed",             label: "Property deed" },
+  { id: "purchase_agreement",        label: "Purchase agreement" },
+  { id: "ssn_verification",          label: "SSN verification" },
+  { id: "title_report",              label: "Title report" },
+  { id: "w2_or_tax_return",          label: "W-2 / tax return" },
+];
+
 export function TemplateEditor() {
   const [match, params] = useRoute("/builder/:family/:version");
   const family = params?.family || "";
@@ -66,6 +90,21 @@ export function TemplateEditor() {
         }
       }
     );
+  };
+
+  // docType is the one block-level edit the analyzer depends on (exact
+  // classification) — it writes back into template state so Save Draft persists it.
+  const updateBlockDocType = (blockId: string, docType: string) => {
+    setTemplate(prev => prev && ({
+      ...prev,
+      sections: prev.sections.map(s => ({
+        ...s,
+        subsections: s.subsections.map(ss => ({
+          ...ss,
+          blocks: ss.blocks.map(b => (b.id === blockId ? { ...b, docType: docType || undefined } : b)),
+        })),
+      })),
+    }));
   };
 
   const getSectionStats = (section: Section) => {
@@ -319,6 +358,26 @@ export function TemplateEditor() {
                                                 <span className="text-[#64748B]">Fmt:</span>
                                                 <input type="text" defaultValue={(block.formats||[]).join(", ")} className="border-b border-[#CBD5E1] outline-none text-[#0F172A] w-24 bg-transparent focus:border-[#1D4ED8] pb-px" />
                                               </div>
+                                              <div className="text-[#CBD5E1]">|</div>
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="text-[#64748B]">Type:</span>
+                                                <select
+                                                  value={block.docType ?? ""}
+                                                  onChange={(e) => updateBlockDocType(block.id, e.target.value)}
+                                                  title="Analyzer document type — exact classification when set; falls back to name-matching on auto"
+                                                  className="border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px cursor-pointer"
+                                                >
+                                                  <option value="">auto-match</option>
+                                                  {/* Guard: a tag from a future taxonomy version must stay visible and
+                                                      selectable — never silently rewritten to auto-match. */}
+                                                  {block.docType && !DOC_TYPES.some(t => t.id === block.docType) && (
+                                                    <option value={block.docType}>{block.docType}</option>
+                                                  )}
+                                                  {DOC_TYPES.map(t => (
+                                                    <option key={t.id} value={t.id}>{t.label}</option>
+                                                  ))}
+                                                </select>
+                                              </div>
                                             </>
                                           )}
                                         </div>
@@ -356,6 +415,12 @@ export function TemplateEditor() {
                                           <DocDimensions block={block} template={template} variant="labels" />
                                           <span className="text-[#CBD5E1]">•</span>
                                           <span className="text-[#64748B]">{expiryLabel(block.expiry)}</span>
+                                          {block.docType && (
+                                            <>
+                                              <span className="text-[#CBD5E1]">•</span>
+                                              <span className="text-[#94A3B8]" title="Analyzer document type (exact classification)">{block.docType}</span>
+                                            </>
+                                          )}
                                           {block.multiPage && (
                                             <>
                                               <span className="text-[#CBD5E1]">•</span>

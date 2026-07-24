@@ -439,6 +439,145 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet:
+    post:
+      operationId: uploadPacket
+      tags: [packet]
+      summary: Upload the full document packet; deterministic pre-flight runs immediately
+      description: >
+        First staged state of the C2 intake flow (analyzer spec §3). Stores the PDF and runs
+        the deterministic pre-flight (file validity, page count, metadata snapshot, per-page
+        blank/contrast/duplicate/embedded-image-DPI checks — no model calls, no image
+        enhancement). Invalid or encrypted PDFs are rejected with 400 and not stored.
+        Outcome: state=gated awaiting a human gate decision, or — when the auto rule passes
+        (fewer than 20 pages AND zero red flags) — the gate records decision=auto and the
+        analyzer run is triggered immediately. Re-uploading replaces the packet and re-runs
+        pre-flight; prior analysis runs remain in the sidecar (append-only, latest-run-wins).
+        The pre-flight report is stored on the application as audit-trail material. The cost
+        estimate covers the FULL pipeline (parse + judge + deep scans) and is staff-facing.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PacketUpload"
+      responses:
+        "200":
+          description: Updated application with packet state (gated, or report when auto-processed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Not a valid PDF, encrypted, or no file provided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: An analyzer run is mid-flight for this packet — re-upload after it lands
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "502":
+          description: Auto-proceed passed but run ingest failed — packet reverted to gated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet/gate:
+    post:
+      operationId: decidePacketGate
+      tags: [packet]
+      summary: Decide the pre-flight gate — the gate genuinely blocks
+      description: >
+        Valid only while packet.state=gated (409 otherwise). decision=confirmed ("Process")
+        requires zero red flags; decision=bypassed ("Process anyway") requires at least one —
+        the human explicitly overrides the flags. Decision, decider and time are stored for
+        the audit trail, then the analyzer run is triggered — currently a deterministic
+        simulator that POSTs through the real ingest endpoint (pipelineVersion prefixed
+        "simulated"); the portal never fabricates analysis client-side. Nothing proceeds
+        past the gate without this call or the auto rule.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PacketGateInput"
+      responses:
+        "200":
+          description: Updated application (state=report; run ingested into the sidecar)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Decision inconsistent with flags (confirmed with flags present, or bypassed without)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application or packet not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Packet is not awaiting a gate decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "502":
+          description: Run ingest failed — packet reverted to gated, decision not recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet/thumbnails/{page}:
+    get:
+      operationId: getPacketThumbnail
+      tags: [packet]
+      summary: Pre-flight thumbnail PNG (2 worst pages + 1 best, deterministic scores)
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: page
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PNG render of the page (low-DPI pre-flight thumbnail)
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid application id or page number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: No thumbnail for this page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /applications/{applicationId}/verdicts/{blockId}:
     put:
       operationId: recordVerdict
@@ -772,6 +911,8 @@ components:
           description: blockId -> latest human verdict
           additionalProperties:
             $ref: "#/components/schemas/Verdict"
+        packet:
+          $ref: "#/components/schemas/PacketState"
         template:
           $ref: "#/components/schemas/Template"
     Verdict:
@@ -808,6 +949,101 @@ components:
           type: string
           enum: [Originator, Underwriter, Manager]
         runId: { type: string }
+    PacketUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+    PacketMetadata:
+      type: object
+      description: >
+        Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 —
+        metadata ANOMALY detection is analyzer-tier work, not pre-flight.
+      properties:
+        producer: { type: string }
+        creator: { type: string }
+        createdAt: { type: string }
+        modifiedAt: { type: string }
+    PacketThumbnail:
+      type: object
+      required: [page, reason]
+      properties:
+        page: { type: integer }
+        reason:
+          type: string
+          description: Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).
+    PacketPreflight:
+      type: object
+      description: >
+        Deterministic pre-flight report (analyzer spec §3) — no model calls, no image
+        enhancement ("gate, don't retouch"). Checks actually run in v1: file validity,
+        page count, metadata snapshot, per-page blank detection, per-page contrast,
+        exact-duplicate pages, embedded-image DPI. Blur/skew scoring is analyzer-tier and
+        intentionally NOT claimed here. Stored on the application as audit-trail material.
+      required: [verdict, flags, estimateUsd, estimateMinutes, metadata, thumbnails]
+      properties:
+        verdict:
+          type: string
+          description: One plain-language line summarising the packet's pre-flight outcome.
+        flags:
+          type: array
+          description: Plain-language red flags ("p.6 blank", "p.4 duplicate of p.3").
+          items: { type: string }
+        estimateUsd:
+          type: number
+          description: >
+            FULL-pipeline estimate (parse + judge + deep scans) — informed consent before
+            spend; the judge dominates at high page counts. Staff-facing only.
+        estimateMinutes: { type: integer }
+        metadata:
+          $ref: "#/components/schemas/PacketMetadata"
+        thumbnails:
+          type: array
+          description: 2 worst-scoring pages + 1 best, by deterministic per-page scores.
+          items:
+            $ref: "#/components/schemas/PacketThumbnail"
+    PacketGateDecision:
+      type: object
+      required: [decision, decidedAt]
+      properties:
+        decision:
+          type: string
+          enum: [auto, confirmed, bypassed]
+        decidedBy:
+          type: string
+          description: Absent when decision=auto; otherwise the signed-in staff profile.
+        decidedAt: { type: string }
+    PacketGateInput:
+      type: object
+      required: [decision, decidedBy]
+      properties:
+        decision:
+          type: string
+          enum: [confirmed, bypassed]
+        decidedBy: { type: string }
+    PacketState:
+      type: object
+      description: >
+        Portal-owned packet state machine — the staged C2 intake flow: preflight_running →
+        gated → processing → report. Persisted server-side so the gate physically blocks;
+        no client-side choreography can advance it. Auto rule (spec §3): fewer than 20
+        pages AND zero red flags → auto-proceed.
+      required: [filename, sizeBytes, pages, sha256, uploadedAt, state]
+      properties:
+        filename: { type: string }
+        sizeBytes: { type: integer }
+        pages: { type: integer }
+        sha256: { type: string }
+        uploadedAt: { type: string }
+        state:
+          type: string
+          enum: [preflight_running, gated, processing, report]
+        preflight:
+          $ref: "#/components/schemas/PacketPreflight"
+        gate:
+          $ref: "#/components/schemas/PacketGateDecision"
     AnalysisCoreFields:
       type: object
       description: >

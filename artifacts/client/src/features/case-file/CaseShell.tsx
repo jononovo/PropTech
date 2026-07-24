@@ -46,6 +46,15 @@ export function CaseShell({
                   {app.applicantName}
                 </h1>
                 <span className="ops-mono text-[11px] text-[var(--ops-muted)]">{app.id}</span>
+                {model.run?.pipelineVersion?.startsWith('simulated') && (
+                  <span
+                    title="This report came from the deterministic simulator — the analyzer engine is not built yet."
+                    data-testid="chip-simulated"
+                    className="ops-mono text-[9px] px-1.5 py-0.5 rounded-[3px] bg-[var(--ops-warning-wash)] border border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] tracking-[0.08em]"
+                  >
+                    SIMULATED RUN
+                  </span>
+                )}
               </div>
               <div className="text-[12px] text-[var(--ops-body-sec)] truncate">
                 {app.template.template}{' '}

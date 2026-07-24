@@ -2,6 +2,7 @@ import { AlertCircle, FileText, Inbox, Sparkles } from 'lucide-react';
 import { fmtTime, pageSpan, confidencePct, type CaseModel, type CaseReq } from '../caseData';
 import { VerdictButtons } from '../components/VerdictButtons';
 import { MissingActions } from '../components/MissingActions';
+import { PacketPanel } from '../components/PacketPanel';
 import type { Lens } from '../CaseShell';
 
 export function TriagePage({
@@ -21,6 +22,13 @@ export function TriagePage({
   return (
     <div className="overflow-y-auto h-full px-4 py-6 md:px-8 flex flex-col items-center">
       <div className="w-full max-w-[960px] animate-slide-up pb-16">
+        {/* a re-dropped packet gates again even while the old report shows */}
+        {model.app.packet && model.app.packet.state !== 'report' && (
+          <div className="mb-8">
+            <PacketPanel model={model} applicationId={applicationId} />
+          </div>
+        )}
+
         {/* stat strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 mb-5">
           <StatCell val={String(stats.found)} label="documents found" sub={`from ${run.preflight.pages} pages`} />
@@ -171,22 +179,27 @@ function NoRunYet({ model, applicationId }: { model: CaseModel; applicationId: s
   const filed = model.reqs.filter((r) => r.uploads.length > 0).length;
   return (
     <div className="overflow-y-auto h-full px-4 py-10 flex flex-col items-center">
-      <div className="w-full max-w-[640px] animate-fade-in">
-        <div className="bg-white border border-[var(--ops-border)] rounded-[6px] p-6 md:p-8 flex flex-col items-center text-center">
-          <div className="w-11 h-11 rounded bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] flex items-center justify-center mb-4">
-            <Inbox className="w-5 h-5 text-[var(--ops-muted)]" />
+      <div className="w-full max-w-[720px] animate-fade-in flex flex-col gap-6 pb-16">
+        <PacketPanel model={model} applicationId={applicationId} />
+
+        <div className="bg-white border border-[var(--ops-border)] rounded-[6px] p-5 md:p-6 flex flex-col items-center text-center">
+          <div className="w-9 h-9 rounded bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] flex items-center justify-center mb-3">
+            <Inbox className="w-4 h-4 text-[var(--ops-muted)]" />
           </div>
-          <h2 className="font-semibold text-[18px] text-[var(--ops-ink)] mb-2">No analyzer run yet</h2>
-          <p className="text-[13px] text-[var(--ops-muted)] max-w-[440px] leading-relaxed mb-1">
-            When a packet is dropped it goes through pre-flight first; once the gate clears, the full
-            analysis lands here and triage lights up.
+          <h2 className="font-semibold text-[15px] text-[var(--ops-ink)] mb-1.5">
+            Or file documents one by one
+          </h2>
+          <p className="text-[12.5px] text-[var(--ops-muted)] max-w-[440px] leading-relaxed mb-1">
+            The intake form works without a packet — anything filed there waits for the analyzer to
+            confirm placement.
           </p>
-          <p className="ops-mono text-[11.5px] text-[var(--ops-body-sec)] mb-6">
+          <p className="ops-mono text-[11.5px] text-[var(--ops-body-sec)] mb-5">
             {filed} of {model.reqs.length} requirements filed via intake so far
           </p>
           <MissingActions applicationId={applicationId} />
         </div>
-        <div className="text-center mt-6 micro-label text-[var(--ops-faint)]">
+
+        <div className="text-center micro-label text-[var(--ops-faint)]">
           Quiet automation — you'll only be asked about exceptions.
         </div>
       </div>

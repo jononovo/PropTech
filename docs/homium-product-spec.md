@@ -160,6 +160,12 @@ PUT    /api/applications/{id}/closing-date               → via PUT /applicatio
 GET    /api/applications/{id}/analysis                   → AnalysisSidecar (empty shell if no run yet)
 POST   /api/applications/{id}/analysis/runs              → analyzer (or simulator) posts a full run; latest run wins
 PUT    /api/applications/{id}/verdicts/{blockId}         → human verdict {verdict, decidedBy, documentDate?, expiryDate?, datesEdited}
+POST   /api/applications/{id}/packet                     → multipart "file", PDF only; stores packet + runs deterministic
+                                                           pre-flight → state=gated, or auto-proceed (<20pp AND 0 flags)
+                                                           straight to a run. Encrypted/invalid PDFs → 400, not stored.
+POST   /api/applications/{id}/packet/gate                → {decision, decidedBy}; confirmed only with 0 flags,
+                                                           bypassed only with flags (else 400); wrong state → 409
+GET    /api/applications/{id}/packet/thumbnails/{page}   → pre-flight evidence PNG (2 worst + 1 best page)
 ```
 - Version and status on save always come from the file system, never trusted from the client.
 - Server: pino structured logging, Express 5 conventions.
@@ -199,7 +205,7 @@ Everything below exists as user-approved high-fidelity mockups (canvas, `artifac
 
 ### C2. Intake / triage screen (mockup: Backbone "Intake" page)
 - **Triage report half is BUILT** (see B7 Case File — stat strip, exceptions queue with paired verdicts, covered/unassigned buckets, whisper lines, audit trail — all from live sidecar data).
-- Remaining: the packet-drop flow. Locked choreography (user decision, Jul 2026): upload → **deterministic pre-flight** (page count, splits, checksum-level checks — no AI) → **gate approval** → only then does a run start; while the engine is simulated, simulated runs still POST through the real endpoint and are labeled simulated.
+- **Packet-drop flow BUILT (Jul 24 2026):** dropzone → packet upload → **real deterministic pre-flight** (pdfinfo validity/encryption/metadata · 36-dpi raster with blank-page + exact-duplicate detection · embedded-image DPI <150 check · evidence thumbnails · full-pipeline cost estimate, staff-facing) → **server-persisted state machine** `uploaded → preflight_running → gated → processing → report` — the gate physically blocks the run. Auto rule: <20 pages AND zero flags → `decision=auto`. "Process" (`confirmed`) only with zero flags; "Process anyway" (`bypassed`) only with flags standing; decider recorded from the signed-in profile. Skew/blur are parser-tier and deliberately NOT claimed by pre-flight (sample packet p.8 proves the honesty). While the engine is simulated, runs still POST through the real ingest endpoint (`pipelineVersion: simulated-0.1`) and the UI labels them — SIMULATED chip in the case header + whisper line; ingest failure reverts the packet to `gated` (502, no fake success). Packet events (received/flags/gate decision) land in the audit trail. Test assets: `test-assets/sample-packet-v1.pdf` (9pp, gates with 2 flags) and `test-assets/clean-sample-3p.pdf` (auto-proceeds).
 - AI suggests classification and verdicts; a human confirms every one (A6 posture).
 
 ### C3. Review room / verification queue

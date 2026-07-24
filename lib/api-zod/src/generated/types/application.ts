@@ -8,6 +8,7 @@
 import type { ApplicationFieldValues } from './applicationFieldValues';
 import type { ApplicationUploads } from './applicationUploads';
 import type { ApplicationVerdicts } from './applicationVerdicts';
+import type { PacketState } from './packetState';
 import type { Template } from './template';
 
 export interface Application {
@@ -23,5 +24,6 @@ export interface Application {
   projectedClosingDate?: string;
   /** blockId -> latest human verdict */
   verdicts?: ApplicationVerdicts;
+  packet?: PacketState;
   template: Template;
 }

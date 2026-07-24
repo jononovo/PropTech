@@ -277,7 +277,7 @@ export function buildCaseModel(
       attention: exceptions.length,
       unassigned: run?.unassigned.length ?? 0,
     },
-    audit: buildAudit(run, reqs),
+    audit: buildAudit(app, run, reqs),
   };
 }
 
@@ -443,8 +443,35 @@ function sectionDot(reqs: CaseReq[]): CaseSection['dot'] {
 
 // ─── audit trail (derived — the sidecar and verdicts are the record) ────────
 
-function buildAudit(run: AnalysisRun | null, reqs: CaseReq[]): AuditEntry[] {
+function buildAudit(app: Application, run: AnalysisRun | null, reqs: CaseReq[]): AuditEntry[] {
   const entries: AuditEntry[] = [];
+  const packet = app.packet;
+
+  if (packet) {
+    const uploaded = new Date(packet.uploadedAt);
+    entries.push({
+      when: uploaded,
+      text: `Packet received — ${packet.filename} · ${packet.pages} pages · ${Math.round(packet.sizeBytes / 1024)} KB`,
+    });
+    for (const flag of packet.preflight?.flags ?? []) {
+      entries.push({ when: uploaded, text: `Pre-flight: ${flag}` });
+    }
+    if (packet.gate) {
+      const when = new Date(packet.gate.decidedAt);
+      const standing = packet.preflight?.flags.length ?? 0;
+      const who = packet.gate.decidedBy ?? 'Staff';
+      if (packet.gate.decision === 'auto') {
+        entries.push({
+          when,
+          text: `Pre-flight clean — processed automatically (${packet.pages} pages, no flags)`,
+        });
+      } else if (packet.gate.decision === 'confirmed') {
+        entries.push({ when, text: `${who} confirmed the gate — full pipeline approved before spend` });
+      } else {
+        entries.push({ when, text: `${who} processed anyway — ${standing} pre-flight flag(s) standing` });
+      }
+    }
+  }
 
   if (run) {
     const when = new Date(run.startedAt);
@@ -452,13 +479,17 @@ function buildAudit(run: AnalysisRun | null, reqs: CaseReq[]): AuditEntry[] {
       when,
       text: `Analyzer run — ${run.preflight.pages} pages read, ${run.documents.length} documents filed, ${run.unassigned.length} unassigned`,
     });
-    if (run.preflight.gate === 'confirmed') {
-      entries.push({ when, text: 'Pre-flight gate confirmed — full pipeline approved before spend' });
-    } else if (run.preflight.gate === 'bypassed') {
-      entries.push({ when, text: 'Pre-flight gate bypassed — processed anyway' });
-    }
-    for (const flag of run.preflight.flags) {
-      entries.push({ when, text: `Pre-flight: ${flag}` });
+    // Fixture-era sidecars carry gate/flag info only on the run. Packet-backed
+    // apps already logged richer entries above — don't repeat them.
+    if (!packet) {
+      if (run.preflight.gate === 'confirmed') {
+        entries.push({ when, text: 'Pre-flight gate confirmed — full pipeline approved before spend' });
+      } else if (run.preflight.gate === 'bypassed') {
+        entries.push({ when, text: 'Pre-flight gate bypassed — processed anyway' });
+      }
+      for (const flag of run.preflight.flags) {
+        entries.push({ when, text: `Pre-flight: ${flag}` });
+      }
     }
   }
 

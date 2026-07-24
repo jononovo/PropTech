@@ -6,6 +6,7 @@ import savedSectionsRouter from "../features/saved-sections/router";
 import intakeRouter from "../features/intake/router";
 import intakeUploadsRouter from "../features/intake-uploads/router";
 import analysisRouter from "../features/analysis/router";
+import packetRouter from "../features/packet/router";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(savedSectionsRouter);
 router.use(intakeRouter);
 router.use(intakeUploadsRouter);
 router.use(analysisRouter);
+router.use(packetRouter);
 
 export default router;

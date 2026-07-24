@@ -309,6 +309,78 @@ export interface Verdict {
  */
 export type ApplicationVerdicts = {[key: string]: Verdict};
 
+export type PacketStateState = typeof PacketStateState[keyof typeof PacketStateState];
+
+
+export const PacketStateState = {
+  preflight_running: 'preflight_running',
+  gated: 'gated',
+  processing: 'processing',
+  report: 'report',
+} as const;
+
+/**
+ * Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.
+ */
+export interface PacketMetadata {
+  producer?: string;
+  creator?: string;
+  createdAt?: string;
+  modifiedAt?: string;
+}
+
+export interface PacketThumbnail {
+  page: number;
+  /** Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest). */
+  reason: string;
+}
+
+/**
+ * Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement ("gate, don't retouch"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.
+ */
+export interface PacketPreflight {
+  /** One plain-language line summarising the packet's pre-flight outcome. */
+  verdict: string;
+  /** Plain-language red flags ("p.6 blank", "p.4 duplicate of p.3"). */
+  flags: string[];
+  /** FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only. */
+  estimateUsd: number;
+  estimateMinutes: number;
+  metadata: PacketMetadata;
+  /** 2 worst-scoring pages + 1 best, by deterministic per-page scores. */
+  thumbnails: PacketThumbnail[];
+}
+
+export type PacketGateDecisionDecision = typeof PacketGateDecisionDecision[keyof typeof PacketGateDecisionDecision];
+
+
+export const PacketGateDecisionDecision = {
+  auto: 'auto',
+  confirmed: 'confirmed',
+  bypassed: 'bypassed',
+} as const;
+
+export interface PacketGateDecision {
+  decision: PacketGateDecisionDecision;
+  /** Absent when decision=auto; otherwise the signed-in staff profile. */
+  decidedBy?: string;
+  decidedAt: string;
+}
+
+/**
+ * Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.
+ */
+export interface PacketState {
+  filename: string;
+  sizeBytes: number;
+  pages: number;
+  sha256: string;
+  uploadedAt: string;
+  state: PacketStateState;
+  preflight?: PacketPreflight;
+  gate?: PacketGateDecision;
+}
+
 export interface Application {
   id: string;
   family: string;
@@ -322,6 +394,7 @@ export interface Application {
   projectedClosingDate?: string;
   /** blockId -> latest human verdict */
   verdicts?: ApplicationVerdicts;
+  packet?: PacketState;
   template: Template;
 }
 
@@ -350,6 +423,23 @@ export interface VerdictInput {
   datesEdited?: boolean;
   decidedBy: VerdictInputDecidedBy;
   runId?: string;
+}
+
+export interface PacketUpload {
+  file: Blob;
+}
+
+export type PacketGateInputDecision = typeof PacketGateInputDecision[keyof typeof PacketGateInputDecision];
+
+
+export const PacketGateInputDecision = {
+  confirmed: 'confirmed',
+  bypassed: 'bypassed',
+} as const;
+
+export interface PacketGateInput {
+  decision: PacketGateInputDecision;
+  decidedBy: string;
 }
 
 /**

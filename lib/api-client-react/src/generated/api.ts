@@ -30,6 +30,8 @@ import type {
   DocumentUpload,
   FieldValues,
   HealthStatus,
+  PacketGateInput,
+  PacketUpload,
   SavedSection,
   SavedSectionInput,
   Template,
@@ -1491,6 +1493,236 @@ export const useIngestAnalysisRun = <TError = ErrorType<ApiMessage>,
       > => {
       return useMutation(getIngestAnalysisRunMutationOptions(options));
     }
+
+export const getUploadPacketUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet`
+}
+
+/**
+ * First staged state of the C2 intake flow (analyzer spec §3). Stores the PDF and runs the deterministic pre-flight (file validity, page count, metadata snapshot, per-page blank/contrast/duplicate/embedded-image-DPI checks — no model calls, no image enhancement). Invalid or encrypted PDFs are rejected with 400 and not stored. Outcome: state=gated awaiting a human gate decision, or — when the auto rule passes (fewer than 20 pages AND zero red flags) — the gate records decision=auto and the analyzer run is triggered immediately. Re-uploading replaces the packet and re-runs pre-flight; prior analysis runs remain in the sidecar (append-only, latest-run-wins). The pre-flight report is stored on the application as audit-trail material. The cost estimate covers the FULL pipeline (parse + judge + deep scans) and is staff-facing.
+ * @summary Upload the full document packet; deterministic pre-flight runs immediately
+ */
+export const uploadPacket = async (applicationId: string,
+    packetUpload: PacketUpload, options?: RequestInit): Promise<Application> => {
+    const formData = new FormData();
+formData.append(`file`, packetUpload.file);
+
+  return customFetch<Application>(getUploadPacketUrl(applicationId),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getUploadPacketMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacket>>, TError,{applicationId: string;data: BodyType<PacketUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadPacket>>, TError,{applicationId: string;data: BodyType<PacketUpload>}, TContext> => {
+
+const mutationKey = ['uploadPacket'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadPacket>>, {applicationId: string;data: BodyType<PacketUpload>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  uploadPacket(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadPacketMutationResult = NonNullable<Awaited<ReturnType<typeof uploadPacket>>>
+    export type UploadPacketMutationBody = BodyType<PacketUpload>
+    export type UploadPacketMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Upload the full document packet; deterministic pre-flight runs immediately
+ */
+export const useUploadPacket = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacket>>, TError,{applicationId: string;data: BodyType<PacketUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadPacket>>,
+        TError,
+        {applicationId: string;data: BodyType<PacketUpload>},
+        TContext
+      > => {
+      return useMutation(getUploadPacketMutationOptions(options));
+    }
+
+export const getDecidePacketGateUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet/gate`
+}
+
+/**
+ * Valid only while packet.state=gated (409 otherwise). decision=confirmed ("Process") requires zero red flags; decision=bypassed ("Process anyway") requires at least one — the human explicitly overrides the flags. Decision, decider and time are stored for the audit trail, then the analyzer run is triggered — currently a deterministic simulator that POSTs through the real ingest endpoint (pipelineVersion prefixed "simulated"); the portal never fabricates analysis client-side. Nothing proceeds past the gate without this call or the auto rule.
+ * @summary Decide the pre-flight gate — the gate genuinely blocks
+ */
+export const decidePacketGate = async (applicationId: string,
+    packetGateInput: PacketGateInput, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getDecidePacketGateUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(packetGateInput)
+  }
+);}
+
+
+
+
+
+export const getDecidePacketGateMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decidePacketGate>>, TError,{applicationId: string;data: BodyType<PacketGateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decidePacketGate>>, TError,{applicationId: string;data: BodyType<PacketGateInput>}, TContext> => {
+
+const mutationKey = ['decidePacketGate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decidePacketGate>>, {applicationId: string;data: BodyType<PacketGateInput>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  decidePacketGate(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecidePacketGateMutationResult = NonNullable<Awaited<ReturnType<typeof decidePacketGate>>>
+    export type DecidePacketGateMutationBody = BodyType<PacketGateInput>
+    export type DecidePacketGateMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Decide the pre-flight gate — the gate genuinely blocks
+ */
+export const useDecidePacketGate = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decidePacketGate>>, TError,{applicationId: string;data: BodyType<PacketGateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof decidePacketGate>>,
+        TError,
+        {applicationId: string;data: BodyType<PacketGateInput>},
+        TContext
+      > => {
+      return useMutation(getDecidePacketGateMutationOptions(options));
+    }
+
+export const getGetPacketThumbnailUrl = (applicationId: string,
+    page: number,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet/thumbnails/${page}`
+}
+
+/**
+ * @summary Pre-flight thumbnail PNG (2 worst pages + 1 best, deterministic scores)
+ */
+export const getPacketThumbnail = async (applicationId: string,
+    page: number, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetPacketThumbnailUrl(applicationId,page),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPacketThumbnailQueryKey = (applicationId: string,
+    page: number,) => {
+    return [
+    `/api/applications/${applicationId}/packet/thumbnails/${page}`
+    ] as const;
+    }
+
+
+export const getGetPacketThumbnailQueryOptions = <TData = Awaited<ReturnType<typeof getPacketThumbnail>>, TError = ErrorType<ApiMessage>>(applicationId: string,
+    page: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketThumbnail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPacketThumbnailQueryKey(applicationId,page);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPacketThumbnail>>> = ({ signal }) => getPacketThumbnail(applicationId,page, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && page !== null && page !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPacketThumbnail>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPacketThumbnailQueryResult = NonNullable<Awaited<ReturnType<typeof getPacketThumbnail>>>
+export type GetPacketThumbnailQueryError = ErrorType<ApiMessage>
+
+
+/**
+ * @summary Pre-flight thumbnail PNG (2 worst pages + 1 best, deterministic scores)
+ */
+
+export function useGetPacketThumbnail<TData = Awaited<ReturnType<typeof getPacketThumbnail>>, TError = ErrorType<ApiMessage>>(
+ applicationId: string,
+    page: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketThumbnail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPacketThumbnailQueryOptions(applicationId,page,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getRecordVerdictUrl = (applicationId: string,
     blockId: string,) => {

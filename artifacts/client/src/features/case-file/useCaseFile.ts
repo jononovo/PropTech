@@ -4,10 +4,12 @@ import {
   getGetAnalysisQueryKey,
   getGetApplicationQueryKey,
   getListApplicationsQueryKey,
+  useDecidePacketGate,
   useGetAnalysis,
   useGetApplication,
   useRecordVerdict,
   useUpdateApplication,
+  useUploadPacket,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '../auth/ProfileContext';
@@ -113,4 +115,56 @@ export function useClosingDate(applicationId: string) {
     );
 
   return { setClosingDate, isPending: mutation.isPending };
+}
+
+/**
+ * Packet upload + gate decision. Upload runs the server-side pre-flight
+ * synchronously; the response alone tells us whether the packet gated or
+ * auto-proceeded — the card that renders IS the feedback, so no success toast.
+ */
+export function usePacketActions(applicationId: string) {
+  const queryClient = useQueryClient();
+  const { profile } = useProfile();
+  const { toast } = useToast();
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetApplicationQueryKey(applicationId) });
+    queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(applicationId) });
+    queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
+  };
+
+  const upload = useUploadPacket({
+    // Invalidate on error too: a 502 means the server reverted the packet to
+    // gated, a 409 means another request advanced it — refetch either way so
+    // the UI shows the server's real state, not a stale one.
+    mutation: { onSuccess: invalidate, onError: invalidate },
+  });
+
+  const gate = useDecidePacketGate({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => {
+        invalidate();
+        toast({ description: `Gate decision not recorded — ${errText(err)}` });
+      },
+    },
+  });
+
+  const uploadPacket = (file: File) => upload.mutate({ applicationId, data: { file } });
+
+  const decide = (decision: 'confirmed' | 'bypassed') =>
+    gate.mutate(
+      { applicationId, data: { decision, decidedBy: `${profile.name} · ${profile.role}` } },
+      {
+        onSuccess: () =>
+          toast({
+            description:
+              decision === 'bypassed'
+                ? 'Processing anyway — the flags stay on the record.'
+                : 'Gate confirmed — analyzer started.',
+          }),
+      },
+    );
+
+  return { uploadPacket, decide, upload, gate };
 }

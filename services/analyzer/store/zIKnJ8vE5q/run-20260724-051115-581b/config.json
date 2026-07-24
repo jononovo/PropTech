@@ -1,0 +1,19 @@
+{
+  "pipelineVersion": "analyzer-0.1 parse=anthropic:claude-sonnet-4-6 judge=anthropic:claude-sonnet-4-6",
+  "spec": "homium-analyzer-spec-v0.6.3",
+  "parse": {
+    "backend": "anthropic",
+    "model": "claude-sonnet-4-6"
+  },
+  "judge": {
+    "backend": "anthropic",
+    "model": "claude-sonnet-4-6"
+  },
+  "text": {
+    "backend": "fireworks",
+    "model": "accounts/fireworks/models/glm-5p2"
+  },
+  "renderDpi": 150,
+  "gate": "auto",
+  "packetSha256": "91e90fd4a149d581ea73172ef7d6ab9dadfdc442ffbe02705821c38ae0147a25"
+}

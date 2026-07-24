@@ -1,6 +1,6 @@
 # Sheaf
 
-Document-ops platform for lending compliance: define document templates, collect applicant documents, and (in later phases) split/classify/score 300-page loan packets with AI + human verdicts. **Sheaf is the product brand; Homium is the client** whose deposit-assistance program runs inside it — no Homium branding in the app shell. The analyzer's source of truth is the analyzer build spec at `attached_assets/homium-analyzer-spec-v0.6.2_1784857283923.md` (supersedes all prior IDCM spec versions; defers to the portal docs wherever they overlap).
+Document-ops platform for lending compliance: define document templates, collect applicant documents, and (in later phases) split/classify/score 300-page loan packets with AI + human verdicts. **Sheaf is the product brand; Homium is the client** whose deposit-assistance program runs inside it — no Homium branding in the app shell. The analyzer's source of truth is the analyzer build spec at `attached_assets/homium-analyzer-spec-v0.6.3-FINAL_1784868742753.md` (supersedes ALL prior spec versions — older copies are deleted; defers to the portal docs wherever they overlap).
 
 ## Architecture map — READ THIS FIRST
 
@@ -8,6 +8,7 @@ Document-ops platform for lending compliance: define document templates, collect
 | --- | --- |
 | `artifacts/client/` | **The entire frontend** (React + Vite). All product pages live in `src/features/`. Served at `/`. |
 | `artifacts/api-server/` | **The entire backend** (Express 5). Platform-fixed name — this is the "server" folder. Serves `/api`. Feature routers in `src/features/`; templates + packet/upload files in `data/`, operational data in Postgres. |
+| `services/analyzer/` | **The analyzer engine** (Python FastAPI worker, port 8000). Parse → split/classify → judge → scrutiny → ONE run POSTed to the portal's ingest endpoint. Talks to the portal only through the public API; run artifacts under its `store/`. |
 | `lib/db/` | Drizzle schema + client for the Postgres operational store (`applications`, `analysis_runs`). After schema changes: `pnpm --filter @workspace/db run push` AND `pnpm --filter @workspace/db exec tsc -b` (composite project — stale `dist/` d.ts otherwise). |
 | `lib/api-spec/openapi.yaml` | **The API contract** — single source of truth. Change it first, then run codegen. |
 | `lib/api-zod/`, `lib/api-client-react/` | Generated from the spec (Zod schemas for the server, React Query hooks for the client). Never hand-edit. |
@@ -16,7 +17,8 @@ Document-ops platform for lending compliance: define document templates, collect
 
 ## Run & Operate
 
-- Workflows (managed): `artifacts/client: web`, `artifacts/api-server: API Server`
+- Workflows: `artifacts/client: web`, `artifacts/api-server: API Server`, `Analyzer Worker` (uvicorn :8000; `curl 127.0.0.1:8000/health` reports backend problems honestly)
+- No file-watch on the API server or the worker — restart the workflow after edits
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas after any spec change
 
@@ -25,6 +27,7 @@ Document-ops platform for lending compliance: define document templates, collect
 - **Persistence is hybrid (Jul 2026 migration, user-approved):** operational data — applications (one jsonb document per row) and analysis runs (append-only rows, unique `(application_id, run_id)` = replay protection) — lives in **Postgres** via `lib/db`. **Templates and saved sections stay JSON files** (authored artifacts; version/status truth stays the file system). Packet PDFs/thumbnails/uploads stay on disk until App Storage arrives with the engine.
 - All application mutations go through `updateApplication(id, mutate)` — a `SELECT ... FOR UPDATE` transaction (`mutate` throws `HttpError` to abort). Packet gate/state transitions are therefore atomic across instances; the in-process packet lock only serializes per-app disk-file work.
 - **Contract-first:** OpenAPI spec → codegen → implementation. Server validates all IO with generated Zod schemas.
+- **Packet choreography is asynchronous and honest (Jul 2026):** upload/gate claims `processing` and kicks the worker (expects 202); the run lands later through the ingest endpoint, which flips state to `report`. Any worker failure calls the run-failed callback → revert to `gated` + `lastRunError` — never a silent hang. Analyzer models are env-driven (`PARSE_*`/`JUDGE_*`/`TEXT_*`) and labeled in `pipelineVersion`; interim = Claude parse+judge on the user's own Anthropic key (account-linked secret), GLM for text passes. PaddleOCR-VL 1.6 deployment is the next engine task (`internal_docs/future.md`).
 - Template lifecycle: draft = editable, active = immutable (409); new version copies vN → v(N+1) draft; applications pin a full template copy forever; saved sections are copies, never links.
 - Mirrored feature folders client/server; ≤~250 lines per file; no utils dumping grounds (user mandate).
 - No auth in v1 — role simulated by a client-side switcher, not enforced server-side.

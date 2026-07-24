@@ -51,7 +51,12 @@ async def llm_refine_boundaries(mds: list[str], starts: list[int]) -> list[int]:
         'Answer ONLY JSON: {"additional_starts": [pageNumbers]}\n\n' + "\n".join(lines)
     )
     try:
-        out = extract_json(await chat(TEXT_BACKEND, TEXT_MODEL, prompt, max_tokens=500))
+        out = extract_json(
+            # Reasoning models (glm) think at length before the JSON — leave room,
+            # or the answer never gets emitted and refinement silently no-ops.
+            await chat(TEXT_BACKEND, TEXT_MODEL, prompt, max_tokens=4096),
+            required_keys=("additional_starts",),
+        )
         extra = {int(p) - 1 for p in out.get("additional_starts", []) if 1 <= int(p) <= len(mds)}
     except Exception:  # noqa: BLE001 — refinement is additive; deterministic result stands
         extra = set()
@@ -78,10 +83,13 @@ async def classify_segment(seg_md: str) -> tuple[str, str]:
         f"Document text (first page, parsed):\n{seg_md[:3000]}"
     )
     try:
-        out = extract_json(await chat(TEXT_BACKEND, TEXT_MODEL, prompt, max_tokens=300))
+        out = extract_json(
+            await chat(TEXT_BACKEND, TEXT_MODEL, prompt, max_tokens=4096),
+            required_keys=("taxonomy_id",),
+        )
         tid = str(out.get("taxonomy_id", "unassigned"))
         desc = str(out.get("description", ""))[:200] or "Unrecognized document"
-    except Exception as e:  # noqa: BLE001 — classification failure -> honest unassigned
+    except ValueError as e:  # malformed model output -> honest unassigned; backend failures (RuntimeError) propagate to the run-failed path
         return "unassigned", f"Classification failed: {e}"[:200]
     return (tid if tid in TAXONOMY else "unassigned"), desc
 

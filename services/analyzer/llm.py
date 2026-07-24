@@ -4,7 +4,6 @@ engine is config, never code. Retries with backoff on 429/5xx/network."""
 import asyncio
 import base64
 import json
-import re
 
 import httpx
 
@@ -62,9 +61,23 @@ async def chat(backend: str, model: str, prompt: str, image_paths: list[str] | N
     raise RuntimeError(f"model call failed after {RETRIES} attempts: {last}")
 
 
-def extract_json(text: str) -> dict:
-    """Models wrap JSON in prose/fences — pull the outermost object, fail loudly otherwise."""
-    m = re.search(r"\{.*\}", text, re.DOTALL)
-    if not m:
-        raise ValueError(f"no JSON object in model output: {text[:150]}")
-    return json.loads(m.group(0))
+def extract_json(text: str, required_keys: tuple[str, ...] = ()) -> dict:
+    """Models wrap JSON in prose, fences, and reasoning that may itself contain
+    braces — a greedy first-{-to-last-} regex breaks on that ("Extra data").
+    Instead: scan for every parseable object via raw_decode and keep the LAST one
+    carrying required_keys (reasoning models emit the answer last). Fail loudly
+    when nothing qualifies."""
+    dec = json.JSONDecoder()
+    best: dict | None = None
+    i = text.find("{")
+    while i != -1:
+        try:
+            obj, end = dec.raw_decode(text, i)
+            if isinstance(obj, dict) and all(k in obj for k in required_keys):
+                best = obj
+            i = text.find("{", max(end, i + 1))
+        except ValueError:
+            i = text.find("{", i + 1)
+    if best is None:
+        raise ValueError(f"no JSON object with keys {list(required_keys)} in model output: {text[:200]}")
+    return best

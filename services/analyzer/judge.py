@@ -33,7 +33,17 @@ Only report what you can actually see. Do not invent dates or names."""
 
 async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[str], pf_flags: list[str]) -> dict:
     prompt = PROMPT_TMPL.format(tax_display=tax_display, pf_flags="; ".join(pf_flags) or "none", md=md_excerpt[:4000])
-    out = extract_json(await chat(JUDGE_BACKEND, JUDGE_MODEL, prompt, image_paths, max_tokens=1200))
+
+    async def ask() -> dict:
+        return extract_json(
+            await chat(JUDGE_BACKEND, JUDGE_MODEL, prompt, image_paths, max_tokens=1200),
+            required_keys=("quality", "formatting", "fraud_signal"),
+        )
+
+    try:
+        out = await ask()
+    except ValueError:  # one retry on malformed output — a judged doc is contract-critical, a whole-run failure is worse
+        out = await ask()
 
     def clamp(v, d=0.5):
         try:

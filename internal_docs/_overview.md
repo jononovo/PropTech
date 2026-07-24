@@ -19,8 +19,9 @@ End-to-end flow: **sign in → pick/build template → create application → ap
 | `analyzer.md` | Python worker: parse → split/classify → judge → scrutiny → ingest. |
 | `review.md` | Run report in the case file, verdicts, audit trail. |
 | `persistence.md` | Postgres operational store + App Storage document bytes. |
+| `models/` | Model & analysis-stage tracking: `_index.md` (contract + swap recipes + status) + `parse.md` / `text.md` / `judge.md` + dated comparisons. |
 
-Dated working notes (e.g. `parse-comparison-2026-07-24.md`) live alongside. **Keep these docs in sync when features change.**
+Dated working notes live alongside; model-behavior comparisons go in `models/`. **Keep these docs in sync when features change.**
 
 ## Architecture
 

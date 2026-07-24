@@ -17,7 +17,7 @@ Talks to the portal **only through the public API**: pulls the packet via `GET /
 
 Env-driven, no code changes: `PARSE_*` / `TEXT_*` / `JUDGE_*` (backend + model per stage; `llm.py` supports fireworks + anthropic for every stage). Set vars → restart Analyzer Worker → verify the pipeline string in `/health`. `/health` reports `backendProblems` honestly; misconfigured runs fail fast and revert the packet.
 
-Current spec configuration: **Paddle parse + GLM text + Claude judge.** Validated head-to-head against all-Claude (see `parse-comparison-2026-07-24.md`): segmentation identical; Paddle's dense-form parse wobbles surface as judge flags rather than silent errors. Paddle cost = GPU-hours while the deployment is up (scale-to-zero); judge cost = Anthropic tokens.
+Current spec configuration: **Paddle parse + GLM text + Claude judge** — validated head-to-head against all-Claude. Per-stage options, observed behavior, swap recipes, and ops/billing quirks are tracked in `models/` — start at `models/_index.md`.
 
 ## Where
 

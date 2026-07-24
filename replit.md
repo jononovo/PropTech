@@ -14,7 +14,7 @@ Document-ops platform for lending compliance: define document templates, collect
 | `lib/api-zod/`, `lib/api-client-react/` | Generated from the spec (Zod schemas for the server, React Query hooks for the client). Never hand-edit. |
 | `artifacts/mockup-sandbox/` | Design mockups only — historical record of the approved designs. NOT production code. |
 | `docs/` | Product specs. `homium-product-spec.md` is the full handoff spec; `homium-template-schema-spec.md` defines the template JSON contract. |
-| `internal_docs/` | Working build docs: `_overview.md` (architecture + feature index), one MD per feature, `_future.md` (deferred-work parking lot). **Keep in sync when features change.** |
+| `internal_docs/` | Working build docs: `_overview.md` (architecture + feature index), one MD per feature, `models/` (per-stage model behavior + options tracking), `_future.md` (deferred-work parking lot). **Keep in sync when features change.** |
 
 ## Run & Operate
 

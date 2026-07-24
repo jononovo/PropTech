@@ -17,7 +17,7 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 - **LangExtract + vector index — v2** (spec cut; v1 fraud = metadata/visual/core-field consistency only).
 
 ## Engine candidates (need spec-author sign-off)
-- **Span-gluing rule:** exclude preflight-flagged blank/duplicate pages from document spans before mapping. Both parse engines absorbed planted blank+dup pages into the grant-deed span (judge caught it each time) — see `parse-comparison-2026-07-24.md`.
+- **Span-gluing rule:** exclude preflight-flagged blank/duplicate pages from document spans before mapping. Both parse engines absorbed planted blank+dup pages into the grant-deed span (judge caught it each time) — see `models/parse-comparison-2026-07-24.md`.
 - **Region crops on demand:** paddle already saves per-page layout elements (bboxes) to `elements/p<N>.json`; crop regions when deep-scan needs them instead of pre-cropping every page.
 
 ## Platform / scaling
@@ -27,5 +27,5 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 - **Prod legacy packet bytes:** three prod apps uploaded before App Storage lost their bytes to a redeploy (unrecoverable, known). Any packet re-upload heals the affected app.
 
 ## Recently resolved (kept for the record)
-- ~~Paddle 1.6 pipeline integration~~ — **DONE Jul 24, 2026.** Live spec configuration: Paddle parse (Fireworks deployment `p4tlc3h1`, scale-to-zero, `paddleocr[doc-parser]` client, subprocess-per-packet, batched predict) + GLM text + Claude judge. Interim all-Claude path remains one env flip away (see memory: model-backends). Head-to-head comparison recorded in `parse-comparison-2026-07-24.md`.
+- ~~Paddle 1.6 pipeline integration~~ — **DONE Jul 24, 2026.** Live spec configuration: Paddle parse (Fireworks deployment `p4tlc3h1`, scale-to-zero, `paddleocr[doc-parser]` client, subprocess-per-packet, batched predict) + GLM text + Claude judge. Interim all-Claude path remains one env flip away (see memory: model-backends). Head-to-head comparison recorded in `models/parse-comparison-2026-07-24.md`.
 - ~~App Storage for document bytes~~ — **DONE Jul 24, 2026.** See `persistence.md`.

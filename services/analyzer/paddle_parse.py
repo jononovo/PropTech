@@ -26,6 +26,10 @@ def _preload_gcc_runtime():
     libpaddle.so resolves. Never hardcode a store path — GC would break it."""
     import ctypes
     import glob
+    import sys
+
+    if sys.platform != "linux":
+        return  # manylinux-wheel concern only; macOS/Windows wheels link their own runtime
 
     try:  # already resolvable (e.g. caller exported LD_LIBRARY_PATH)?
         ctypes.CDLL("libstdc++.so.6")

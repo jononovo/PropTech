@@ -57,3 +57,4 @@ artifacts/api-server/data/uploads/
 # local secrets — never commit
 .env
 .env.local
+__pycache__/

@@ -55,3 +55,6 @@ PADDLE_VL_URL = "https://api.fireworks.ai/inference/v1"
 RUN_TIMEOUT_S = "1800"
 TEXT_BACKEND = "fireworks"
 TEXT_MODEL = "accounts/fireworks/models/glm-5p2"
+
+[objectStorage]
+defaultBucketID = "replit-objstore-7e63c43e-cc76-46eb-8df6-217516d18aa2"

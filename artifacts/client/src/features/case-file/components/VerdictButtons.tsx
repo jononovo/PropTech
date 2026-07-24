@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { addDays, fmt, parseDate, type CaseReq } from '../caseData';
 import { useVerdictActions } from '../useCaseFile';
 import { useProfile } from '../../auth/ProfileContext';
@@ -13,16 +13,23 @@ export function VerdictButtons({
   req,
   applicationId,
   stack = false,
+  armSignal,
 }: {
   req: CaseReq;
   applicationId: string;
   stack?: boolean;
+  /** increment to arm the accept flow from outside (review room ↵ key) */
+  armSignal?: number;
 }) {
   const { accept, requestNewVersion, isPending } = useVerdictActions(applicationId);
   const { profile } = useProfile();
   const [armed, setArmed] = useState(false);
   const [docDate, setDocDate] = useState(req.documentDate ?? '');
   const [expDate, setExpDate] = useState(req.expiryDate ?? '');
+
+  useEffect(() => {
+    if (armSignal !== undefined && armSignal > 0) setArmed(true);
+  }, [armSignal]);
 
   const expiry = req.block.expiry;
   const isHard = expiry?.kind === 'hard';

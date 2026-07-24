@@ -17,7 +17,8 @@ import type { CaseModel } from '../caseData';
  * costs nothing — the gate exists so a human sees the red flags BEFORE the
  * expensive pipeline spends money. States mirror the server exactly:
  * no packet → dropzone · gated → report card with a real decision ·
- * processing → quiet wait · report → this panel disappears, triage takes over.
+ * processing → quiet wait · report → this panel disappears, Intake shows the
+ * completed card and Triage carries the report.
  */
 export function PacketPanel({ model, applicationId }: { model: CaseModel; applicationId: string }) {
   const packet = model.app.packet;
@@ -44,7 +45,7 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : 'upload failed 
 
 // ─── no packet yet ──────────────────────────────────────────────────────────
 
-function Dropzone({ applicationId, retry }: { applicationId: string; retry: boolean }) {
+export function Dropzone({ applicationId, retry }: { applicationId: string; retry: boolean }) {
   const { uploadPacket, upload } = usePacketActions(applicationId);
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);

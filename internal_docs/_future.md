@@ -11,7 +11,7 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 - **Template version management screen — v2/v3.** View versions, diff, rollback-via-copy. v1 (shipped Jul 24, 2026) is repin-to-newer-active only: case-file header nudge + additive-only server enforcement + templateHistory audit entries. Rollback today = copy-old-into-new-draft-and-activate.
 - **Email infrastructure — v3.** Until then, copy-applicant-link is the request mechanism.
 - **Region highlighting on page images — v2** (md-offset→bbox highlight-on-page, liked as a feature in the Filmstrip exploration).
-- **Filmstrip review room (direction A)** — after the case file + engine land.
+- ~~Filmstrip review room (direction A)~~ — **DONE Jul 24, 2026** (`/applications/:id/review`, see `review.md`). Region highlighting on its page images stays v2 (above).
 - **Real authentication** — replaces the 4-profile test sign-in; schema already auth-shaped. Never Clerk.
 - **Run history UI** — none, by decision. Latest run wins on every screen; older runs stay on disk in the analyzer sidecar for audit (user confirmed Jul 24, 2026).
 - **LangExtract + vector index — v2** (spec cut; v1 fraud = metadata/visual/core-field consistency only).

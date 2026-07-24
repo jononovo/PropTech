@@ -1,8 +1,8 @@
 import { AlertCircle, FileText, Inbox, Sparkles } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { fmtTime, pageSpan, confidencePct, type CaseModel, type CaseReq } from '../caseData';
 import { VerdictButtons } from '../components/VerdictButtons';
 import { MissingActions } from '../components/MissingActions';
-import { PacketPanel } from '../components/PacketPanel';
 import type { Lens } from '../CaseShell';
 
 export function TriagePage({
@@ -14,7 +14,9 @@ export function TriagePage({
   applicationId: string;
   onLens: (lens: Lens, sectionId?: string) => void;
 }) {
-  if (!model.run) return <NoRunYet model={model} applicationId={applicationId} />;
+  const [, setLocation] = useLocation();
+
+  if (!model.run) return <NoRunYet onLens={onLens} />;
 
   const { stats } = model;
   const run = model.run;
@@ -22,11 +24,21 @@ export function TriagePage({
   return (
     <div className="overflow-y-auto h-full px-4 py-6 md:px-8 flex flex-col items-center">
       <div className="w-full max-w-[960px] animate-slide-up pb-16">
-        {/* a re-dropped packet gates again even while the old report shows */}
+        {/* a re-dropped packet gates again in Intake even while the old report shows */}
         {model.app.packet && model.app.packet.state !== 'report' && (
-          <div className="mb-8">
-            <PacketPanel model={model} applicationId={applicationId} />
-          </div>
+          <button
+            onClick={() => onLens('intake')}
+            data-testid="link-packet-in-intake"
+            className="w-full mb-8 flex items-start gap-2.5 rounded border bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)] p-3 text-left hover:bg-[#FEF3C7] transition-colors"
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-[var(--ops-warning-text)] shrink-0 mt-0.5" />
+            <span className="text-[12.5px] text-[var(--ops-warning-text)] leading-relaxed">
+              {model.app.packet.state === 'processing'
+                ? 'A new packet is being analyzed — this report updates when the run lands.'
+                : 'A new packet is waiting in Intake — it needs a pre-flight decision.'}{' '}
+              <span className="font-medium">Open Intake →</span>
+            </span>
+          </button>
         )}
 
         {/* stat strip */}
@@ -40,6 +52,16 @@ export function TriagePage({
             alert={stats.attention > 0 ? 'warning' : undefined}
           />
           <StatCell val={String(stats.unassigned)} label="unassigned" sub="review anytime" />
+        </div>
+
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={() => setLocation(`/applications/${applicationId}/review`)}
+            data-testid="link-page-review"
+            className="micro-label hover:text-[var(--ops-accent)] transition-colors min-h-[40px] px-4"
+          >
+            open the page review →
+          </button>
         </div>
 
         {model.alarmCount > 0 && (
@@ -121,12 +143,12 @@ export function TriagePage({
           <span className="micro-label">never blocks the application</span>
         </div>
         <div className="space-y-3 mb-12">
-          {run.unassigned.length === 0 ? (
+          {model.unassignedOpen.length === 0 ? (
             <div className="text-[12.5px] text-[var(--ops-muted)]">
               Every page found a home — nothing left over.
             </div>
           ) : (
-            run.unassigned.map((u, i) => (
+            model.unassignedOpen.map((u, i) => (
               <div
                 key={i}
                 className="bg-white border border-[var(--ops-border)] rounded p-3 md:p-4 flex flex-col md:flex-row items-start justify-between gap-3 hover:bg-[var(--ops-inset)] transition-colors"
@@ -141,7 +163,13 @@ export function TriagePage({
                     {u.description}
                   </div>
                 </div>
-                <span className="micro-label text-[9px] shrink-0 mt-1">file manually · review room soon</span>
+                <button
+                  onClick={() => setLocation(`/applications/${applicationId}/review`)}
+                  data-testid={`button-file-in-review-${i}`}
+                  className="micro-label text-[9px] shrink-0 mt-1 hover:text-[var(--ops-accent)] transition-colors"
+                >
+                  file in review →
+                </button>
               </div>
             ))
           )}
@@ -175,32 +203,25 @@ export function TriagePage({
   );
 }
 
-function NoRunYet({ model, applicationId }: { model: CaseModel; applicationId: string }) {
-  const filed = model.reqs.filter((r) => r.uploads.length > 0).length;
+function NoRunYet({ onLens }: { onLens: (lens: Lens) => void }) {
   return (
     <div className="overflow-y-auto h-full px-4 py-10 flex flex-col items-center">
-      <div className="w-full max-w-[720px] animate-fade-in flex flex-col gap-6 pb-16">
-        <PacketPanel model={model} applicationId={applicationId} />
-
-        <div className="bg-white border border-[var(--ops-border)] rounded-[6px] p-5 md:p-6 flex flex-col items-center text-center">
+      <div className="w-full max-w-[520px] animate-fade-in pb-16">
+        <div className="bg-white border border-[var(--ops-border)] rounded-[6px] p-6 flex flex-col items-center text-center">
           <div className="w-9 h-9 rounded bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] flex items-center justify-center mb-3">
             <Inbox className="w-4 h-4 text-[var(--ops-muted)]" />
           </div>
-          <h2 className="font-semibold text-[15px] text-[var(--ops-ink)] mb-1.5">
-            Or file documents one by one
-          </h2>
-          <p className="text-[12.5px] text-[var(--ops-muted)] max-w-[440px] leading-relaxed mb-1">
-            The intake form works without a packet — anything filed there waits for the analyzer to
-            confirm placement.
+          <h2 className="font-semibold text-[15px] text-[var(--ops-ink)] mb-1.5">No analysis yet</h2>
+          <p className="text-[12.5px] text-[var(--ops-muted)] max-w-[380px] leading-relaxed mb-5">
+            Drop the application packet in Intake — the report lands here once the analyzer runs.
           </p>
-          <p className="ops-mono text-[11.5px] text-[var(--ops-body-sec)] mb-5">
-            {filed} of {model.reqs.length} requirements filed via intake so far
-          </p>
-          <MissingActions applicationId={applicationId} />
-        </div>
-
-        <div className="text-center micro-label text-[var(--ops-faint)]">
-          Quiet automation — you'll only be asked about exceptions.
+          <button
+            onClick={() => onLens('intake')}
+            data-testid="button-go-intake"
+            className="btn-primary"
+          >
+            Go to Intake
+          </button>
         </div>
       </div>
     </div>

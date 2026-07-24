@@ -788,6 +788,97 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/runs/{runId}/pages/{page}:
+    get:
+      operationId: getRunPageImage
+      tags: [analysis]
+      summary: Full-page PNG render from a landed analyzer run (filmstrip review)
+      description: >
+        Proxied from the analyzer worker's run store. size=strip returns a cached
+        320px-wide thumbnail for the filmstrip; size=full returns the render at
+        analyzer DPI. Run artifacts are immutable — responses cache aggressively.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [full, strip]
+      responses:
+        "200":
+          description: PNG render of the page
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: Invalid application id, run id or page number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: No render for this page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "502":
+          description: Analyzer worker unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/placements:
+    post:
+      operationId: recordPlacement
+      tags: [analysis]
+      summary: Manually file or archive an unassigned page range
+      description: >
+        Human-only filing for pages the analyzer left unassigned ("your assignments
+        win — Sheaf respects manual placement"). target is a document blockId on the
+        pinned template, or the literal "archive". A new placement replaces any
+        earlier placement that overlaps the same page range. Recorded with
+        decidedBy/decidedAt; the analyzer never writes these.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlacementInput"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Invalid target block or page range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
 components:
   parameters:
     Family:
@@ -1109,6 +1200,11 @@ components:
           description: Audit trail of template re-pins (who, when, vN→vN)
           items:
             $ref: "#/components/schemas/TemplateRepinEvent"
+        manualPlacements:
+          type: array
+          description: Human filings of analyzer-unassigned page ranges (portal-owned)
+          items:
+            $ref: "#/components/schemas/ManualPlacement"
     TemplateUpgradeInput:
       type: object
       required: [targetVersion, decidedBy]
@@ -1153,6 +1249,49 @@ components:
         documentDate: { type: string }
         expiryDate: { type: string }
         datesEdited: { type: boolean }
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
+        runId: { type: string }
+    ManualPlacement:
+      type: object
+      description: >
+        A human decision about an unassigned page range: filed into a document block,
+        or archived as not-relevant. Waits for the next analyzer run to confirm —
+        manual placement always wins over analyzer suggestions.
+      required: [pages, target, decidedBy, decidedAt]
+      properties:
+        pages:
+          type: array
+          description: inclusive 1-based page range [first, last]
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+        target:
+          type: string
+          description: document blockId on the pinned template, or the literal "archive"
+        note: { type: string }
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
+        decidedAt: { type: string }
+        runId: { type: string }
+    PlacementInput:
+      type: object
+      required: [pages, target, decidedBy]
+      properties:
+        pages:
+          type: array
+          description: inclusive 1-based page range [first, last]
+          items:
+            type: integer
+          minItems: 2
+          maxItems: 2
+        target:
+          type: string
+          description: document blockId on the pinned template, or the literal "archive"
+        note: { type: string }
         decidedBy:
           type: string
           enum: [Originator, Underwriter, Manager]

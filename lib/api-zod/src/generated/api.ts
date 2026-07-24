@@ -476,6 +476,11 @@ export const CreateApplicationBody = zod.object({
   "projectedClosingDate": zod.string().optional()
 })
 
+export const createApplicationResponseManualPlacementsItemPagesMin = 2;
+export const createApplicationResponseManualPlacementsItemPagesMax = 2;
+
+
+
 export const CreateApplicationResponse = zod.object({
   "id": zod.string(),
   "family": zod.string(),
@@ -582,7 +587,15 @@ export const CreateApplicationResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(createApplicationResponseManualPlacementsItemPagesMin).max(createApplicationResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -592,6 +605,11 @@ export const CreateApplicationResponse = zod.object({
 export const GetApplicationParams = zod.object({
   "applicationId": zod.coerce.string()
 })
+
+export const getApplicationResponseManualPlacementsItemPagesMin = 2;
+export const getApplicationResponseManualPlacementsItemPagesMax = 2;
+
+
 
 export const GetApplicationResponse = zod.object({
   "id": zod.string(),
@@ -699,7 +717,15 @@ export const GetApplicationResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(getApplicationResponseManualPlacementsItemPagesMin).max(getApplicationResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -714,6 +740,11 @@ export const UpdateApplicationParams = zod.object({
 export const UpdateApplicationBody = zod.object({
   "projectedClosingDate": zod.union([zod.string(),zod.null()]).optional()
 })
+
+export const updateApplicationResponseManualPlacementsItemPagesMin = 2;
+export const updateApplicationResponseManualPlacementsItemPagesMax = 2;
+
+
 
 export const UpdateApplicationResponse = zod.object({
   "id": zod.string(),
@@ -821,7 +852,15 @@ export const UpdateApplicationResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(updateApplicationResponseManualPlacementsItemPagesMin).max(updateApplicationResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -837,6 +876,11 @@ export const UpgradeTemplateVersionBody = zod.object({
   "targetVersion": zod.number(),
   "decidedBy": zod.string()
 })
+
+export const upgradeTemplateVersionResponseManualPlacementsItemPagesMin = 2;
+export const upgradeTemplateVersionResponseManualPlacementsItemPagesMax = 2;
+
+
 
 export const UpgradeTemplateVersionResponse = zod.object({
   "id": zod.string(),
@@ -944,7 +988,15 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(upgradeTemplateVersionResponseManualPlacementsItemPagesMin).max(upgradeTemplateVersionResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -959,6 +1011,11 @@ export const SaveFieldValuesParams = zod.object({
 export const SaveFieldValuesBody = zod.object({
   "values": zod.record(zod.string(), zod.string())
 }).describe('Map of field id to entered value for one field-group block.')
+
+export const saveFieldValuesResponseManualPlacementsItemPagesMin = 2;
+export const saveFieldValuesResponseManualPlacementsItemPagesMax = 2;
+
+
 
 export const SaveFieldValuesResponse = zod.object({
   "id": zod.string(),
@@ -1066,7 +1123,15 @@ export const SaveFieldValuesResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(saveFieldValuesResponseManualPlacementsItemPagesMin).max(saveFieldValuesResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -1322,6 +1387,11 @@ export const UploadPacketBody = zod.object({
   "file": zod.instanceof(File)
 })
 
+export const uploadPacketResponseManualPlacementsItemPagesMin = 2;
+export const uploadPacketResponseManualPlacementsItemPagesMax = 2;
+
+
+
 export const UploadPacketResponse = zod.object({
   "id": zod.string(),
   "family": zod.string(),
@@ -1428,7 +1498,15 @@ export const UploadPacketResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(uploadPacketResponseManualPlacementsItemPagesMin).max(uploadPacketResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -1449,6 +1527,11 @@ export const DecidePacketGateBody = zod.object({
   "judge": zod.string().optional()
 }).optional().describe('Per-stage model option ids (from GET \/models\/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown\/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run\'s config artifact (pipelineVersion honesty).\n')
 })
+
+export const decidePacketGateResponseManualPlacementsItemPagesMin = 2;
+export const decidePacketGateResponseManualPlacementsItemPagesMax = 2;
+
+
 
 export const DecidePacketGateResponse = zod.object({
   "id": zod.string(),
@@ -1556,7 +1639,15 @@ export const DecidePacketGateResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(decidePacketGateResponseManualPlacementsItemPagesMin).max(decidePacketGateResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -1583,6 +1674,11 @@ export const ReportPacketRunFailureBody = zod.object({
   "reason": zod.string(),
   "packetSha256": zod.string()
 })
+
+export const reportPacketRunFailureResponseManualPlacementsItemPagesMin = 2;
+export const reportPacketRunFailureResponseManualPlacementsItemPagesMax = 2;
+
+
 
 export const ReportPacketRunFailureResponse = zod.object({
   "id": zod.string(),
@@ -1690,7 +1786,15 @@ export const ReportPacketRunFailureResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(reportPacketRunFailureResponseManualPlacementsItemPagesMin).max(reportPacketRunFailureResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 
@@ -1723,6 +1827,11 @@ export const RecordVerdictBody = zod.object({
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "runId": zod.string().optional()
 })
+
+export const recordVerdictResponseManualPlacementsItemPagesMin = 2;
+export const recordVerdictResponseManualPlacementsItemPagesMax = 2;
+
+
 
 export const RecordVerdictResponse = zod.object({
   "id": zod.string(),
@@ -1830,7 +1939,176 @@ export const RecordVerdictResponse = zod.object({
   "toVersion": zod.number(),
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
-})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)')
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(recordVerdictResponseManualPlacementsItemPagesMin).max(recordVerdictResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
+})
+
+
+/**
+ * Proxied from the analyzer worker's run store. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Run artifacts are immutable — responses cache aggressively.
+ * @summary Full-page PNG render from a landed analyzer run (filmstrip review)
+ */
+export const GetRunPageImageParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "runId": zod.coerce.string(),
+  "page": zod.coerce.number()
+})
+
+export const GetRunPageImageQueryParams = zod.object({
+  "size": zod.enum(['full', 'strip']).optional()
+})
+
+export const GetRunPageImageResponse = zod.unknown()
+
+
+/**
+ * Human-only filing for pages the analyzer left unassigned ("your assignments win — Sheaf respects manual placement"). target is a document blockId on the pinned template, or the literal "archive". A new placement replaces any earlier placement that overlaps the same page range. Recorded with decidedBy/decidedAt; the analyzer never writes these.
+ * @summary Manually file or archive an unassigned page range
+ */
+export const RecordPlacementParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const recordPlacementBodyPagesMin = 2;
+export const recordPlacementBodyPagesMax = 2;
+
+
+
+export const RecordPlacementBody = zod.object({
+  "pages": zod.array(zod.number()).min(recordPlacementBodyPagesMin).max(recordPlacementBodyPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+})
+
+export const recordPlacementResponseManualPlacementsItemPagesMin = 2;
+export const recordPlacementResponseManualPlacementsItemPagesMax = 2;
+
+
+
+export const RecordPlacementResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string()
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(recordPlacementResponseManualPlacementsItemPagesMin).max(recordPlacementResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
 })
 
 

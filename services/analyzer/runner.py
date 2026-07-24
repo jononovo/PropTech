@@ -114,7 +114,9 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
             "extractions": [],  # always present — empty in v1, populated in v2 (spec §1.5)
             "artifacts": {
                 "md": f"{ref}/md/p{first}.md",
-                "pageRenders": [f"{ref}/pages/p-{n}.png" for n in range(first, last + 1)],
+                # pdftoppm zero-pads to the packet's page-count width (p-01.png for
+                # 10 pages) — the URIs must reference the files as they exist on disk.
+                "pageRenders": [f"{ref}/pages/p-{n:0{len(str(len(mds)))}d}.png" for n in range(first, last + 1)],
                 "crops": [],
             },
         })

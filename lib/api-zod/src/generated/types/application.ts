@@ -8,6 +8,7 @@
 import type { ApplicationFieldValues } from './applicationFieldValues';
 import type { ApplicationUploads } from './applicationUploads';
 import type { ApplicationVerdicts } from './applicationVerdicts';
+import type { ManualPlacement } from './manualPlacement';
 import type { PacketState } from './packetState';
 import type { Template } from './template';
 import type { TemplateRepinEvent } from './templateRepinEvent';
@@ -29,4 +30,6 @@ export interface Application {
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
+  /** Human filings of analyzer-unassigned page ranges (portal-owned) */
+  manualPlacements?: ManualPlacement[];
 }

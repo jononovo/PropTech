@@ -1,8 +1,12 @@
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { Router, type IRouter } from "express";
 import {
   GetAnalysisResponse,
   IngestAnalysisRunBody,
   IngestAnalysisRunResponse,
+  RecordPlacementBody,
+  RecordPlacementResponse,
   RecordVerdictBody,
   RecordVerdictResponse,
 } from "@workspace/api-zod";
@@ -116,6 +120,115 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
       return;
     }
     res.json(RecordVerdictResponse.parse(app));
+  } catch (err) {
+    if (isHttpError(err)) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+/**
+ * Page renders for the filmstrip review room — proxied from the analyzer
+ * worker's run store (the API never grows its own copy of run artifacts).
+ * Run artifacts are immutable, so responses cache aggressively.
+ */
+router.get("/applications/:applicationId/runs/:runId/pages/:page", async (req, res): Promise<void> => {
+  const id = paramStr(req.params["applicationId"]);
+  const runId = paramStr(req.params["runId"]);
+  if (!isSafeSegment(id) || !isSafeSegment(runId)) {
+    res.status(400).json({ error: "Invalid application or run id" });
+    return;
+  }
+  const page = Number.parseInt(paramStr(req.params["page"]) ?? "", 10);
+  if (!Number.isFinite(page) || page <= 0) {
+    res.status(400).json({ error: "Invalid page number" });
+    return;
+  }
+  const size = req.query["size"] === "strip" ? "strip" : "full";
+  const base = process.env["ANALYZER_URL"];
+  if (!base) {
+    res.status(502).json({ error: "ANALYZER_URL is not configured — analyzer worker unreachable" });
+    return;
+  }
+  let upstream;
+  try {
+    upstream = await fetch(`${base.replace(/\/$/, "")}/store/${id}/${runId}/pages/${page}?size=${size}`, {
+      signal: AbortSignal.timeout(20000),
+    });
+  } catch (err) {
+    res.status(502).json({ error: `Analyzer worker unreachable: ${err instanceof Error ? err.message : String(err)}` });
+    return;
+  }
+  if (upstream.status === 404) {
+    res.status(404).json({ error: "No render for this page" });
+    return;
+  }
+  if (!upstream.ok || !upstream.body) {
+    res.status(502).json({ error: `Analyzer store answered ${upstream.status}` });
+    return;
+  }
+  res.type("png");
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  Readable.fromWeb(upstream.body as NodeWebReadableStream).pipe(res);
+});
+
+/**
+ * Manual filing of analyzer-unassigned page ranges (portal-owned, human-only).
+ * "Your assignments win" — a placement outlives analyzer suggestions; the next
+ * run sees it as ground truth. A new placement replaces any earlier placement
+ * overlapping the same pages (newest human decision wins).
+ */
+router.post("/applications/:applicationId/placements", async (req, res): Promise<void> => {
+  const id = paramStr(req.params["applicationId"]);
+  if (!isSafeSegment(id)) {
+    res.status(400).json({ error: "Invalid application id" });
+    return;
+  }
+  const parsed = RecordPlacementBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [first, last] = parsed.data.pages;
+  if (
+    first === undefined || last === undefined ||
+    !Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first
+  ) {
+    res.status(400).json({ error: "pages must be an inclusive 1-based range [first, last]" });
+    return;
+  }
+  try {
+    const app = await updateApplication(id, (app) => {
+      if (app.packet?.pages && last > app.packet.pages) {
+        throw new HttpError(400, `Page range exceeds the ${app.packet.pages}-page packet`);
+      }
+      if (parsed.data.target !== "archive") {
+        const block = findBlock(app, parsed.data.target);
+        if (!block || block.kind !== "document") {
+          throw new HttpError(400, 'target must be a document block on this application\'s template, or "archive"');
+        }
+      }
+      const placement: NonNullable<Application["manualPlacements"]>[number] = {
+        pages: [first, last],
+        target: parsed.data.target,
+        decidedBy: parsed.data.decidedBy,
+        decidedAt: new Date().toISOString(),
+        ...(parsed.data.note !== undefined ? { note: parsed.data.note } : {}),
+        ...(parsed.data.runId !== undefined ? { runId: parsed.data.runId } : {}),
+      };
+      const keep = (app.manualPlacements ?? []).filter(
+        (p) => (p.pages[1] ?? 0) < first || (p.pages[0] ?? 0) > last,
+      );
+      app.manualPlacements = [...keep, placement];
+      return app;
+    });
+    if (!app) {
+      res.status(404).json({ error: "Application not found" });
+      return;
+    }
+    res.json(RecordPlacementResponse.parse(app));
   } catch (err) {
     if (isHttpError(err)) {
       res.status(err.status).json({ error: err.message });

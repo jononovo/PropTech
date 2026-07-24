@@ -4,6 +4,7 @@ import type {
   AnalysisSidecar,
   Application,
   Block,
+  ManualPlacement,
   UploadedFile,
   Verdict,
 } from '@workspace/api-client-react';
@@ -74,6 +75,8 @@ export interface AuditEntry {
   text: string;
 }
 
+export type UnassignedEntry = AnalysisRun['unassigned'][number];
+
 export interface CaseModel {
   app: Application;
   run: AnalysisRun | null;
@@ -90,6 +93,10 @@ export interface CaseModel {
   alarmCount: number;
   stats: { found: number; quiet: number; attention: number; unassigned: number };
   audit: AuditEntry[];
+  /** human filings/archivals of unassigned ranges — portal-owned, analyzer never writes these */
+  placements: ManualPlacement[];
+  /** analyzer-unassigned ranges no human has filed or archived yet */
+  unassignedOpen: UnassignedEntry[];
 }
 
 // ─── date helpers ───────────────────────────────────────────────────────────
@@ -136,7 +143,7 @@ const FLAG_LABELS: Record<string, string> = {
 export const flagLabel = (code: string) =>
   FLAG_LABELS[code] ?? code.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
 
-const flagSeverity = (code: string): Severity => {
+export const flagSeverity = (code: string): Severity => {
   if (code.includes('fraud') || code.includes('metadata')) return 'clay';
   if (code === 'satisfied_by_alternative') return 'slate';
   return 'amber';
@@ -145,7 +152,7 @@ const flagSeverity = (code: string): Severity => {
 const SEV_RANK: Record<Severity, number> = { clay: 0, amber: 1, slate: 2 };
 
 /** Flags that demand a human verdict (slate flags are informational). */
-const actionableFlags = (doc: AnalysisDocument) =>
+export const actionableFlags = (doc: AnalysisDocument) =>
   doc.flags.filter((f) => flagSeverity(f.code) !== 'slate');
 
 // ─── model builder ──────────────────────────────────────────────────────────
@@ -167,6 +174,13 @@ export function buildCaseModel(
   // last assignment wins if the analyzer mapped two segments to one block
   const docByBlock = new Map<string, AnalysisDocument>();
   for (const doc of run?.documents ?? []) docByBlock.set(doc.suggestedBlockId, doc);
+
+  const placements = app.manualPlacements ?? [];
+  const overlaps = (a: readonly number[], b: readonly number[]) =>
+    (a[0] ?? 0) <= (b[1] ?? 0) && (b[0] ?? 0) <= (a[1] ?? 0);
+  const unassignedOpen = (run?.unassigned ?? []).filter(
+    (u) => !placements.some((p) => overlaps(p.pages, u.pages)),
+  );
 
   // which alternative-group members are actually present
   const present = (blockId: string) =>
@@ -202,6 +216,7 @@ export function buildCaseModel(
           doc: docByBlock.get(block.id),
           verdict: app.verdicts?.[block.id],
           uploads: app.uploads[block.id] ?? [],
+          placements,
           coveredBy: coveredByName.get(block.id),
           packetPages: run?.preflight.pages,
           sectionId: section.id,
@@ -275,9 +290,11 @@ export function buildCaseModel(
       found: run?.documents.length ?? 0,
       quiet,
       attention: exceptions.length,
-      unassigned: run?.unassigned.length ?? 0,
+      unassigned: unassignedOpen.length,
     },
     audit: buildAudit(app, run, reqs),
+    placements,
+    unassignedOpen,
   };
 }
 
@@ -288,6 +305,7 @@ interface ReqContext {
   doc?: AnalysisDocument;
   verdict?: Verdict;
   uploads: UploadedFile[];
+  placements: ManualPlacement[];
   coveredBy?: string;
   packetPages?: number;
   sectionId: string;
@@ -307,7 +325,7 @@ function buildReq(block: Block, ctx: ReqContext): CaseReq {
   else if (verdict?.verdict === 'new_version_requested') status = 'requested';
   else if (doc && (actionableFlags(doc).length > 0 || doc.scores.fraud_signal >= 0.3)) status = 'flagged';
   else if (doc) status = 'clean';
-  else if (uploads.length > 0) status = 'filed';
+  else if (uploads.length > 0 || ctx.placements.some((p) => p.target === block.id)) status = 'filed';
   else if (coveredBy) status = 'covered';
   else status = 'missing';
 
@@ -491,6 +509,17 @@ function buildAudit(app: Application, run: AnalysisRun | null, reqs: CaseReq[]):
         entries.push({ when, text: `Pre-flight: ${flag}` });
       }
     }
+  }
+
+  for (const p of app.manualPlacements ?? []) {
+    const range = p.pages[0] === p.pages[1] ? `p. ${p.pages[0]}` : `pp. ${p.pages[0]}–${p.pages[1]}`;
+    entries.push({
+      when: new Date(p.decidedAt),
+      text:
+        p.target === 'archive'
+          ? `${p.decidedBy} archived ${range} — kept on file, off the checklist`
+          : `${p.decidedBy} filed ${range} as ${reqs.find((r) => r.block.id === p.target)?.block.name ?? p.target} — manual placement wins`,
+    });
   }
 
   for (const ev of app.templateHistory ?? []) {

@@ -8,6 +8,7 @@ import {
   useDecidePacketGate,
   useGetAnalysis,
   useGetApplication,
+  useRecordPlacement,
   useRecordVerdict,
   useUpdateApplication,
   useUpgradeTemplateVersion,
@@ -90,6 +91,58 @@ export function useVerdictActions(applicationId: string) {
     );
 
   return { accept, requestNewVersion, isPending: mutation.isPending };
+}
+
+/**
+ * Manual filing of analyzer-unassigned page ranges — "your assignments win."
+ * A placement replaces any earlier one overlapping the same pages (server rule).
+ */
+export function usePlacementActions(applicationId: string) {
+  const queryClient = useQueryClient();
+  const { profile } = useProfile();
+  const { toast } = useToast();
+
+  const mutation = useRecordPlacement({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetApplicationQueryKey(applicationId) });
+        queryClient.invalidateQueries({ queryKey: getGetAnalysisQueryKey(applicationId) });
+        queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
+      },
+      onError: (err: unknown) => toast({ description: `Placement not saved — ${errText(err)}` }),
+    },
+  });
+
+  const rangeText = (pages: [number, number]) =>
+    pages[0] === pages[1] ? `p. ${pages[0]}` : `pp. ${pages[0]}–${pages[1]}`;
+
+  const fileAs = (pages: [number, number], blockId: string, blockName: string, runId?: string) =>
+    mutation.mutate(
+      {
+        applicationId,
+        data: { pages, target: blockId, decidedBy: profile.role, ...(runId ? { runId } : {}) },
+      },
+      {
+        onSuccess: () =>
+          toast({
+            description: `Filed ${rangeText(pages)} as ${blockName} — the analyzer treats this as ground truth.`,
+          }),
+      },
+    );
+
+  const archive = (pages: [number, number], runId?: string) =>
+    mutation.mutate(
+      {
+        applicationId,
+        data: { pages, target: 'archive', decidedBy: profile.role, ...(runId ? { runId } : {}) },
+      },
+      {
+        onSuccess: () =>
+          toast({ description: `Archived ${rangeText(pages)} — kept on file, off the checklist.` }),
+      },
+    );
+
+  return { fileAs, archive, isPending: mutation.isPending };
 }
 
 /** Projected closing date — portal-owned, editable from the case header. */

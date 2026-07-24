@@ -10,6 +10,7 @@ import { TemplateEditor } from './features/template-editor/TemplateEditor';
 import { Applications } from './features/intake/Applications';
 import { IntakeForm } from './features/intake/IntakeForm';
 import { CaseFilePage } from './features/case-file/CaseFilePage';
+import { ReviewPage } from './features/case-file/review/ReviewPage';
 import { LoginPage } from './features/auth/LoginPage';
 import { ProfileProvider, useProfileState } from './features/auth/ProfileContext';
 
@@ -32,6 +33,10 @@ function Router() {
             <Applications />
           </AppShell>
         )}
+      </Route>
+      {/* must precede :lens? — "review" is a room, not a lens */}
+      <Route path="/applications/:id/review">
+        {(params) => <ReviewPage id={params.id} />}
       </Route>
       <Route path="/applications/:id/:lens?">
         {(params) => <CaseFilePage id={params.id} lens={params.lens} />}

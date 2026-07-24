@@ -3,9 +3,9 @@ name: User interaction preferences
 description: How this user prefers to receive questions and updates from the agent.
 ---
 
-- **LIKES being asked questions — welcomes them and answers thoroughly ("I do like answering questions", Jul 24, 2026).** Just deliver them as plain chat text, never AskQuestion form UI. Declined two consecutive forms; answers may arrive later as a revised spec doc from a parallel research thread.
-  **Why:** user explicitly corrected an earlier note that under-asked; the objection was only ever to the form widget, not to questions.
-  **How to apply:** ask freely and completely — put questions directly in the reply as a short numbered list with my default noted per item, answerable inline and in any order. Don't sit on open questions; surface them. Avoid AskQuestion forms entirely with this user.
+- **LIKES being asked questions — welcomes them and answers thoroughly ("I do like answering questions", Jul 24, 2026). Final call (later Jul 24, 2026): ask in PLAIN CHAT — "Why can't you just ask me the questions here in the chat?" — after briefly requesting forms once.** Answers may also arrive as a revised spec doc from a parallel research thread. Never point them at a doc to answer sign-off questions — restate the questions in chat.
+  **Why:** flip-flopped once on forms, but the settled, repeated preference is chat text; pointing at doc questions also drew pushback.
+  **How to apply:** numbered list in chat, one line each, options inline with my default marked. Answerable in any order.
 - **Wants momentum over rigor ("over-engineering" pushback, Jul 24, 2026).** Small-team internal tool, not consumer scale: skip extra hardening/verification/review rounds beyond one basic check, prefer single-service simple choices, ship v1 of the next feature instead of polishing the last one.
   **Why:** user pushed back hard when a review round followed an already-verified migration ("just wanna build this now").
   **How to apply:** after a feature works end-to-end once, move on. Don't add speculative concurrency/robustness layers without a concrete failure story; keep existing guards but stop expanding them.

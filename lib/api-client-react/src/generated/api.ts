@@ -29,12 +29,14 @@ import type {
   ApplicationUpdate,
   DocumentUpload,
   FieldValues,
+  GetRunPageImageParams,
   HealthStatus,
   LoginInput,
   ModelOptionsResponse,
   PacketGateInput,
   PacketRunFailure,
   PacketUpload,
+  PlacementInput,
   SavedSection,
   SavedSectionInput,
   Template,
@@ -2252,5 +2254,178 @@ export const useRecordVerdict = <TError = ErrorType<ApiMessage>,
         TContext
       > => {
       return useMutation(getRecordVerdictMutationOptions(options));
+    }
+
+export const getGetRunPageImageUrl = (applicationId: string,
+    runId: string,
+    page: number,
+    params?: GetRunPageImageParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/runs/${runId}/pages/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/runs/${runId}/pages/${page}`
+}
+
+/**
+ * Proxied from the analyzer worker's run store. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Run artifacts are immutable — responses cache aggressively.
+ * @summary Full-page PNG render from a landed analyzer run (filmstrip review)
+ */
+export const getRunPageImage = async (applicationId: string,
+    runId: string,
+    page: number,
+    params?: GetRunPageImageParams, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetRunPageImageUrl(applicationId,runId,page,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRunPageImageQueryKey = (applicationId: string,
+    runId: string,
+    page: number,
+    params?: GetRunPageImageParams,) => {
+    return [
+    `/api/applications/${applicationId}/runs/${runId}/pages/${page}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetRunPageImageQueryOptions = <TData = Awaited<ReturnType<typeof getRunPageImage>>, TError = ErrorType<ApiMessage>>(applicationId: string,
+    runId: string,
+    page: number,
+    params?: GetRunPageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRunPageImageQueryKey(applicationId,runId,page,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRunPageImage>>> = ({ signal }) => getRunPageImage(applicationId,runId,page,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && runId !== null && runId !== undefined && page !== null && page !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRunPageImageQueryResult = NonNullable<Awaited<ReturnType<typeof getRunPageImage>>>
+export type GetRunPageImageQueryError = ErrorType<ApiMessage>
+
+
+/**
+ * @summary Full-page PNG render from a landed analyzer run (filmstrip review)
+ */
+
+export function useGetRunPageImage<TData = Awaited<ReturnType<typeof getRunPageImage>>, TError = ErrorType<ApiMessage>>(
+ applicationId: string,
+    runId: string,
+    page: number,
+    params?: GetRunPageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRunPageImageQueryOptions(applicationId,runId,page,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordPlacementUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/placements`
+}
+
+/**
+ * Human-only filing for pages the analyzer left unassigned ("your assignments win — Sheaf respects manual placement"). target is a document blockId on the pinned template, or the literal "archive". A new placement replaces any earlier placement that overlaps the same page range. Recorded with decidedBy/decidedAt; the analyzer never writes these.
+ * @summary Manually file or archive an unassigned page range
+ */
+export const recordPlacement = async (applicationId: string,
+    placementInput: PlacementInput, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getRecordPlacementUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(placementInput)
+  }
+);}
+
+
+
+
+
+export const getRecordPlacementMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPlacement>>, TError,{applicationId: string;data: BodyType<PlacementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordPlacement>>, TError,{applicationId: string;data: BodyType<PlacementInput>}, TContext> => {
+
+const mutationKey = ['recordPlacement'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordPlacement>>, {applicationId: string;data: BodyType<PlacementInput>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  recordPlacement(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordPlacementMutationResult = NonNullable<Awaited<ReturnType<typeof recordPlacement>>>
+    export type RecordPlacementMutationBody = BodyType<PlacementInput>
+    export type RecordPlacementMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Manually file or archive an unassigned page range
+ */
+export const useRecordPlacement = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordPlacement>>, TError,{applicationId: string;data: BodyType<PlacementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordPlacement>>,
+        TError,
+        {applicationId: string;data: BodyType<PlacementInput>},
+        TContext
+      > => {
+      return useMutation(getRecordPlacementMutationOptions(options));
     }
 

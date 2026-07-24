@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { AppShell } from '@/components/AppShell';
 import { CaseShell, type Lens } from './CaseShell';
+import { IntakePage } from './lenses/IntakePage';
 import { TriagePage } from './lenses/TriagePage';
 import { WorkfilePage } from './lenses/WorkfilePage';
 import { TimelinePage } from './lenses/TimelinePage';
@@ -9,14 +10,15 @@ import { RegisterPage } from './lenses/RegisterPage';
 import { useCaseFile } from './useCaseFile';
 import './case-file.css';
 
-const LENSES: Lens[] = ['triage', 'workfile', 'timeline', 'register'];
+const LENSES: Lens[] = ['intake', 'triage', 'workfile', 'timeline', 'register'];
 
 export function CaseFilePage({ id, lens }: { id: string; lens?: string }) {
   const [, setLocation] = useLocation();
   const { model, isLoading, error } = useCaseFile(id);
   const [focusSectionId, setFocusSectionId] = useState<string | null>(null);
 
-  const activeLens: Lens = LENSES.includes(lens as Lens) ? (lens as Lens) : 'triage';
+  // No lens in the URL: land on the report when a run exists, otherwise Intake.
+  const activeLens: Lens = LENSES.includes(lens as Lens) ? (lens as Lens) : model?.run ? 'triage' : 'intake';
 
   const goLens = (next: Lens, sectionId?: string) => {
     setFocusSectionId(sectionId ?? null);
@@ -41,6 +43,7 @@ export function CaseFilePage({ id, lens }: { id: string; lens?: string }) {
           </div>
         ) : (
           <CaseShell model={model} lens={activeLens} onLens={goLens}>
+            {activeLens === 'intake' && <IntakePage model={model} applicationId={id} onLens={goLens} />}
             {activeLens === 'triage' && <TriagePage model={model} applicationId={id} onLens={goLens} />}
             {activeLens === 'workfile' && (
               <WorkfilePage

@@ -415,6 +415,33 @@ export interface TemplateRepinEvent {
   decidedAt: string;
 }
 
+export type ManualPlacementDecidedBy = typeof ManualPlacementDecidedBy[keyof typeof ManualPlacementDecidedBy];
+
+
+export const ManualPlacementDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+/**
+ * A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.
+ */
+export interface ManualPlacement {
+  /**
+     * inclusive 1-based page range [first, last]
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+  /** document blockId on the pinned template, or the literal "archive" */
+  target: string;
+  note?: string;
+  decidedBy: ManualPlacementDecidedBy;
+  decidedAt: string;
+  runId?: string;
+}
+
 export interface Application {
   id: string;
   family: string;
@@ -432,6 +459,8 @@ export interface Application {
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
+  /** Human filings of analyzer-unassigned page ranges (portal-owned) */
+  manualPlacements?: ManualPlacement[];
 }
 
 export interface TemplateUpgradeInput {
@@ -463,6 +492,29 @@ export interface VerdictInput {
   expiryDate?: string;
   datesEdited?: boolean;
   decidedBy: VerdictInputDecidedBy;
+  runId?: string;
+}
+
+export type PlacementInputDecidedBy = typeof PlacementInputDecidedBy[keyof typeof PlacementInputDecidedBy];
+
+
+export const PlacementInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface PlacementInput {
+  /**
+     * inclusive 1-based page range [first, last]
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+  /** document blockId on the pinned template, or the literal "archive" */
+  target: string;
+  note?: string;
+  decidedBy: PlacementInputDecidedBy;
   runId?: string;
 }
 
@@ -645,4 +697,16 @@ export interface AnalysisSidecar {
   latestRunId: string | null;
   runs: AnalysisRun[];
 }
+
+export type GetRunPageImageParams = {
+size?: GetRunPageImageSize;
+};
+
+export type GetRunPageImageSize = typeof GetRunPageImageSize[keyof typeof GetRunPageImageSize];
+
+
+export const GetRunPageImageSize = {
+  full: 'full',
+  strip: 'strip',
+} as const;
 

@@ -47,3 +47,5 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ANALYZER_URL = "http://127.0.0.1:8000"
+PARSE_BACKEND = "anthropic"
+PARSE_MODEL = "claude-sonnet-4-6"

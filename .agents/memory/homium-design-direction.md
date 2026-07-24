@@ -111,7 +111,7 @@ User verdict: Ledger was "too relaxing — we're at work now; more like an Excel
 
 ## Locked (Jul 24, 2026, follow-up)
 - **Judge = Anthropic**, user's own key. Parser = Fireworks-hosted PaddleOCR-VL (key requested from user).
-- Verified at source: Fireworks lists PaddleOCR-VL 1.6 as on-demand deploy → 1.6 upgrade is config-only once the key exists; time it on accuracy-vs-GPU-hour cost. Spec v0.6.2's "self-hosted only" endpoint line is stale on exactly this point; user confirmed no newer spec exists — v0.6.2 still governs everything else.
+- Spec **v0.6.3 FINAL** governs (attached_assets/homium-analyzer-spec-v0.6.3-FINAL_1784868742753.md) — supersedes v0.4.1 + v0.6.2 copies AND future.md parser lines. Parser = Paddle 1.6 one-click Fireworks deployment (scale-to-zero) driven through the paddleocr[doc-parser] client pipeline, not bare chat-completions. Hosted-VLM interim approved with conditions (first e2e only; honestly labeled via pipelineVersion); Paddle pipeline is the immediate next engine task.
 - Run history: latest-run-wins confirmed. No history UI.
 - Gate state machine adopted for Stage 3: uploaded → preflight_running → gated → processing → report, persisted server-side; pre-flight checks real from day one (pages/splits/format/blank-detect), skew detection stays parser-tier. Test packet recipe: URLA sample + 2p fake bank stmt + ID + deed page + one blank page (pre-flight proof) + one skewed page (parser proof).
 - Deferred-work parking lot lives at internal_docs/future.md (user convention). Closing-date edits stay unattributed until real auth — noted there.

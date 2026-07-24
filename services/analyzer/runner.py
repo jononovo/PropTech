@@ -3,6 +3,7 @@ object POSTed through the portal's ingest endpoint (§5). Every failure path
 calls run-failed: the packet must never hang in processing."""
 import asyncio
 import datetime
+import json
 import secrets
 import traceback
 from pathlib import Path
@@ -48,6 +49,17 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str) -> None:
     store = Path(config.STORE_DIR) / app_id / run_id
     store.mkdir(parents=True, exist_ok=True)
     ref = f"store://{app_id}/{run_id}"
+    # Config + versions saved with the run's artifacts (spec v0.6.3 §2).
+    (store / "config.json").write_text(json.dumps({
+        "pipelineVersion": config.PIPELINE_VERSION,
+        "spec": "homium-analyzer-spec-v0.6.3",
+        "parse": {"backend": config.PARSE_BACKEND, "model": config.PARSE_MODEL},
+        "judge": {"backend": config.JUDGE_BACKEND, "model": config.JUDGE_MODEL},
+        "text": {"backend": config.TEXT_BACKEND, "model": config.TEXT_MODEL},
+        "renderDpi": config.RENDER_DPI,
+        "gate": gate,
+        "packetSha256": packet_sha256,
+    }, indent=2))
 
     pdf = await portal.get_packet_pdf(app_id)
     pdf_path = store / "packet.pdf"

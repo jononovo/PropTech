@@ -9,8 +9,7 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 
 ## Already-locked deferrals
 - **Email infrastructure — v3.** Until then, copy-applicant-link is the request mechanism.
-- **Parser upgrade to PaddleOCR-VL 1.6** — no longer an infrastructure project: Fireworks lists 1.6 as an on-demand deployment (verified at source Jul 24, 2026). Once the Fireworks key exists, the swap is config. Trigger it on accuracy need vs GPU-hour cost, not effort. (Spec v0.6.2's "self-hosted vLLM only" endpoint line is stale on this one point; no newer spec revision exists.)
-- **Self-hosted 1.6 (official vLLM Docker on serverless GPU)** — fallback only if Fireworks pricing/terms stop working.
+- **Paddle 1.6 pipeline integration (APPROVED — immediate next engine task, spec v0.6.3 §1.1):** product owner one-click-deploys PaddleOCR-VL 1.6 from Fireworks' library (scale-to-zero-window 5–10 min, smallest GPU shape) → OpenAI-compatible URL. Worker side: `paddlepaddle` ≥3.2.1 CPU build + `paddleocr[doc-parser]` ≥3.6.0, `pipeline_version="v1.6"`, `vl_rec_backend="vllm-server"`, `vl_rec_server_url=<deployment URL>` — NOT the bare chat-completions VLM (Baidu requires the full PP-DocLayoutV3 pipeline). Must then save per document: raw md, **elements JSON, region crops**, page renders, config+versions (crops/elements slots already exist in the run contract/store — nothing assumes their absence). Self-hosted vLLM Docker is break-glass fallback ONLY.
 - **Region highlighting on page images — v2.**
 - **Filmstrip review room (direction A)** — after the case file + engine land.
 - **Real authentication** — replaces the 4-profile test sign-in; schema already auth-shaped. Never Clerk.

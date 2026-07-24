@@ -1,15 +1,13 @@
 ---
 name: Model backends for the Sheaf analyzer
-description: What the Fireworks key can/can't reach, paddle deployment facts, judge requirements — checked July 24, 2026
+description: Fireworks key scope, Paddle 1.6 deployment path, judge requirements — updated for spec v0.6.3 (Jul 24, 2026)
 ---
 
-# Model backend facts (verified July 24, 2026)
+# Model backend facts (spec v0.6.3, verified Jul 24, 2026)
 
-- The project's Fireworks key reaches exactly 6 serverless models: kimi-k2p6, glm-5p1, glm-5p2, deepseek-v4-pro, gpt-oss-120b (text-only) + flux-1-schnell-fp8 (image gen). Every vision model probed (qwen*-vl*, llama4-maverick, paddleocr*) returns 404 NOT_FOUND.
-- PaddleOCR-VL-1.6 exists on Fireworks (`accounts/fireworks/models/paddleocr-vl-1-6`, image input supported) but is **Serverless: Not supported** — it only runs as a user-created on-demand deployment (Fireworks dashboard, billed per GPU-time). An API key alone cannot call it.
-- Replit AI integrations are disabled by the org admin (user can enable in org settings; then Anthropic works keyless, billed via Replit credits).
-- Spec v0.6.2: judge must be a frontier multimodal API — Fireworks doesn't serve one; needs Anthropic/OpenAI/Gemini regardless of parser choice.
-- Analyzer is built model-agnostic: PARSE_BACKEND/PARSE_MODEL, JUDGE_BACKEND/JUDGE_MODEL env vars; parser swap to a paddle deployment is config-only by design.
+- The Fireworks key's serverless catalog = 6 models: kimi-k2p6, glm-5p1, glm-5p2, deepseek-v4-pro, gpt-oss-120b (text) + flux-1-schnell-fp8 (image gen). No serverless vision model — every VLM probe (qwen*-vl, llama4, paddleocr*) 404s. Fireworks' pay-per-token tier does NOT carry PaddleOCR-VL.
+- **Paddle 1.6 real path (spec v0.6.3 §1.1):** product owner one-click-deploys `paddleocr-vl-1-6` from the Fireworks library → OpenAI-compatible URL; auto-scales to zero (set window 5–10 min, smallest GPU). Worker drives it through `paddleocr[doc-parser]` ≥3.6.0 + `paddlepaddle` ≥3.2.1 CPU (`pipeline_version="v1.6"`, `vl_rec_backend="vllm-server"`, `vl_rec_server_url=<URL>`) — NEVER the bare chat-completions VLM. Produces elements JSON + region crops the store must keep. Self-hosted Docker = break-glass only.
+- Judge = frontier multimodal API (spec §1.2); Fireworks serves none → Anthropic key required regardless of parser. Org's Replit AI integrations are admin-disabled.
+- Interim (approved, conditions): parse+judge both on Claude (`PARSE_BACKEND/JUDGE_BACKEND=anthropic`, model claude-sonnet-4-6) for the FIRST e2e packet only; honestly labeled via PIPELINE_VERSION; Paddle pipeline is the immediate next engine task.
 
-**Why:** user's plan ("run paddle on Fireworks") is valid but requires the deployment step in THEIR Fireworks account; don't re-probe from scratch next session.
-**How to apply:** when models get unblocked, set the env vars and restart the Analyzer Worker workflow — no code change.
+**How to apply:** models are env-only (PARSE_*/JUDGE_*/TEXT_*) — set vars, restart Analyzer Worker, no code change. When the Paddle deployment lands, only its URL is needed (auth = existing FIREWORKS_API_KEY).

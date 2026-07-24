@@ -1,3 +1,3 @@
 # Memory Index
 
-- [Homium design direction](homium-design-direction.md) — Ops Desk family (Ledger retired): form-not-table rule, 4-page Backbone, two-clock expiry, blockers-first header.
+- [Sheaf design direction](homium-design-direction.md) — brand=Sheaf (Homium=client); Ops Desk family: form-not-table, blockers-first, two-clock expiry, dashboard front door; IDCM spec governs analyzer.

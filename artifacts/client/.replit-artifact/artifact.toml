@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/"
-title = "Homium Compliance Manager"
+title = "Sheaf"
 version = "1.0.0"
 id = "artifacts/client"
 router = "path"

@@ -86,7 +86,7 @@ export function TemplateEditor() {
   return (
     <div className="w-full h-[100dvh] flex flex-col font-sans bg-[#F3F5F7] text-[#0F172A] overflow-hidden relative selection:bg-[#BFDBFE] selection:text-[#1E40AF]">
       <header className="h-[52px] bg-white border-b border-[#E2E8F0] flex items-center px-4 shrink-0 z-10">
-        <Link href="/" className="text-[#64748B] hover:text-[#0F172A] mr-4 transition-colors">
+        <Link href="/templates" className="text-[#64748B] hover:text-[#0F172A] mr-4 transition-colors">
           <ChevronRight size={18} className="rotate-180" />
         </Link>
         <div className="text-[14px] font-medium text-[#0F172A] mr-2">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { MoreHorizontal } from "lucide-react";
 import {
   useListTemplates,
@@ -99,26 +99,24 @@ export function TemplateLibrary() {
   const totalFamilies = families.length;
 
   return (
-    <div className="w-full min-h-[100dvh] flex flex-col font-sans bg-[#F3F5F7] text-[#0F172A] selection:bg-[#BFDBFE] selection:text-[#1E40AF]">
-      <header className="h-[52px] bg-white border-b border-[#E2E8F0] flex items-center px-4 shrink-0 z-10 sticky top-0">
-        <div className="text-[14px] font-medium text-[#0F172A] mr-3">Form Templates</div>
-        <div className="font-mono text-[11px] text-[#64748B] tracking-wide">
-          {totalFamilies} families · {totalVersions} versions
-        </div>
-        <div className="flex-1" />
-        <Link href="/applications" className="text-[12.5px] font-medium text-[#334155] hover:text-[#0F172A] mr-6">
-          Applications
-        </Link>
-        <button 
-          onClick={handleCreateTemplate}
-          className="bg-[#1D4ED8] hover:bg-[#1E40AF] transition-colors text-white text-[12.5px] font-medium px-3.5 py-1.5 rounded-[4px] shadow-sm"
-        >
-          New template
-        </button>
-      </header>
-
+    <div className="w-full flex flex-col flex-1">
       <main className="flex-1 p-8 pb-32">
-        <div className="max-w-[960px] mx-auto space-y-12">
+        <div className="max-w-[960px] mx-auto space-y-10">
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="text-[16px] font-semibold text-[#0F172A]">Form Templates</h1>
+              <div className="font-mono text-[11px] text-[#64748B] tracking-wide mt-1">
+                {totalFamilies} families · {totalVersions} versions
+              </div>
+            </div>
+            <button
+              onClick={handleCreateTemplate}
+              data-testid="button-new-template"
+              className="bg-[#1D4ED8] hover:bg-[#1E40AF] transition-colors text-white text-[12.5px] font-medium px-3.5 py-1.5 rounded-[4px] shadow-sm"
+            >
+              New template
+            </button>
+          </div>
           {families.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-[14px] text-[#64748B]">No templates found.</div>

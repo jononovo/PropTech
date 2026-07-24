@@ -41,26 +41,24 @@ export function Applications() {
   };
 
   return (
-    <div className="w-full min-h-[100dvh] flex flex-col font-sans bg-[#F3F5F7] text-[#0F172A] selection:bg-[#BFDBFE] selection:text-[#1E40AF]">
-      <header className="h-[52px] bg-white border-b border-[#E2E8F0] flex items-center px-4 shrink-0 z-10 sticky top-0">
-        <Link href="/" className="text-[14px] font-medium text-[#64748B] hover:text-[#0F172A] mr-6">
-          Form Templates
-        </Link>
-        <div className="text-[14px] font-medium text-[#0F172A] mr-3">Applications</div>
-        <div className="font-mono text-[11px] text-[#64748B] tracking-wide">
-          {apps.length} total
-        </div>
-        <div className="flex-1" />
-        <button 
-          onClick={() => setShowNew(true)}
-          className="bg-[#1D4ED8] hover:bg-[#1E40AF] transition-colors text-white text-[12.5px] font-medium px-3.5 py-1.5 rounded-[4px] shadow-sm"
-        >
-          New application
-        </button>
-      </header>
-
+    <div className="w-full flex flex-col flex-1">
       <main className="flex-1 p-8 pb-32">
         <div className="max-w-[960px] mx-auto">
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <h1 className="text-[16px] font-semibold text-[#0F172A]">Applications</h1>
+              <div className="font-mono text-[11px] text-[#64748B] tracking-wide mt-1">
+                {apps.length} in flight
+              </div>
+            </div>
+            <button
+              onClick={() => setShowNew(true)}
+              data-testid="button-new-application"
+              className="bg-[#1D4ED8] hover:bg-[#1E40AF] transition-colors text-white text-[12.5px] font-medium px-3.5 py-1.5 rounded-[4px] shadow-sm"
+            >
+              New application
+            </button>
+          </div>
           
           {showNew && (
             <div className="bg-white border border-[#E2E8F0] rounded-[6px] p-6 mb-8 shadow-sm">

@@ -1,6 +1,6 @@
-# Homium Compliance Manager
+# Sheaf
 
-Internal compliance platform for Homium (home-loan deposit assistance): define document templates for loans, collect applicant documents, and (in later phases) AI-analyze and human-verify them.
+Document-ops platform for lending compliance: define document templates, collect applicant documents, and (in later phases) split/classify/score 300-page loan packets with AI + human verdicts. **Sheaf is the product brand; Homium is the client** whose deposit-assistance program runs inside it — no Homium branding in the app shell. The analyzer's source of truth is the IDCM master spec at `attached_assets/idcm-master-spec-v0.4.1_1784854482870.md`.
 
 ## Architecture map — READ THIS FIRST
 
@@ -30,4 +30,5 @@ Internal compliance platform for Homium (home-loan deposit assistance): define d
 ## User preferences
 
 - Folder names must read as standard client/server architecture; frontend folder is `client` (renamed from `portal` at user's request, Jul 2026). Any new top-level piece needs an obvious architectural name.
+- Brand: app is "Sheaf" only — never put the client name (Homium) in titles, chrome, or logos.
 - Serious production mindset: no mockup shortcuts in app code; terse professional communication.

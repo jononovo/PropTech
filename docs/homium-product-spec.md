@@ -9,6 +9,8 @@ Companion docs: `docs/homium-template-schema-spec.md` (JSON contract deep-dive),
 
 ## Part A — Product context
 
+**Naming (user decision, Jul 24 2026):** the product/app is **Sheaf** — the brand in the shell, no client name in it. **Homium** is the client whose program ("Homium Deposit Assistance") runs inside it and who ratifies schemas. The analyzer/pipeline source of truth is the IDCM master spec (v0.4.1, `attached_assets/idcm-master-spec-v0.4.1_1784854482870.md`) — engine build deliberately deferred by user call; UI shell + dashboard came first.
+
 ### A1. What Homium is
 - Fintech (homium.io) providing home-loan deposit assistance ("Homium Deposit Assistance" program).
 - Core operational problem: every loan produces a 300+ page PDF file of supporting documents that compliance staff must split, identify, verify, and keep current through closing.
@@ -159,7 +161,9 @@ DELETE /api/applications/{id}/uploads/{blockId}/{filename}
 - Server: pino structured logging, Express 5 conventions.
 
 ### B7. Frontend pages (implemented, ported from user-approved mockups)
-- `/` **Template Library** — families grouped, one row per version, DRAFT/ACTIVE tags, "in use by N applications" (derived), row `…` menu: Edit / Preview / Update to a new version (with mono hint "copies v3 → v4 draft · v3 stays active") / Duplicate / Export JSON (client-side download) / Retire (disabled). New-template button.
+- **App shell** (staff surfaces `/`, `/applications`, `/templates`) — Sheaf brand mark + wordmark + "DOCUMENT OPS" tag, underline tabs Dashboard / Applications / Templates. Builder and intake form keep their own chrome.
+- `/` **Dashboard** — stat strip (applications in flight, documents filed, documents outstanding [amber when >0], active templates), "Needs you" card (apps with outstanding docs, most-outstanding first, → intake form), "Form templates" card (families with version/status chips, in-use counts). All numbers derived from the applications + templates list endpoints — nothing hardcoded. Known limit: "outstanding" counts ALL unfiled document blocks (the list endpoint carries no requirement breakdown); required-only blocker ranking lands with the compliance engine.
+- `/templates` **Template Library** — families grouped, one row per version, DRAFT/ACTIVE tags, "in use by N applications" (derived), row `…` menu: Edit / Preview / Update to a new version (with mono hint "copies v3 → v4 draft · v3 stays active") / Duplicate / Export JSON (client-side download) / Retire (disabled). New-template button.
 - `/builder/:family/:version` **Template Editor** — mirror of the approved FormBuilderA mockup: left palette (Section / Subsection / Document upload / Field group) + SAVED SECTIONS group; numbered collapsible sections with owner tag; per-section permissions strip ("WHO SEES · WHO ADDS", Role × view/upload); block rows with the three dimension dropdowns (Requirement/Weight/Sourcing) and satisfied-by captions; drafts save ("Save Draft"), active versions render read-only; header shows mono version token + status tag (Duplicate/Export live ONLY in the library menu, not here).
 - `/applications` **Applications** — list with progress (docs filed / total), start new application against an active version only.
 - `/apply/:applicationId` **Intake Form** — the segmented, section-by-section applicant view; header per the header doctrine (applicant name + template token + "VIEWING AS" role switcher); sections filtered by role view permission; document blocks show DocDimensions + upload dropzones restricted to allowed formats; field groups render typed inputs with save; uploads/deletes refetch application state.

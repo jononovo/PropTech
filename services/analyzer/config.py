@@ -11,10 +11,15 @@ FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "") or os.environ.get("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
 ANTHROPIC_BASE = os.environ.get("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "https://api.anthropic.com")
 
-# parse_document() backend (spec §1.1: PaddleOCR-VL self-hosted is the target;
-# hosted interim is sanctioned, swap = config).
-PARSE_BACKEND = os.environ.get("PARSE_BACKEND", "fireworks")     # fireworks | anthropic
+# parse_document() backend (spec §1.1: PaddleOCR-VL 1.6 is the target engine;
+# hosted-VLM interim is sanctioned, swap = config).
+PARSE_BACKEND = os.environ.get("PARSE_BACKEND", "fireworks")     # paddle | fireworks | anthropic
 PARSE_MODEL = os.environ.get("PARSE_MODEL", "")
+
+# Paddle pipeline (spec §1.1): PP-DocLayoutV3 local, VL recognition against the
+# Fireworks deployment's OpenAI-compatible endpoint (vllm-server backend).
+PADDLE_VL_URL = os.environ.get("PADDLE_VL_URL", "")       # e.g. https://api.fireworks.ai/inference/v1
+PADDLE_VL_MODEL = os.environ.get("PADDLE_VL_MODEL", "")   # e.g. accounts/creditclaw/deployments/p4tlc3h1
 
 # Judge (spec §1.2: frontier multimodal API in v1).
 JUDGE_BACKEND = os.environ.get("JUDGE_BACKEND", "anthropic")     # anthropic | fireworks
@@ -29,8 +34,13 @@ PARSE_CONCURRENCY = int(os.environ.get("PARSE_CONCURRENCY", "3"))
 RUN_TIMEOUT_S = int(os.environ.get("RUN_TIMEOUT_S", "900"))
 STORE_DIR = os.environ.get("ANALYZER_STORE", os.path.join(os.path.dirname(__file__), "store"))
 
+_PARSE_LABEL = (
+    f"paddle:vl-1.6@{PADDLE_VL_MODEL.rsplit('/', 1)[-1] or 'unset'}"
+    if PARSE_BACKEND == "paddle"
+    else f"{PARSE_BACKEND}:{PARSE_MODEL.rsplit('/', 1)[-1] or 'unset'}"
+)
 PIPELINE_VERSION = (
-    f"analyzer-0.1 parse={PARSE_BACKEND}:{PARSE_MODEL.rsplit('/', 1)[-1] or 'unset'}"
+    f"analyzer-0.1 parse={_PARSE_LABEL}"
     f" judge={JUDGE_BACKEND}:{JUDGE_MODEL.rsplit('/', 1)[-1]}"
 )
 
@@ -42,7 +52,12 @@ def missing_backends() -> list[str]:
         problems.append("parse: FIREWORKS_API_KEY missing")
     if PARSE_BACKEND == "anthropic" and not ANTHROPIC_API_KEY:
         problems.append("parse: Anthropic credentials missing")
-    if not PARSE_MODEL:
+    if PARSE_BACKEND == "paddle":
+        if not PADDLE_VL_URL:
+            problems.append("parse: PADDLE_VL_URL missing (deployment endpoint)")
+        if not FIREWORKS_API_KEY:
+            problems.append("parse: FIREWORKS_API_KEY missing (deployment auth)")
+    elif not PARSE_MODEL:
         problems.append("parse: PARSE_MODEL not set")
     if JUDGE_BACKEND == "anthropic" and not ANTHROPIC_API_KEY:
         problems.append("judge: Anthropic credentials missing")

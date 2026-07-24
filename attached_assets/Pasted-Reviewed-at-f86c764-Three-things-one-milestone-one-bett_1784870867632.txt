@@ -1,0 +1,13 @@
+Reviewed at f86c764. Three things — one milestone, one better-than-advertised fix, and one real flag that needs to go to them before any real document ever flows.
+
+1. The milestone deserves naming: the product works. That first run is the entire concept proven end-to-end — the judge caught an unsigned signature line, a SAMPLE watermark, and a missing ZIP; the bank statement got named exactly per the spec convention; the ID's expiry date was extracted for the clock; and the deed/VOE/index landed in unassigned rather than being forced into wrong slots — "it never invents" held up in the wild, on the first try. And their answer to your GLM question was correct and honest: your instinct was right that Paddle's layout signals will shrink that GLM pass to arbitrating only ambiguous pages, but Paddle reads one page at a time and can't make cross-page "new document or continuation?" judgments — today's packet proved it (zero printed form IDs, so deterministic rules found nothing and the text pass found every boundary). And that pass is the cheapest step in the pipeline by far.
+
+2. The split fix is deeper than they described. Beyond the token budget, the diff shows they narrowed a dangerous catch-all: previously any failure in classification silently became "unassigned" — now only malformed model output does, while backend failures propagate to the run-failed path. That's the fail-loudly principle applied to the actual bug class, not just the symptom. Good engineering.
+
+3. The flag — pass this on verbatim:
+
+Data-handling issue, fix before anything real flows: the analyzer store is being committed to git — services/analyzer/store/ currently contains full packet PDFs, page renders, and parsed markdown from the e2e runs (≈2.8MB, not gitignored). Harmless today because it's only the synthetic SAMPLE packet — but git history is forever, and the moment a scrubbed or real packet runs, loan-document bytes land permanently in a GitHub repo. Three-step fix now, while it's cheap: (1) add services/analyzer/store/ to .gitignore, (2) git rm -r --cached the existing store contents, (3) fold "no packet bytes ever in git" into the retention/access gate alongside the planned move to Replit App Storage. Doing this after real data exists means history rewriting; doing it today is two minutes.
+
+One optional line to add if you want: the VOE page went unassigned because employment verification isn't in the taxonomy yet — either add employment_verification_letter now (it was in the original Tier-2 list) or leave it and let the unassigned-volume loop justify it later; both defensible.
+
+Otherwise: nothing to correct, the sequencing is right, and once that gitignore lands, the next milestone is the Paddle pipeline against your live deployment.

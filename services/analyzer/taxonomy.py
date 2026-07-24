@@ -12,6 +12,7 @@ TAXONOMY: dict[str, dict] = {
     "closing_disclosure":        {"display": "Closing Disclosure", "hints": ["Closing Disclosure", "CD", "loan terms", "cash to close"]},
     "credit_report":             {"display": "Credit Report", "hints": ["credit report", "tri-merge", "FICO", "credit score"]},
     "disclosure_acknowledgment": {"display": "Disclosure Acknowledgment", "hints": ["Loan Estimate", "disclosure", "acknowledgment", "TRID"]},
+    "employment_verification_letter": {"display": "Employment Verification (VOE)", "hints": ["Verification of Employment", "VOE", "employer letter", "salary verification"]},
     "gift_letter":               {"display": "Gift Letter", "hints": ["gift letter", "donor", "no repayment expected"]},
     "government_id":             {"display": "Government ID", "hints": ["driver license", "passport", "identification card", "DMV"]},
     "insurance_binder":          {"display": "Insurance Binder", "hints": ["evidence of insurance", "binder", "homeowner's policy", "declarations page"]},
@@ -40,6 +41,7 @@ FORM_ID_SIGNALS: list[tuple[str, str]] = [
     ("Preliminary Title Report", "title_report"),
     ("Earnings Statement", "pay_stub"),
     ("Gift Letter", "gift_letter"),
+    ("Verification of Employment", "employment_verification_letter"),
     # Boundary-only signals (spec v0.6.3 §2 lists 1008 as a split signal). The
     # sentinel id is not in TAXONOMY, so it can only start a new segment —
     # classification runs separately and can never emit it.

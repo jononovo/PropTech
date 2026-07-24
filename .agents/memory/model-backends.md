@@ -13,3 +13,10 @@ description: Fireworks key scope, Paddle 1.6 deployment path, judge requirements
 - GLM-5.2 is a reasoning model: it thinks 1000+ tokens BEFORE emitting JSON. JSON tasks need max_tokens ≥4096 and last-parseable-object extraction, or the answer gets truncated away and refine passes silently no-op (symptom: "Extra data" parse errors / boundaries never split).
 
 **How to apply:** models are env-only (PARSE_*/JUDGE_*/TEXT_*) — set vars, restart Analyzer Worker, no code change. When the Paddle deployment lands, only its URL is needed (auth = existing FIREWORKS_API_KEY).
+
+## PaddleOCR-VL 1.6 pipeline (learned 2026-07-24)
+- Init: `PaddleOCRVL(pipeline_version="v1.6", vl_rec_backend="vllm-server", vl_rec_server_url, vl_rec_api_model_name=<deployment id>, vl_rec_api_key, vl_rec_max_concurrency)`. Local models (doc-ori classify + PP-DocLayoutV3) auto-download to `~/.paddlex/official_models/`; VL model is server-side.
+- **Batch, never loop:** calling `pipe.predict(page)` repeatedly is flaky — intermittent instant `RuntimeError: Exception from the 'cv' worker: std::exception` (state bug in their queue machinery; same image can pass then fail). ONE `pipe.predict([list of pages])` call is reliable and faster (internal parallelism). This was NOT thread- or env-related — reproduced on main thread of a fresh process.
+- Run the pipeline in a dedicated subprocess per packet (analyzer does): crash isolation from the server, memory returned per packet, fresh main thread.
+- `res.markdown` is a dict with `markdown_texts`; use `save_to_markdown`/`save_to_json` and read files back. Tables come back as HTML inside the markdown.
+- Needs GCC runtime libs — see nix-gcc-runtime.md.

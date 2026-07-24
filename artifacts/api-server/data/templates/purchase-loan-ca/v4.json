@@ -1,7 +1,7 @@
 {
   "template": "Purchase Loan — CA",
   "version": 4,
-  "status": "draft",
+  "status": "active",
   "program": "Homium Deposit Assistance",
   "alternatives": [
     {
@@ -49,6 +49,7 @@
               "kind": "document",
               "id": "urla-1003",
               "name": "URLA — Form 1003",
+              "docType": "application_form",
               "formats": [
                 ".pdf"
               ],
@@ -56,13 +57,13 @@
               "criticality": "critical",
               "sourcing": "readily_available",
               "multiPage": true,
-              "expiry": null,
-              "docType": "application_form"
+              "expiry": null
             },
             {
               "kind": "document",
               "id": "disclosures",
               "name": "Disclosure Acknowledgments",
+              "docType": "disclosure_acknowledgment",
               "formats": [
                 ".pdf"
               ],
@@ -70,8 +71,7 @@
               "criticality": "standard",
               "sourcing": "readily_available",
               "multiPage": true,
-              "expiry": null,
-              "docType": "disclosure_acknowledgment"
+              "expiry": null
             }
           ]
         },
@@ -142,6 +142,7 @@
               "kind": "document",
               "id": "gov-id",
               "name": "Government ID — Driver License",
+              "docType": "government_id",
               "formats": [
                 ".pdf",
                 ".jpg",
@@ -153,13 +154,13 @@
               "multiPage": false,
               "expiry": {
                 "kind": "hard"
-              },
-              "docType": "government_id"
+              }
             },
             {
               "kind": "document",
               "id": "passport",
               "name": "Passport",
+              "docType": "government_id",
               "formats": [
                 ".pdf",
                 ".jpg",
@@ -171,13 +172,13 @@
               "multiPage": false,
               "expiry": {
                 "kind": "hard"
-              },
-              "docType": "government_id"
+              }
             },
             {
               "kind": "document",
               "id": "ssn-verify",
               "name": "SSN Verification",
+              "docType": "ssn_verification",
               "formats": [
                 ".pdf"
               ],
@@ -185,8 +186,7 @@
               "criticality": "critical",
               "sourcing": "constrained",
               "multiPage": false,
-              "expiry": null,
-              "docType": "ssn_verification"
+              "expiry": null
             }
           ]
         }
@@ -227,6 +227,7 @@
               "kind": "document",
               "id": "pay-stubs",
               "name": "Pay Stubs — Last 30 Days",
+              "docType": "pay_stub",
               "formats": [
                 ".pdf"
               ],
@@ -237,13 +238,13 @@
               "expiry": {
                 "kind": "staleness",
                 "days": 30
-              },
-              "docType": "pay_stub"
+              }
             },
             {
               "kind": "document",
               "id": "w2-forms",
               "name": "W-2 Forms (last 2 years)",
+              "docType": "w2_or_tax_return",
               "formats": [
                 ".pdf"
               ],
@@ -251,8 +252,7 @@
               "criticality": "standard",
               "sourcing": "readily_available",
               "multiPage": true,
-              "expiry": null,
-              "docType": "w2_or_tax_return"
+              "expiry": null
             }
           ]
         },
@@ -264,6 +264,7 @@
               "kind": "document",
               "id": "bank-statements",
               "name": "Bank Statements — Last 3 Months",
+              "docType": "bank_statement",
               "formats": [
                 ".pdf"
               ],
@@ -274,13 +275,13 @@
               "expiry": {
                 "kind": "staleness",
                 "days": 90
-              },
-              "docType": "bank_statement"
+              }
             },
             {
               "kind": "document",
               "id": "gift-letter",
               "name": "Gift Letter",
+              "docType": "gift_letter",
               "formats": [
                 ".pdf"
               ],
@@ -288,8 +289,7 @@
               "criticality": "critical",
               "sourcing": "readily_available",
               "multiPage": false,
-              "expiry": null,
-              "docType": "gift_letter"
+              "expiry": null
             }
           ]
         }
@@ -330,6 +330,7 @@
               "kind": "document",
               "id": "appraisal",
               "name": "Appraisal Report",
+              "docType": "appraisal_report",
               "formats": [
                 ".pdf"
               ],
@@ -340,13 +341,13 @@
               "expiry": {
                 "kind": "staleness",
                 "days": 120
-              },
-              "docType": "appraisal_report"
+              }
             },
             {
               "kind": "document",
               "id": "purchase-agreement",
               "name": "Purchase Agreement",
+              "docType": "purchase_agreement",
               "formats": [
                 ".pdf"
               ],
@@ -354,8 +355,7 @@
               "criticality": "critical",
               "sourcing": "readily_available",
               "multiPage": true,
-              "expiry": null,
-              "docType": "purchase_agreement"
+              "expiry": null
             }
           ]
         }
@@ -396,6 +396,7 @@
               "kind": "document",
               "id": "prelim-title",
               "name": "Preliminary Title Report",
+              "docType": "title_report",
               "formats": [
                 ".pdf"
               ],
@@ -403,13 +404,27 @@
               "criticality": "standard",
               "sourcing": "constrained",
               "multiPage": true,
-              "expiry": null,
-              "docType": "title_report"
+              "expiry": null
+            },
+            {
+              "kind": "document",
+              "id": "grant-deed",
+              "name": "Grant Deed (recorded)",
+              "docType": "property_deed",
+              "formats": [
+                ".pdf"
+              ],
+              "requirement": "recommended",
+              "criticality": "standard",
+              "sourcing": "readily_available",
+              "multiPage": true,
+              "expiry": null
             },
             {
               "kind": "document",
               "id": "insurance-binder",
               "name": "Insurance Binder",
+              "docType": "insurance_binder",
               "formats": [
                 ".pdf"
               ],
@@ -417,13 +432,13 @@
               "criticality": "supporting",
               "sourcing": "readily_available",
               "multiPage": false,
-              "expiry": null,
-              "docType": "insurance_binder"
+              "expiry": null
             },
             {
               "kind": "document",
               "id": "prelim-cd",
               "name": "Preliminary Closing Disclosure",
+              "docType": "closing_disclosure",
               "formats": [
                 ".pdf"
               ],
@@ -431,8 +446,7 @@
               "criticality": "standard",
               "sourcing": "readily_available",
               "multiPage": true,
-              "expiry": null,
-              "docType": "closing_disclosure"
+              "expiry": null
             }
           ]
         }
@@ -473,6 +487,7 @@
               "kind": "document",
               "id": "credit-report",
               "name": "Credit Report — Tri-Merge",
+              "docType": "credit_report",
               "formats": [
                 ".pdf"
               ],
@@ -482,13 +497,13 @@
               "multiPage": true,
               "expiry": {
                 "kind": "hard"
-              },
-              "docType": "credit_report"
+              }
             },
             {
               "kind": "document",
               "id": "background-check",
               "name": "Background Check — CA DOJ",
+              "docType": "background_check",
               "formats": [
                 ".pdf"
               ],
@@ -499,8 +514,7 @@
               "expiry": {
                 "kind": "staleness",
                 "days": 60
-              },
-              "docType": "background_check"
+              }
             }
           ]
         },

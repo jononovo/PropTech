@@ -47,3 +47,9 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Loan-document bytes NEVER land in git (analyzer retention/access gate).
+# Templates + saved sections stay tracked — they are authored artifacts.
+services/analyzer/store/
+artifacts/api-server/data/packets/
+artifacts/api-server/data/uploads/

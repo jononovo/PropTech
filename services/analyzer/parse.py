@@ -18,6 +18,10 @@ PROMPT = (
 
 async def parse_document(page_pngs: list[str], md_dir: str) -> list[str]:
     """Page image -> markdown, concurrently but politely. Saves p<N>.md artifacts."""
+    if PARSE_BACKEND == "paddle":
+        from paddle_parse import parse_pages_paddle  # deferred: heavy import chain
+
+        return await parse_pages_paddle(page_pngs, md_dir)
     Path(md_dir).mkdir(parents=True, exist_ok=True)
     sem = asyncio.Semaphore(PARSE_CONCURRENCY)
 

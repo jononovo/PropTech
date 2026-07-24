@@ -29,7 +29,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd services/analyzer && python -m uvicorn app:app --host 0.0.0.0 --port 8000"
+args = "bash services/analyzer/run.sh"
 waitForPort = 8000
 
 [agent]
@@ -42,10 +42,14 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+packages = ["openssl", "zlib"]
 
 [userenv]
 
 [userenv.shared]
 ANALYZER_URL = "http://127.0.0.1:8000"
-PARSE_BACKEND = "anthropic"
+PARSE_BACKEND = "paddle"
 PARSE_MODEL = "claude-sonnet-4-6"
+PADDLE_VL_MODEL = "accounts/creditclaw/deployments/p4tlc3h1"
+PADDLE_VL_URL = "https://api.fireworks.ai/inference/v1"
+RUN_TIMEOUT_S = "1800"

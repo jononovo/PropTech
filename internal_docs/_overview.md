@@ -10,7 +10,7 @@ End-to-end flow: **sign in → pick/build template → create application → ap
 | --- | --- |
 | `_overview.md` | This file — architecture + how we build. |
 | `_future.md` | Parking lot: decided-but-deferred work. Don't relitigate; schedule. |
-| `_future/` | Deep dives for deferred/next work: `llm-questions.md`, `homium-analyzer-spec-v0.7-draft.md`. |
+| `_future/` | Deep dives for deferred/next work: `llm-questions.md`, `homium-analyzer-spec-v0.7-draft.md`, `judge-verdict-artifacts.md`. |
 | `_pages/` | One doc per routed page: purpose, thinking, logic, quirks, done vs open/hardcoded. Start at `_pages/_index.md`. |
 | `auth.md` | Demo sign-in (4 seeded profiles, one-click). |
 | `dashboard.md` | Front door: stat strip + blockers-first "Needs you". |

@@ -1,0 +1,741 @@
+Analysis complete. Full picture:
+
+What landed (commit 895280d) — verified in browser + code:
+
+Filmstrip review room (/applications/:id/review, 693-line page + a clean 156-line pure view-model): stops = flagged docs (verdict needed) + unassigned ranges (filing needed); priority vs all-pages modes; verdicts/filings hit the same APIs as the report. Honest empty state ("review room opens when a run lands"). Well-architected — view-model has no React/fetching, exactly the modularity you keep asking for.
+New Intake lens in the case file, verdict placement inputs (placementInput + decidedBy), and a pageRenders zero-padding bugfix in the analyzer.
+New draft spec awaiting MY sign-off: LLM Q&A in the review room (docs/homium-review-questions-spec.md, "nothing built"). It's good — honest grounding rules, AI-never-writes-verdicts carried over, modular qa.py + one endpoint, explicit cost controls.
+Two problems found:
+
+Local dev can no longer run packet flows at all. objectStorage.ts hard-wires the Replit GCS sidecar (127.0.0.1:1106); off-Replit, uploads die — and worse, the packet hangs in preflight_running forever with a swallowed 500 (a fail-loudly violation, not just a parity gap). My test upload ("Marco Diaz" app) is stuck that way locally — harmless junk, but proof.
+The deployed app URL is dead — prop-tech-loan-docs-analysis.replit.app says "This app isn't live yet." So I couldn't walk the populated filmstrip anywhere: locally blocked by #1, remotely blocked by the URL.
+What I want to do (in order):
+
+Sign off the Q&A spec with these picks: Shape B (chips + free-form), ephemeral persistence, their 3 proposed chips, and qa role defaulting to the judge model (swap to cheaper later via the registry — it's one registry row, don't optimize prematurely). One addition: log {question, model, latencyMs} to the worker log only — cost visibility without persistence.
+Paste-block the judge-artifacts spec to the agent (endorsed + my 3 refinements: per-stage wall-times, promptVersion constant, additive artifacts.judge ref).
+PR the local-storage disk fallback (sidecar-absent → DATA_DIR disk path + make preflight failures revert loudly instead of hanging) — small, contained, restores my ability to test everything you built today.
+Then build Phase A (portfolio freshness on the dashboard) — still the top-value item; today's landings only strengthened it (Timeline tab exists to deep-link into).
+Questions:
+
+What's the current deployed app URL? (Old one 404s — republished under a new name?)
+Q&A spec: OK with my four picks above, or overrides?
+Item 3 (storage fallback): my PR, or note to the agent?
+Phase A dashboard: green-light as my PR? Ranking order: flagged/missing-critical → hard-expiry-at-risk → stale-within-7d?
+Novita: top up the account, or drop it? (Mistral is validated and covers the cheap-parse role at $4/1k pages.)
+first of all the deployed version is now on "loandocs.replit.app"
+But you should be testing locally
+
+---
+
+I mean, yeah you're not gonna have access to the Replit media app storage unless I give you like the direct URL to it - I don't know why you're whining about that just requested if you need it.
+
+Where are my misunderstanding something
+
+Look at the latest version of the repo because some stuff has been added.
+
+I'm also going to paste the entire recent conversation so you can get up-to-date.
+
+
+--
+
+The user wants me to present the questions using the multiple-choice form they requested earlier in Replit. I have the full context now—the mockup shows a Backbone header with the logo and "Homium" branding, followed by the applicant name with a dropdown for the case panel that displays ID, status, loan details, property info, program, and originator information.
+
+The current layout has the lens tabs (Intake, Workfile, Timeline, Register, and Triage) positioned with ml-auto spacing, along with a notifications bell that opens a "Needs you" queue panel, and an avatar dropdown for account settings like profile preferences, notification rules, keyboard shortcuts, and sign out. On mobile, the tabs collapse to icons with a hamburger menu for account options.
+
+The real app currently stacks two headers—the global AppShell with the Sheaf logo and navigation (Dashboard/Applications/Templates), then the CaseShell header below it with the case-specific info and lens tabs. The user's proposal consolidates this into a single header when inside an application, moving the Dashboard/Applications/Templates navigation into a dropdown under the username, adding a proper logout button instead of the immediate logout behavior, and keeping Triage alongside the other lens tabs for now.
+
+Now I'm working through the key decisions: whether to keep the current global header structure outside cases or collapse those tabs into the avatar menu everywhere for consistency, and where to place case metadata like the applicant name, case ID, status, and closing target when the second header row is removed. The mockup suggests a dropdown panel under the applicant name that contains the ID, template version, program info, and closing target, with the template upgrade nudge and closing target editing moving into that panel instead of staying in a separate header strip.
+
+For navigation back to Applications, I'm considering whether the logo should click through to the dashboard or applications list, and whether to add an "All applications" row at the top of the case panel—the avatar menu already provides a way back, but a one-click option matters. The bell icon is shifting from a timeline view to a "Needs you" queue panel that shows blockers ranked by priority with a footer displaying days to close, which I need to build out now.
+
+The Triage tab stays as the fifth tab in its current position, and I should confirm whether to restyle all tabs to match the mockup's uppercase icon style. For the avatar menu, I'm adding Dashboard, Applications, and Templates alongside the Sign out option that routes to the login profile picker.
+
+
+Worked for 30 seconds
+Sorry before we go into the UI what are the questions you have for me?
+
+All done — phase 2 shipped and verified. Next moves when you are: answer the 4 sign-off questions in docs/homium-review-questions-spec.md, or merge PR #3 and I'll pull.
+
+23 minutes ago
+Clarifying header design scope
+
+Clarifying header design scope
+
+Worked for 46 seconds
+Why can't you just ask me the questions here in the chat?
+
+22 minutes ago
+
+3 actions
+Sure — here they are, all in chat. Defaults marked; answer in any order.
+
+Header restructure
+
+In-case header = one bar: logo | applicant name ⌄ | Intake·Triage·Workfile·Timeline·Register | bell | avatar-menu. Outside a case, today's header stays (Dashboard/Applications/Templates top nav) — just gains the same avatar menu. Right? (default: yes)
+Applicant-name dropdown: (a) full mockup case panel — id, loan/program/originator rows, closing target — with closing-date editing and the template-upgrade nudge folded into it, or (b) v1 minimal: dropdown just has "← All applications", the id/template/closing row stays as a slim second line for now. (default: a)
+Bell behavior: (a) keep current — clock alarms, click → timeline, or (b) mockup's "needs you" queue dropdown (blockers list). (default: a — b is a bigger feature)
+Avatar menu items: Dashboard · Applications · Templates · ─ · Switch profile (today's /login switcher) · Sign out. Since auth is the 4-profile demo, "Sign out" would also just land on /login — keep both entries anyway? (default: yes, both)
+Triage keeps its red count badge in the tabs? (default: yes)
+LLM-question spec (the 4 sign-offs, restated from the doc)
+
+Shape: (A) free-form box only · (B) chips + free-form · (C) packet-wide questions. (default: B)
+Answers: (i) ephemeral — gone when you navigate away · (ii) stored per-document Q&A log. (default: i)
+v1 chips: "What's missing?" · "Check names & dates" · "Summarize this document" — good set?
+Model for answers: default to the judge's model, or pin something cheaper since answers are advisory?
+
+Worked for 51 seconds
+
+Checkpoint made
+21 minutes ago
+When you click on an application, you no longer see that stupid header where it has dashboard applications and templates. You just see the tabs to manage that specific application you're in.
+
+Does that answer all your questions?
+
+
+header
+18 minutes ago
+
+Show less
+Addressing remaining questions
+
+Addressing remaining questions
+
+Opened CaseFilePage.tsx
+
+Opened ProfileContext.tsx
+Designing case panel mockup
+
+Designing case panel mockup
+Implementing UI updates
+
+Implementing UI updates
+
+Creating UserMenu.tsx
+
+Worked for 2 minutes
+For the LM question spec we're gonna have to create a vector database basically or a rag or some kind of a storage like that per application that can easily be searched efficiently and accurately, and that should not be done right now first, we're doing the analysis which actually creates all the data which is searchable, including scoring and a bunch of other flags and once all the analysis features are good, we can obviously just drop them all into a folder of swords or some kind of searchable index that then can answer questions in intelligently per application via like a chat interface or whatever and surface specific documents or scores or probabilities.
+
+But I don't think we need to implement that feature right now
+
+You can add a detailed marked down document with some ideas around it and put it in a "_future" folder in the "internal docs" folder.
+
+16 minutes ago
+Documenting LLM-question concept
+
+Documenting LLM-question concept
+The user wants to defer the LLM-question feature for now and instead document the concept in a markdown file within a _future folder in internal_docs, capturing ideas around RAG, vector indexing per application, searchable analysis outputs, and a chat interface for querying application-specific data.
+
+I'm deciding whether to move the existing _future.md file into the new folder or keep both — I think the cleanest approach is to leave _future.md as a parking-lot list and create internal_docs/_future/llm-questions-rag.md with the detailed proposal, adding a pointer in the original file. I also need to consider what to do with the earlier docs/homium-review-questions-spec.md — since the user's direction has shifted the concept away from per-document Q&A toward a post-analysis searchable index, I should fold the still-relevant parts (grounding rules, AI guardrails, cost controls) into the new future doc rather than keeping both specs. The header work is still pending since I declared intent to build it but didn't follow through before the user's message about the LLM spec. I need to write the future doc with detailed RAG ideas—covering searchable indices over analysis outputs, a staged approach starting with structured retrieval then adding embeddings, grounding rules, cost controls, and architecture sketches—then delete the old spec doc, and finally circle back to complete that header build. Now I'm thinking through the retrieval architecture: structured queries over the existing Postgres jsonb columns handle most questions without needing embeddings, but I'll use vector search only for free-text search across the parsed markdown. I'm leaning toward pgvector in the existing database rather than adding external infrastructure. The chunking strategy breaks documents into markdown chunks with metadata tags (app_id, run_id, block_id, pages), and the index builds after the judge stage completes per run in an idempotent, versioned way. The chat interface will be per-application with tool-style retrieval combining structured filters and vector search, returning answers with citations (document name, pages, scores) and deep links to the review room. I need to be strict about honesty—cite sources or refuse to answer, never make up verdicts, and always show provenance. The main cost is one embedding pass per run during index build.
+
+Now I'm building the component files, starting with the UserMenu component that provides a shared dropdown panel chrome that anchors on desktop and becomes a full-width sheet on mobile.
+
+I'm verifying the imports work with the existing @ alias setup and that the profile context has the initials property I need. The sign-out flow will call logout and redirect to the login page, which aligns with how the app already handles unauthenticated users.
+
+Moving on to the CaseShell component...
+
+
+Worked for 40 seconds
+Well, I think you should be taking care of one thing at a time and you should finish that header now and that UI of the header and the applications header. Before you start going into other things, right
+
+16 minutes ago
+Prioritizing header UI development
+
+Prioritizing header UI development
+Header first — one batch: shared avatar menu, single-bar case header, shell swaps, then the future doc.
+
+
+Show less
+
+Created UserMenu.tsx
+
+Created CaseShell.tsx
+
+Edited AppShell.tsx
+
+Edited AppShell.tsx
+
+Created CaseFilePage.tsx
+
+Created llm-questions.md
+
+Edited _future.md
+
+Deleted files
+Visual verification and follow-up
+
+Visual verification and follow-up
+
+Subagent: Header restructure to verify (client-only change; log in again via /demo → user card → password 1234 if needed). NEVER click Process/upload controls. Flow A — case header is now ONE bar (desktop): 1. [Browser] Navigate to /applications/PRWPZ4ErzX/triage 2. [Verify] - The old global nav (Dashboard/Applications/Templates links) is GONE inside the case — exactly one 52px header: Sheaf logo | applicant name with chevron (button-case-menu) | uppercase lens tabs INTAKE/TRIAGE/WORKFILE/TIMELINE/REGISTER (tab-*) right-aligned | bell (button-clock-bell) | avatar (button-user-menu) - Triage tab shows its red count chip; active tab has blue underline 3. [Browser] Click the applicant name (button-case-menu) 4. [Verify] Panel (menu-case-panel) shows: app id PRWPZ4ErzX, rows Applicant/Template/Program, "Closing target" row, "← All applications" link 5. [Browser] Click the "Closing target" row (button-edit-closing-date), pick any date next month, Save (button-save-closing-date) 6. [Verify] Panel row shows the new date with "d out"; no errors Flow B — avatar menu: 7. [Browser] Click avatar (button-user-menu) 8. [Verify] Menu (menu-user) shows profile name+role header, items Dashboard/Applications/Templates, Sign out (button-sign-out) 9. [Browser] Click Applications in the menu 10. [Verify] Lands on /applications — this OUTSIDE-case page still has the old top nav (Dashboard/Applications/Templates) PLUS the avatar menu (button-user-menu) instead of the old profile chip 11. [Browser] Click avatar → Sign out 12. [Verify] Lands on the login/profile picker; log back in (any card, password 1234) Flow C — mobile 390x874: 13. [Browser] Open /applications/PRWPZ4ErzX/triage at 390x874 14. [Verify] Single header fits: name truncates, lens tabs are icon-only (tab-triage-mobile etc), tapping name opens the case panel as a full-width sheet under the header; no horizontal overflow 15. [Browser] Tap tab-workfile-mobile 16. [Verify] Workfile lens renders Report results + a desktop screenshot of the case header with the panel open, and a mobile screenshot.
+Verifying design quality
+
+Verifying design quality
+Adjusting text truncation
+
+Adjusting text truncation
+Fixing name truncation
+
+Fixing name truncation
+
+Edited CaseShell.tsx
+Verifying visible name
+
+Verifying visible name
+
+Took a screenshot
+Applying CSS span width
+
+Applying CSS span width
+Done — screenshot just hit the login gate (my headless session isn't signed in; the tester verified the real flows).
+
+Header — shipped and e2e-verified on desktop + mobile:
+
+Inside a case: one 52px bar — logo | applicant name ⌄ | INTAKE·TRIAGE·WORKFILE·TIMELINE·REGISTER | bell | avatar. Global nav gone.
+Name dropdown = case panel: app id + SIMULATED chip, applicant/template/program rows, template-upgrade nudge, closing-target row (click to edit, verified saving), "← All applications".
+Avatar menu (everywhere, replaces the old profile chip): Dashboard · Applications · Templates · Sign out (verified round-trip through the login picker).
+Mobile: icon-only tabs, panel drops as a full-width sheet.
+One visual nit found in review — applicant name truncating to "Jon…" with room to spare — fixed (hard px cap instead of the circular % width).
+LLM questions — parked as you said: wrote internal_docs/_future/llm-questions.md (per-application searchable index over analysis outputs, lexical-first then vectors, chat with citations that deep-link into the review room, prerequisites), removed the old docs/ spec proposal, and pointed _future.md at it. Nothing built.
+
+
+Worked for 8 minutes
+
+Homium Analyzer — Build Spec v0.6.3 (FINAL — supersedes ALL prior copies) To the agent building the portal/engine: this file replaces every earlier spec copy in your repo (attached_assets/idcm-master-spec-v0.4.1*, homium-analyzer-spec-v0.6.2*) and the parser lines in your future.md. Where any older document disagrees with this one, this one wins. Decisions here are current as of Jul 24, 2026 and verified at source. --- ## 0. Division of authority | Concern | Owner | |---|---| | Template contract (requirement/criticality/sourcing, alternatives, expiry schema), pinned per application | Portal | | Scrutiny depth, substitution scrutiny, overlap escalation, queue ordering (schema-spec §4) | Portal rules — analyzer implements verbatim | | Expiry engine (two-clock model); analyzer only supplies dates | Portal | | Verdicts | Humans only — analyzer emits suggestions + confidence | | Split, classify, name, quality/fraud scoring, artifacts, core fields | Analyzer (this spec) | ## 1. Locked decisions 1. Parser: PaddleOCR-VL 1.6 via Fireworks.ai — using it is just an API. Deploy the model from Fireworks' library (one click; Fireworks runs all hardware), receive an OpenAI-compatible URL + API key, point vl_rec_server_url at it. It auto-scales to zero by default when idle and bills per GPU-second only while working — no servers, no Docker, nothing to manage. Two settings at deploy time: scale-to-zero-window = 5–10 min (default is 1h of paid idle) and the smallest GPU shape offered. Cold start from idle is a few minutes — irrelevant for batch. Their pay-per-token "serverless" tier does not carry this model; the one-click deployment is the path. The hosted-1.5 interim is cancelled (it was chosen on a stale premise). Self-hosted vLLM Docker is break-glass fallback only — otherwise ignore every self-hosted/RunPod/Modal/Docker mention in older documents. Account/URL/key come from the product owner at engine kickoff. Client side unchanged: PP-DocLayoutV3 pipeline in the analyzer worker (paddlepaddle ≥3.2.1 CPU build, paddleocr[doc-parser] ≥3.6.0, pipeline_version="v1.6", vl_rec_backend="vllm-server"). Why 1.6: leads OmniDocBench (96.33, self-evaluated) and sets SOTA on Real5-OmniDocBench's five real-world degradations — scanning, warping, screen-photography, illumination, skew — i.e., exactly this product's documents. 2. Single parse. The multimodal judge (frontier API; key arrives via app secrets, never chat) reviews page image + parsed md as the independent check. 3. Pre-flight is a human gate (built): deterministic checks → report (pages, full-pipeline cost incl. judge, worst-2+best-1 thumbnails, plain-language flags) → Process / Process anyway / Request better version. Auto-proceed: <20 pages AND zero flags. Server-side blocking + per-case concurrency (built and verified). Gate, don't retouch — no image "enhancement" ever. 4. Universal core fields on every document, from the judge: document_date, expiry_date?, primary_party_name, issuing_party? — these power naming, the portal's clocks, and cross-doc consistency. Human eyes on every clock (v1): the verdict UI displays these dates next to accept/reject; accepting a document confirms the date its clock runs on; dates editable at verdict, edits recorded. 5. Extraction is v2. LangExtract full-field schemas (~10–20% of volume: bank_statement, pay_stub, w2_or_tax_return, government_id, application_form, property_deed) ship later; the sidecar carries extractions: [] from day one so v2 is populate-only. Precedence rule (from v2): grounded extraction value beats judge core field; mismatch ⇒ needs_review. LangExtract current release v1.6.0 (Jul 2, 2026); Apache 2.0 but not an officially supported Google product — pin versions. 6. Human override is absolute. Every AI output is a suggestion with confidence; reassignment wins; all overrides recorded. ## 2. Pipeline (v1) Intake → pre-flight → gate → parse (Fireworks endpoint; save per document: raw md, elements JSON, region crops, page renders, config+versions) → split/classify (deterministic signals first — page-number resets, "Page X of Y", letterheads, form IDs: URLA/1003, 1008, W-2, 4506-C, CD, LE — LLM only for ambiguous boundaries; docType exact-match first, name-matching fallback; no match → unassigned) → scrutiny per portal §4 (criticality tiers, substitution scrutiny, overlap escalation → deep scan) → judge (scores, flags, descriptions, core fields) → naming (<date>_<blockId>_<issuer>_<party>.pdf, derived never hand-written, human rename wins) → sidecar POST. v1 fraud scope, stated plainly: metadata/structural anomalies + judge visual anomalies + core-field consistency (names/dates/parties). No amount-level checks until v2 extractions. Do not oversell. ## 3. Write-path (built — kept as the record) POST /api/applications/{id}/analysis, body = one run object; portal appends and derives latestRunId (analyzer stateless toward portal). Portal validates every suggestedBlockId against the pinned template; duplicate runId rejected (replay protection). The analyzer service never gets direct database access — this endpoint is its only door, even though sharing Postgres would be easy. Single-writer boundary; don't blur it. ## 4. v1 / v2 cut v1: sidecar+fixtures ✓ · pre-flight+gate ✓ · docType ✓ · closing-date field ✓ · parse via Fireworks · split/classify · judge (core fields, scores) · scrutiny rules · naming · one real packet end-to-end. v2 (additive only): LangExtract + schemas (+precedence) · amount-level fraud checks · md-offset→bbox highlight mapping (elements JSON already retained) · chat/RAG + vector index over the artifact store. ## 5. Standing answers (so they're written down once) - Demo bias: no fixed date — engine before polish; a real parse of the sample packet is the demo. - Data: scrubbed/synthetic packets only until retention + access controls around stored packets exist. Treat that as a gate, not a preference. - Cost visibility: Originator and above; hidden from Applicant. - Closing date: portal-owned top-level field (exists); edits re-evaluate hard expiries when the expiry engine lands. - Judge + Fireworks keys: provided by the product owner directly into app secrets at engine kickoff.
+Yeah I think maybe we should update our spec document.
+
+That is attached here and create a new version and save it in the future folder
+
+With something that is more aligned to everything we know now and the current state of the application
+
+Also, you need to update the overview document in the internal docs folder
+
+What do you think about that?
+
+I ignore the attached file if you have a newer version of that file.
+
+Also feels like the testing is being impacted by the stupid kind of login that we have where you click on a user and it preloads the username and password into the fields. I think if we click on a user button, it should just log it straight in and if you're not clicking on one of those, the username and password should work, but that should simplify testing so it doesn't have to click so many times to login and changes to the app.
+Do you think about that? 3. There's also nothing wrong with the work file tab why do you need to remove that?
+
+I'm not sure what you're talking about and investigating there. Ask me any question you have
+
+8 minutes ago
+
+16 actions
+All context gathered — shipping all three in one pass.
+
+
+Show less
+
+Edited LoginPage.tsx
+
+Edited LoginPage.tsx
+
+Edited LoginPage.tsx
+
+Edited LoginPage.tsx
+
+Edited auth.md
+
+Created homium-analyzer-spec-v0.7-draft.md
+
+Edited _overview.md
+
+Edited _overview.md
+
+Edited _overview.md
+
+Edited _overview.md
+Checking TypeScript
+
+Checking TypeScript
+
+Checked for code errors
+Validating workfile status
+
+Validating workfile status
+All three done.
+
+1. Spec — yes, good call; v0.6.3 predated the built engine. The attached file is byte-identical to the copy already on file (no newer version exists), so I rebased from it: internal_docs/_future/homium-analyzer-spec-v0.7-draft.md — same style, updated to reality: engine v1 built & validated, per-run model plans (registry is truth, loud failure), auto-proceed suspended, parser status (Paddle disarm friction / Mistral OCR 4 validated / local-CPU ruled out), review room + placements as the human half, chat/RAG pointed at the index plan. _overview.md refreshed too (spec pointer, _future/ folder, review room, one-click login). v0.6.3 stays governing until you bless the draft — it ends with 4 open rulings for you; the two that matter:
+
+Default parse: keep Paddle (despite console re-arms) or promote Mistral OCR 4? (no default — your call)
+Auto-proceed for clean small packets: reinstate once a default plan is blessed, or keep every packet gated? (default: keep gating)
+2. Login — agreed and done: clicking a user card signs you straight in (auto-submits through the real login endpoint); the username/password fields below still work for typing. One click instead of three per test session.
+
+3. Workfile — nothing's wrong with it and nothing is being removed. That was the tester's note about its own automation: it tapped a mobile tab while the case dropdown was still open, the click-outside veil swallowed the first tap (as it should — that's how the dropdown closes), and it force-clicked to continue. Product behavior is correct; Workfile stays exactly as is.
+
+
+Worked for 3 minutes
+
+Checkpoint made
+3 minutes ago
+Hey, within the internal docs folder, we need to create a folder called "_pages" and it should have an MD file for each page.
+
+And should explain what the goal is what the purpose is with the logic is with the thoughts were around the main function of each page and some of the peculiarities around it.
+
+Some of the things that are completed some of the things that are completed, and some of the things that are incomplete or perhaps hardcoded and awaiting either a decision or an outstanding feature build out.
+
+Does that make sense?
+
+3 minutes ago
+Documenting internal pages
+
+Documenting internal pages
+Makes sense — one file per page: purpose, the thinking, how it actually works, quirks, done vs open/hardcoded. Fanning out read-only explorers to ground the "hardcoded/incomplete" claims in code first:
+Good — the pasted transcript fills the gaps: Q&A spec parked (your call matches my earlier "premature" read), header restructured, one-click login, and — most important for me — the agent drafted spec v0.7 in _future/, which needs my review as spec author before it can govern. Pulling latest and reading it:
+
+Bash Pull latest, list new commits and check if server rebuild needed
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && git pull origin main 2>&1 | tail -1 && git log --oneline 895280d..HEAD && echo "=== changed (non-generated) ===" && git diff --name-status 895280d..HEAD | grep -vE "generated|api.schemas|attached_assets" | head -25 && echo "=== server code changed? ===" && git diff --name-only 895280d..HEAD -- artifacts/api-server/src services/analyzer | head -5
+
+OUT
+ create mode 100644 internal_docs/_future/llm-questions.md
+99df2fe Refactor case file and authentication components
+=== changed (non-generated) ===
+M	artifacts/client/src/components/AppShell.tsx
+A	artifacts/client/src/components/UserMenu.tsx
+M	artifacts/client/src/features/auth/LoginPage.tsx
+M	artifacts/client/src/features/case-file/CaseFilePage.tsx
+M	artifacts/client/src/features/case-file/CaseShell.tsx
+D	docs/homium-review-questions-spec.md
+M	internal_docs/_future.md
+A	internal_docs/_future/homium-analyzer-spec-v0.7-draft.md
+A	internal_docs/_future/llm-questions.md
+M	internal_docs/_overview.md
+M	internal_docs/auth.md
+=== server code changed? ===
+Read homium-analyzer-spec-v0.7-draft.md
+App Storage
+
+Host and save uploads like images, videos, and documents
+Bucket ID
+replit-objstore-7e63c43e-cc76-46eb-8df6-217516d18aa2
+
+---
+
+This library supports Bun, Deno, and Node.js. It is not recommended for browser-based applications.
+
+For more information, see the SDK Reference.
+
+Import Object Store Library
+const { Client } = require('@replit/object-storage');
+const client = new Client();
+
+Download an object as text (i.e. JSON)
+const { ok, value: textValue, error } = await client.downloadAsText('file.json');
+if (!ok) {
+    // ... handle error ...
+}
+
+Download an object as its raw byte representation (i.e. images)
+const { ok, value: bytesValue, error } = await client.downloadAsBytes('file.png');
+if (!ok) {
+    // ... handle error ...
+}
+
+Download an object by streaming the object's contents (i.e. streaming data over an API)
+const { ok, value: stream, error } = await client.downloadAsStream('file.json');
+if (!ok) {
+    // ... handle error ...
+}
+
+Download an object to the filesystem
+const { ok, error } = await client.downloadToFilename('file.json', destFilename);
+if (!ok) {
+    // ... handle error ...
+}
+
+List the objects in the bucket
+const { ok, value, error } = await client.list();
+if (!ok) {
+    // ... handle error ...
+}
+
+Upload an object from text (i.e. JSON)
+const { ok, error } = await client.uploadFromText('file.json', data);
+if (!ok) {
+    // ... handle error ...
+}
+
+Upload an object from its byte representation (i.e. images)
+const { ok, error } = await client.uploadFromBytes('file.png', data);
+if (!ok) {
+    // ... handle error ...
+}
+
+Upload an object from the filesystem
+const { ok, error } = await client.uploadFromFilename('file.json', srcFilename);
+if (!ok) {
+    // ... handle error ...
+}
+
+Upload an object from a stream (i.e. streaming data over an API)
+const { ok, error } = await client.uploadFromStream('file.json', stream);
+if (!ok) {
+    // ... handle error ...
+}
+
+Delete an object from the bucket
+const { ok, error } = await client.delete('file.json');
+if (!ok) {
+    // ... handle error ...
+Claude in Chrome [navigate][Show Tab]localhost
+Navigation completed
+Claude in Chrome [computer][Show Tab]screenshot
+Action completed
+Screenshot
+Claude in Chrome [computer][Show Tab]left_click at (874, 411)
+Action completed
+Bash Empirically probe Replit object storage access from local machine
+IN
+S="/private/tmp/claude-501/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/scratchpad/objstore-probe" && mkdir -p "$S" && cd "$S" && npm init -y >/dev/null 2>&1 && npm install @replit/object-storage --silent 2>&1 | tail -1; cat > probe.mjs <<'EOF'
+import { Client } from '@replit/object-storage';
+const client = new Client({ bucketId: 'replit-objstore-7e63c43e-cc76-46eb-8df6-217516d18aa2' });
+const r = await client.list();
+console.log(r.ok ? `OK — ${r.value.length} objects` : `FAILED: ${JSON.stringify(r.error).slice(0,300)}`);
+EOF
+timeout 30 node probe.mjs 2>&1 | tail -3
+
+OUT
+(eval):7: command not found: timeout
+Shell cwd was reset to /Users/happy/Documents/2026 Codex Tryout/proptech
+Bash Probe object storage with JS-level timeout
+IN
+cd "/private/tmp/claude-501/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/scratchpad/objstore-probe" && node -e "
+import('@replit/object-storage').then(async ({Client})=>{
+  const t=setTimeout(()=>{console.log('FAILED: timed out after 20s (no Replit sidecar to authenticate against)');process.exit(1)},20000);
+  try{ const c=new Client({bucketId:'replit-objstore-7e63c43e-cc76-46eb-8df6-217516d18aa2'});
+    const r=await c.list(); clearTimeout(t);
+    console.log(r.ok?('OK — '+r.value.length+' objects — local access WORKS'):('FAILED: '+JSON.stringify(r.error).slice(0,250)));
+  }catch(e){clearTimeout(t);console.log('FAILED (exception): '+String(e).slice(0,250))}
+})"
+
+OUT
+FAILED: {"message":"Error: request to http://127.0.0.1:1106/credential failed, reason: connect ECONNREFUSED 127.0.0.1:1106"}
+Shell cwd was reset to /Users/happy/Documents/2026 Codex Tryout/proptech
+Claude in Chrome [computer][Show Tab]screenshot
+Action completed
+Screenshot
+One-click login works — straight to the dashboard, avatar menu in place. Now the single-bar case header:
+
+Claude in Chrome [computer][Show Tab]left_click at (302, 425)
+Action completed
+Claude in Chrome [computer][Show Tab]screenshot
+Action completed
+Screenshot
+Everything verified. Consolidated:
+
+UI — all three ship-claims check out locally: one-click login (card → straight in), single-bar case header (logo | applicant ⌄ | INTAKE·TRIAGE·WORKFILE·TIMELINE·REGISTER | bell | avatar — old nav gone inside cases), and the run-plan card now shows honest per-engine notes plus a full-run cost estimate ($0.05 · ~1 min for the 3-pager). Good work by the agent.
+
+Storage — tested, not asserted: the SDK with your bucket ID from my machine → ECONNREFUSED 127.0.0.1:1106. The bucket ID names the bucket, but the credentials are minted by a sidecar that only exists inside Replit — there is nothing you can paste that grants outside access, by design. So the request stands, and it's small: a ~10-line disk fallback in objectStorage.ts when the sidecar is absent (dev-only), plus making preflight failures revert loudly instead of hanging in preflight_running forever (that hang is a fail-loudly violation regardless). Say whether I PR it or the agent takes it.
+
+Spec v0.7 draft — reviewed as spec author. Verdict: endorse, with rulings and 3 amendments. The draft is accurate (I could verify nearly every claim first-hand) and the style is right. Its four open questions, ruled:
+
+Default parse: promote Mistral OCR 4. Paddle stays in the registry as the quality benchmark (re-arm only for dated head-to-heads). Two self-disarms in one day disqualifies it as default; Mistral is validated, fills the same elements/bbox artifact slot, $4/1k pages.
+Auto-proceed: reinstate after a short burn-in — once the default plan is blessed and has ~10 consecutive clean runs, the <20 pages AND zero flags rule returns, using the blessed default plan. Gating every clean 3-pager forever taxes the happy path for no information.
+Span-gluing + crops-on-demand: both approved, with one constraint on span-gluing — exclude only pages flagged by deterministic preflight checks (blank, exact-duplicate), never model-judged ones. Predictability over cleverness.
+Amendments before blessing: (a) add the judge-verdict-artifacts item (the note you attached earlier, endorsed: judge/doc-N.json, write-once, + per-stage wall-times + promptVersion) — it's the audit-trail completion and the missing speed data for engine comparisons; (b) fix §3 wording — "save per document: md, elements JSON, crops" is engine-dependent (bare-VLM parses emit md only); the run should record which artifacts each engine actually produced; (c) cite the Replit spike (>6 min/page) as the local-CPU ruling basis — my Mac numbers were 3–5× better and still fatal, so the conclusion is doubly safe.
+Questions (short):
+
+Bless v0.7 with those rulings + amendments baked in? If yes: I apply them to the draft, PR it, you merge, agent promotes it to attached_assets and deletes v0.6.3 — one authority again.
+Storage fallback: my PR or agent's task?
+Phase A (portfolio freshness on the dashboard — flagged/missing-critical → hard-expiry → stale-soon ranking): green-light as my next build?
+Novita: top up or drop? (Mistral covers the role; my lean is drop until a reason appears.)
+Where is the 0.7 version of the sped I can't see it
+
+Or are you still gonna build it?
+
+1. Yeah, the default parts can be mistral.
+
+2. Auto proceed sounds great.
+
+3. I'm not sure what this is.
+4. I like what you're talking about amendment before blessing, but can you write a spec on this that I can share with another agent to get more input on?
+
+---
+
+Also, can you look at the latest repo changes that have been emerged in and make sure that you have added them here in local so that you can run the latest version tested here locally
+v0.7 exists — the Replit agent wrote it and it's in the repo at internal_docs/_future/homium-analyzer-spec-v0.7-draft.md (it stays in _future/ as a draft until blessed, then gets promoted to attached_assets/ as the governing copy). Nothing for me to build there — my job is baking the rulings + amendments into it.
+
+Pulling latest and syncing local first:
+
+Bash Pull latest and check what changed
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && git pull origin main 2>&1 | tail -1 && git log --oneline 99df2fe..HEAD | head -8 && echo "=== changed ===" && git diff --name-status 99df2fe..HEAD | grep -vE "generated|api.schemas" | head -25 && echo "=== server code touched? ===" && git diff --name-only 99df2fe..HEAD -- artifacts/api-server/src services/analyzer lib/db | head -6
+
+OUT
+ create mode 100644 internal_docs/_pages/template-library.md
+6ae9439 Update documentation pages with minor content additions
+e0b4ac5 Create internal documentation pages for application workflows
+=== changed ===
+M	.replit
+M	internal_docs/_overview.md
+A	internal_docs/_pages/_index.md
+A	internal_docs/_pages/applicant-form.md
+A	internal_docs/_pages/applications.md
+A	internal_docs/_pages/case-file.md
+A	internal_docs/_pages/dashboard.md
+A	internal_docs/_pages/lens-intake.md
+A	internal_docs/_pages/lens-register.md
+A	internal_docs/_pages/lens-timeline.md
+A	internal_docs/_pages/lens-triage.md
+A	internal_docs/_pages/lens-workfile.md
+A	internal_docs/_pages/login.md
+A	internal_docs/_pages/review-room.md
+A	internal_docs/_pages/template-editor.md
+A	internal_docs/_pages/template-library.md
+=== server code touched? ===
+you can add Novita as an option because it's part of the drop-down options because it's modular and we want to give those options to people, but perhaps it's not working right now and it needs to be fixed.
+
+That's OK.
+If you're gonna build something you need to build it correct because we're carrying on development at Replit and if you need something to get fixed there with some of these issues that you should write a document that I can share or get it done and then create a PR.
+
+Does that make sense?
+Pulled — the new commits are the _pages/ documentation folder (14 per-page docs, exactly what you asked the agent for) plus an _overview refresh. Zero server or client code changed, so the local stack is already running the latest version — nothing to rebuild; verified current.
+
+Ruling 3, in plain language (it's two small engine improvements the agent proposed, awaiting my/your sign-off):
+
+Span-gluing fix: in every test so far, both parsers accidentally absorbed the planted blank page and the duplicate page into the Grant Deed document — so the "deed" spans pages 5–8 when it's really 5–6. The rule: pages that preflight already flagged as blank or exact-duplicate get excluded from document spans before mapping. My constraint: only deterministic flags (blank/duplicate), never AI judgments — predictable, no cleverness.
+Crops-on-demand: the pipeline currently reserves a slot for cropped image regions of every page. Instead of pre-cropping everything (wasted work), crop only when the deep-scan step actually asks for one. Pure cost/efficiency, no behavior change.
+Both are low-risk; I've approved them at spec level — say yes/no and they go in the draft.
+
+The shareable spec you asked for — formalizing the "amendments before blessing" (your judge-artifacts note + my telemetry additions), written to be handed to another agent for input:
+
+
+# Judge Verdict Artifacts & Run Telemetry — Build Spec (draft for input, Jul 24 2026)
+
+Status: proposal, spec-author endorsed. Feeds v0.7 §amendments. Nothing built.
+Goal in one line: every score a human sees becomes traceable to the exact model
+output that produced it, and every run records how long each stage took —
+without changing how the pipeline runs.
+
+## 1. Judge verdict artifacts (audit-grade raw output)
+
+- Per analyzed document, persist the judge's COMPLETE raw output as
+  `judge/doc-<N>.json` in the run's store folder (beside `md/`, `elements/`,
+  `config.json`).
+- Contents (pre-mapping, superset of what the sidecar carries):
+  - `docIndex`, `pages: [start, end]`, `taxonomyId`
+  - `scores: { quality, formatting, fraud_signal, confidence }` (floats 0–1)
+  - `coreFields: { document_date, expiry_date, primary_party_name,
+    issuing_party }` + any extras the model emitted
+  - `flags: [{ code, detail, page? }]`, `description`, `pageNotes` if emitted
+  - `raw_response` (untruncated model text), `model`, `promptVersion`,
+    `tokens: { input, output }`, `latencyMs`, `timestamp`
+- Rules:
+  - Write-once, BEFORE the run POST. A verdict that isn't persisted fails the
+    run (fail-loudly; same doctrine as parse artifacts).
+  - The sidecar run object keeps carrying the mapped subset; this file is the
+    audit superset. Reference it additively: `artifacts.judge = "judge/doc-<N>.json"`.
+  - Covered by the store gitignore; migrates to App Storage with everything else.
+
+## 2. Per-stage run telemetry (the missing speed axis)
+
+- In `config.json` (already written per run), add:
+  `timings: { renderMs, parseMs, splitClassifyMs, judgeMs, totalMs }`.
+- In the POSTed run object, add one additive field: `durationMs` (total).
+- Why: engine comparisons currently measure cost+quality but NOT speed —
+  today's numbers were hand-copied from console polling. This makes every
+  future A/B (Mistral vs Paddle vs whatever) free.
+
+## 3. Artifact coverage honesty (per-engine)
+
+- Not every parse engine produces every artifact (bare-VLM parses emit
+  markdown only; Paddle + Mistral also emit elements/bboxes; crops remain
+  reserved). Record what THIS run actually produced:
+  `config.json → artifactsProduced: { md: true, elements: bool, crops: bool }`.
+- UI copy and future features (region highlighting) read this instead of
+  assuming; prevents overselling one engine's artifacts as universal.
+
+## 4. promptVersion
+
+- Judge prompt gets a version constant (start `judge-v1`), recorded in every
+  doc-<N>.json and in config.json. Bump on any prompt change. No registry,
+  no framework — one string.
+
+## Non-goals (explicit)
+
+- No change to how the judge runs, no retries, no new pipeline stages.
+- No UI in this spec (a later "score provenance" view can read doc-<N>.json).
+- No per-page scoring layer beyond what preflight already does — page-level
+  signals stay in preflight; document-level stays in the judge.
+
+## Open questions for reviewers
+
+1. `raw_response` can be large — cap it (e.g. 64KB) or store untruncated?
+   (Author lean: untruncated; it's the audit artifact, storage is cheap.)
+2. Should `timings` also capture per-document judge latency vs one aggregate?
+   (Author lean: per-document, it's already one call each.)
+3. Store `tokens` even when a backend doesn't report usage? (Author lean:
+   nullable fields, record what the API returns, never estimate.)
+4. Does `artifactsProduced` belong in the sidecar run object too, so the
+   portal can render capability-aware UI without touching the store?
+Copy that to the other agent as-is. When input lands, I bake it plus rulings 1–2 (Mistral default ✓, auto-proceed-after-burn-in ✓) and ruling 3 (pending your yes) into the v0.7 draft and PR it for blessing.
+
+Still parked awaiting your word: storage disk-fallback (blocks all local packet-flow testing — me or the agent?), Phase A dashboard build, Novita top-up-or-drop.
+
+Makes sense — Novita stays in the dropdown (modular, honest about being broken), and for fixes: shareable doc or done-right PR. On that basis I'm building the storage disk-fallback as a proper PR now — it's the thing blocking all local packet testing, it's contained, and I can prove it correct end-to-end in the browser before you merge. Reading the exact code paths first:
+
+Bash Map object store usage and check Novita registry honesty
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && echo "=== who uses packetObjectStore ===" && grep -rn "packetObjectStore\|putPacketPdf\|putPageThumbnail\|getPacketPdf\|getPageThumbnail" artifacts/api-server/src --include="*.ts" -l && echo "=== packetObjectStore full ===" && cat artifacts/api-server/src/lib/packetObjectStore.ts && echo "=== novita registry notes ===" && grep -n "novita" -A 6 services/analyzer/models.py | grep -E "label|note|available" | head -8
+
+OUT
+=== who uses packetObjectStore ===
+artifacts/api-server/src/features/intake-uploads/router.ts
+artifacts/api-server/src/features/packet/router.ts
+artifacts/api-server/src/lib/packetObjectStore.ts
+=== packetObjectStore full ===
+import { Readable } from "node:stream";
+import { objectStorageClient } from "./objectStorage";
+
+/**
+ * Domain layout for document bytes in App Storage (GCS). This is the ONLY
+ * module that knows where bytes live:
+ *
+ *   <PRIVATE_OBJECT_DIR>/packets/<applicationId>/packet.pdf
+ *   <PRIVATE_OBJECT_DIR>/packets/<applicationId>/thumbs/page-<n>.png
+ *   <PRIVATE_OBJECT_DIR>/uploads/<applicationId>/<blockId>/<filename>
+ *
+ * Callers hand in ids/filenames and get streams back — no GCS types leak out
+ * of this module except Readable.
+ */
+
+type ObjectLocation = { bucketName: string; objectName: string };
+
+function locateInPrivateDir(key: string): ObjectLocation {
+  const dir = process.env["PRIVATE_OBJECT_DIR"];
+  if (!dir) {
+    throw new Error("PRIVATE_OBJECT_DIR is not set — App Storage is not provisioned");
+  }
+  const clean = dir.replace(/^\/+/, "").replace(/\/+$/, "");
+  const slash = clean.indexOf("/");
+  const bucketName = slash < 0 ? clean : clean.slice(0, slash);
+  const prefix = slash < 0 ? "" : clean.slice(slash + 1);
+  return { bucketName, objectName: prefix ? `${prefix}/${key}` : key };
+}
+
+function gcsFile(key: string) {
+  const { bucketName, objectName } = locateInPrivateDir(key);
+  return objectStorageClient.bucket(bucketName).file(objectName);
+}
+
+const packetPdfKey = (applicationId: string): string => `packets/${applicationId}/packet.pdf`;
+const pageThumbnailKey = (applicationId: string, page: number): string =>
+  `packets/${applicationId}/thumbs/page-${page}.png`;
+const intakeUploadKey = (applicationId: string, blockId: string, filename: string): string =>
+  `uploads/${applicationId}/${blockId}/${filename}`;
+
+/** Upload the accepted packet PDF from its local staging path. Re-upload overwrites. */
+export async function putPacketPdf(applicationId: string, localPdfPath: string): Promise<void> {
+  const { bucketName, objectName } = locateInPrivateDir(packetPdfKey(applicationId));
+  await objectStorageClient
+    .bucket(bucketName)
+    .upload(localPdfPath, { destination: objectName, contentType: "application/pdf" });
+}
+
+/** Upload one pre-flight page thumbnail from its local staging path. */
+export async function putPageThumbnail(applicationId: string, page: number, localPngPath: string): Promise<void> {
+  const { bucketName, objectName } = locateInPrivateDir(pageThumbnailKey(applicationId, page));
+  await objectStorageClient
+    .bucket(bucketName)
+    .upload(localPngPath, { destination: objectName, contentType: "image/png" });
+}
+
+/** Store one intake document upload (buffer from multer memory storage). */
+export async function putIntakeUpload(
+  applicationId: string,
+  blockId: string,
+  filename: string,
+  bytes: Buffer,
+  contentType: string,
+): Promise<void> {
+  await gcsFile(intakeUploadKey(applicationId, blockId, filename)).save(bytes, {
+    contentType,
+    resumable: false,
+  });
+}
+
+/** Remove one intake document upload. A missing object is not an error. */
+export async function deleteIntakeUpload(applicationId: string, blockId: string, filename: string): Promise<void> {
+  await gcsFile(intakeUploadKey(applicationId, blockId, filename)).delete({ ignoreNotFound: true });
+}
+
+/** Readable stream of the packet PDF, or undefined when no object exists. */
+export async function openPacketPdfStream(applicationId: string): Promise<Readable | undefined> {
+  return openStream(packetPdfKey(applicationId));
+}
+
+/** Readable stream of one page thumbnail, or undefined when no object exists. */
+export async function openPageThumbnailStream(applicationId: string, page: number): Promise<Readable | undefined> {
+  return openStream(pageThumbnailKey(applicationId, page));
+}
+
+async function openStream(key: string): Promise<Readable | undefined> {
+  const file = gcsFile(key);
+  const [exists] = await file.exists();
+  if (!exists) return undefined;
+  return file.createReadStream();
+}
+=== novita registry notes ===
+80-            "stage": "parse", "label": "PaddleOCR-VL (Novita serverless)", "status": "experimental",
+81-            "note": "Serverless pay-per-token (~$0.02/1M). Older VL weights than 1.6 — quality unproven.",
+87-            "stage": "parse", "label": "DeepSeek-OCR 2 (Novita serverless)", "status": "experimental",
+88-            "note": "Serverless pay-per-token (~$0.03/1M). Chat-shaped OCR — quality unproven on our packets.",
+Bash Map upload-to-preflight flow and state machine
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && grep -n "preflight_running\|putPacketPdf\|putPageThumbnail\|runPreflight\|preflight(" artifacts/api-server/src/features/packet/router.ts | head -12 && echo "=== packet states ===" && grep -n "state" lib/api-spec/openapi.yaml | grep -iE "enum|preflight|gated" | head -5 && grep -n "PacketState:" -A 12 lib/api-spec/openapi.yaml | head -14
+
+OUT
+17:import { readPdfInfo, runPreflight } from "./preflight";
+21:  putPacketPdf,
+22:  putPageThumbnail,
+133: * preflight_running → gated → processing → report. Persisted server-side on the
+173:      // State 1: preflight_running — claimed ATOMICALLY before the work starts
+182:        state: "preflight_running",
+215:        packet.preflight = await runPreflight(tempPath, info, thumbsStagingDir);
+225:        await putPacketPdf(ctx.app.id, tempPath);
+227:          await putPageThumbnail(ctx.app.id, t.page, path.join(thumbsStagingDir, `page-${t.page}.png`));
+244:          // Guarded finalize: only OUR claim (sha, still preflight_running) may
+247:            if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
+275:          if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
+=== packet states ===
+557:        Outcome: state=gated awaiting a human gate decision, or — when the auto rule passes
+575:          description: Updated application with packet state (gated, or processing when auto-proceed kicked the analyzer)
+610:        Valid only while packet.state=gated (409 otherwise). decision=confirmed ("Process")
+691:        packet. Reverts state to gated, clears the gate decision, and records lastRunError
+1430:        Portal-owned packet state machine — the staged C2 intake flow: preflight_running →
+1427:    PacketState:
+1428-      type: object
+1429-      description: >
+1430-        Portal-owned packet state machine — the staged C2 intake flow: preflight_running →
+1431-        gated → processing → report. Persisted server-side so the gate physically blocks;
+1432-        no client-side choreography can advance it. The spec §3 auto rule (<20 clean
+1433-        pages auto-proceed) is currently suspended: every packet gates so staff can
+1434-        pick the run's model plan before spend.
+1435-      required: [filename, sizeBytes, pages, sha256, uploadedAt, state]
+1436-      properties:
+1437-        filename: { type: string }
+1438-        sizeBytes: { type: integer }
+1439-        pages: { type: integer }
+Read router.ts (lines 161-300)
+Bash Check jsonStore data dir exports
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && grep -n "export\|DATA_DIR\|resolve" artifacts/api-server/src/lib/jsonStore.ts | head -15
+
+OUT
+7: * Production runs with a different cwd, which silently resolved to an empty
+10: * DATA_DIR env var always wins.
+12:function resolveDataDir(): string {
+14:    process.env.DATA_DIR,
+15:    path.resolve(process.cwd(), "data"),
+16:    path.resolve(process.cwd(), "artifacts/api-server/data"),
+21:  return path.resolve(process.cwd(), "data");
+23:export const DATA_DIR = resolveDataDir();
+24:console.log(`[jsonStore] DATA_DIR = ${DATA_DIR}`);
+26:export function ensureDir(dir: string): void {
+30:export function readJson<T>(filePath: string): T | undefined {
+36:export function writeJsonAtomic(filePath: string, value: unknown): void {
+43:export function listFiles(dir: string, ext = ".json"): string[] {
+48:export function listDirs(dir: string): string[] {
+55:export function fileMtime(filePath: string): Date | undefined {
+DATA_DIR is exported — disk mode slots right in. Writing the fallback:
+

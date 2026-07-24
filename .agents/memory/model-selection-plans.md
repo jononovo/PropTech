@@ -9,6 +9,7 @@ description: How per-run model selection works (worker registry, plan resolution
 - **Honesty rule:** plan option ids resolve at run start; unknown/unavailable → run fails loudly. Never silently substitute an engine. Resolved plan + per-run pipelineVersion are frozen into the run's `config.json`.
 - Env config (`PARSE_BACKEND` etc.) is only the system default now; plan > env.
 - Spec §3 auto-proceed (<20 clean pages) is SUSPENDED deliberately — every packet gates so staff pick the plan. Restore = flip `auto` back in packet router.
+- **Rulings (Jul 24, 2026, spec author + user, not yet implemented):** default parse = Mistral OCR 4 (Paddle stays registry benchmark); auto-proceed returns after ~10 consecutive clean runs on the blessed default plan. Implement when v0.7 is blessed.
 - Paddle subprocess gets its VL endpoint/model/key/pipeline_version via env vars (`PADDLE_VL_URL/MODEL/KEY`, `PADDLE_PIPELINE_VERSION`) passed by the parent — the CLI has no other channel.
 - `llm.py chat()` backends: anthropic | fireworks | openai (generic OpenAI-compatible, needs base_url+api_key — Novita). Mistral OCR is NOT chat-shaped: separate document-API adapter (`mistral_ocr_parse.py`, one call per packet, 0-based page index in response).
 - **Why:** serverless pay-per-use pivot after local-CPU paddle was ruled out and the Fireworks GPU deployment kept disarming.

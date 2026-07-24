@@ -17,9 +17,14 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 - **LangExtract + vector index — v2** (spec cut; v1 fraud = metadata/visual/core-field consistency only).
 - **LLM questions / per-application searchable index + chat — after analysis features are done.** Detailed ideas in `_future/llm-questions.md` (user decision Jul 24, 2026: analysis first, index later).
 
-## Engine candidates (need spec-author sign-off)
-- **Span-gluing rule:** exclude preflight-flagged blank/duplicate pages from document spans before mapping. Both parse engines absorbed planted blank+dup pages into the grant-deed span (judge caught it each time) — see `models/parse-comparison-2026-07-24.md`.
+## Engine candidates (spec-author APPROVED Jul 24, 2026 — awaiting user yes/no, then into v0.7 draft)
+- **Span-gluing rule:** exclude preflight-flagged blank/duplicate pages from document spans before mapping. Author constraint: deterministic preflight flags ONLY (blank, exact-duplicate), never model judgments. Both parse engines absorbed planted blank+dup pages into the grant-deed span — see `models/parse-comparison-2026-07-24.md`.
 - **Region crops on demand:** paddle already saves per-page layout elements (bboxes) to `elements/p<N>.json`; crop regions when deep-scan needs them instead of pre-cropping every page.
+- **Judge verdict artifacts + run telemetry:** spec-author endorsed draft at `_future/judge-verdict-artifacts.md` (raw judge output per doc, per-stage timings, `artifactsProduced` honesty, promptVersion) — Sheaf-side review input baked in; feeds v0.7 amendments. Nothing built.
+
+## Rulings from the spec author + user (Jul 24, 2026 — bake into v0.7 at blessing)
+- **Default parse = Mistral OCR 4** (user-confirmed). Paddle stays in the registry as the quality benchmark, re-armed only for dated head-to-heads.
+- **Auto-proceed returns after burn-in:** once the default plan is blessed and has ~10 consecutive clean runs, the `<20 pages AND zero flags` rule comes back using the blessed default plan.
 
 ## Platform / scaling
 - **Ingest as job + poll.** Today a packet upload holds the per-app lock through preflight and the gate kick, and `processing` can stand for minutes on long engine runs. When runs get long, move ingest to a job with polling.

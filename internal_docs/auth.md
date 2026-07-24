@@ -6,7 +6,7 @@ Deliberately minimal: enough to attribute actions to a person, zero real securit
 
 - `users` table in Postgres, seeded from `artifacts/api-server/data/users.json` when empty: Ron Alvarez (Originator), Dana Whitfield (Underwriter), Priya Nair (Underwriter), Marcus Cole (Manager). All passwords `"1234"`, stored plaintext **by design** (demo fixture, not a shortcut to fix).
 - API: `GET /users` (public list, passwords omitted), `POST /login` → 200 with user / 401 / 400.
-- Login page fetches the profiles from the DB and renders them as clickable cards; clicking pre-fills the credentials. Submit goes through the real login endpoint; 401 shows an inline error.
+- Login page fetches the profiles from the DB and renders them as clickable cards; **clicking one signs in immediately** (demo password auto-submitted through the real `POST /login`). The manual username/password form below still works for typed credentials; 401 shows an inline error.
 - The signed-in user lives **whole in localStorage** (`sheaf.profile`). No sessions, no tokens, nothing enforced server-side.
 - App shell gates on profile presence; `useProfile()` supplies `{profile, logout}` everywhere. Verdicts record `decidedBy` from the active profile (role enum: Originator | Underwriter | Manager).
 

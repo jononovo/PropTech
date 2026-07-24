@@ -10,14 +10,15 @@ End-to-end flow: **sign in → pick/build template → create application → ap
 | --- | --- |
 | `_overview.md` | This file — architecture + how we build. |
 | `_future.md` | Parking lot: decided-but-deferred work. Don't relitigate; schedule. |
-| `auth.md` | Demo sign-in (4 seeded profiles). |
+| `_future/` | Deep dives for deferred/next work: `llm-questions.md`, `homium-analyzer-spec-v0.7-draft.md`. |
+| `auth.md` | Demo sign-in (4 seeded profiles, one-click). |
 | `dashboard.md` | Front door: stat strip + blockers-first "Needs you". |
 | `templates.md` | Template families/versions, builder, saved sections, document dimensions. |
 | `applications.md` | Application/case-file data model, pinned templates, repin. |
 | `intake.md` | Applicant-facing form + per-block document uploads. |
 | `packet-pipeline.md` | Packet upload → preflight → gate → processing → report state machine. |
 | `analyzer.md` | Python worker: parse → split/classify → judge → scrutiny → ingest. |
-| `review.md` | Run report in the case file, verdicts, audit trail. |
+| `review.md` | Run report, verdicts, page review room (filmstrip + placements), audit trail. |
 | `persistence.md` | Postgres operational store + App Storage document bytes. |
 | `models/` | Model & analysis-stage tracking: `_index.md` (contract + swap recipes + status) + `parse.md` / `text.md` / `judge.md` + dated comparisons. |
 
@@ -38,7 +39,7 @@ pnpm monorepo, three runtime pieces + shared libs:
 | `artifacts/mockup-sandbox/` | Historical record of approved design mockups. Not production code. |
 | `docs/` | Product specs: `homium-product-spec.md` (handoff), `homium-template-schema-spec.md` (template JSON contract). |
 
-The analyzer build spec (`attached_assets/homium-analyzer-spec-v0.6.3-FINAL_*.md`) governs the engine and supersedes all prior copies.
+The analyzer build spec **v0.6.3 FINAL** (`attached_assets/homium-analyzer-spec-v0.6.3-FINAL_*.md`) governs the engine. A rebased **v0.7 draft** — current reality: per-run model plans, auto-proceed suspended, review room + placements, parser status — sits at `internal_docs/_future/homium-analyzer-spec-v0.7-draft.md` awaiting spec-author blessing; until then v0.6.3 wins.
 
 ## How we build
 

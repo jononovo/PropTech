@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { ArrowLeft, Bell, FolderOpen, History, Inbox, LayoutDashboard, ListChecks } from 'lucide-react';
+import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks } from 'lucide-react';
 import { useListTemplates } from '@workspace/api-client-react';
+import { PANEL, UserMenu } from '@/components/UserMenu';
 import { fmt } from './caseData';
 import type { CaseModel } from './caseData';
 import { useClosingDate, useTemplateUpgrade } from './useCaseFile';
@@ -16,6 +17,13 @@ const LENSES: { key: Lens; label: string; icon: typeof Inbox }[] = [
   { key: 'register', label: 'Register', icon: ListChecks },
 ];
 
+/**
+ * Single-bar case chrome (mockup: Backbone). Inside a case the global nav
+ * disappears — identity, lens tabs, clock bell and account share one 52px
+ * header. Everything that used to fill the big case header lives one reveal
+ * deeper, in the applicant-name panel; Dashboard/Applications/Templates
+ * moved into the avatar menu.
+ */
 export function CaseShell({
   model,
   lens,
@@ -28,90 +36,57 @@ export function CaseShell({
   children: ReactNode;
 }) {
   const { app } = model;
+  const [caseOpen, setCaseOpen] = useState(false);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      {/* case header */}
-      <div className="bg-white border-b border-[var(--ops-border)]">
-        <div className="max-w-[1200px] mx-auto px-4 md:px-6 pt-3.5 pb-0">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Link
-                href="/applications"
-                data-testid="link-back-applications"
-                className="micro-label text-[9.5px] hover:text-[var(--ops-accent)] transition-colors inline-flex items-center gap-1 mb-1"
-              >
-                <ArrowLeft className="w-3 h-3" /> applications
-              </Link>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                <h1 className="text-[17px] font-semibold tracking-[-0.01em] text-[var(--ops-ink)] truncate">
-                  {app.applicantName}
-                </h1>
-                <span className="ops-mono text-[11px] text-[var(--ops-muted)]">{app.id}</span>
-                {model.run?.pipelineVersion?.startsWith('simulated') && (
-                  <span
-                    title="This report came from the deterministic simulator — the analyzer engine is not built yet."
-                    data-testid="chip-simulated"
-                    className="ops-mono text-[9px] px-1.5 py-0.5 rounded-[3px] bg-[var(--ops-warning-wash)] border border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] tracking-[0.08em]"
-                  >
-                    SIMULATED RUN
-                  </span>
-                )}
-              </div>
-              <div className="text-[12px] text-[var(--ops-body-sec)] flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                <span className="truncate">
-                  {app.template.template}{' '}
-                  <span className="ops-mono text-[10.5px] text-[var(--ops-muted)]">v{app.version}</span>
-                  <span className="text-[var(--ops-faint)]"> · </span>
-                  <span className="text-[var(--ops-muted)]">{app.template.program}</span>
-                </span>
-                <TemplateUpgradeNudge model={model} />
-              </div>
-            </div>
+      <header className="shrink-0 h-[52px] bg-white border-b border-[var(--ops-border)] flex items-center gap-1.5 md:gap-3 pl-3 md:pl-5 pr-2 md:pr-4 sticky top-0 z-30">
+        <Link href="/" data-testid="link-brand-home" title="Sheaf — dashboard" className="flex items-center gap-2.5 shrink-0">
+          <div className="w-[22px] h-[22px] bg-[#0F172A] rounded-[5px] flex items-center justify-center">
+            <div className="w-[10px] h-[10px] border-[1.5px] border-white rounded-[2px]" />
+          </div>
+          <span className="hidden lg:inline text-[15px] font-bold tracking-[-0.01em]">Sheaf</span>
+        </Link>
+        <div className="hidden md:block h-5 w-px bg-[var(--ops-border)] shrink-0" />
 
-            <div className="flex items-center gap-3 shrink-0">
-              <ClosingTarget model={model} />
+        {/* case anchor — the name is the file */}
+        <div className="relative min-w-0 flex-1 md:flex-none">
+          {caseOpen && <div className="fixed inset-0 z-40" onClick={() => setCaseOpen(false)} />}
+          <button
+            onClick={() => setCaseOpen((o) => !o)}
+            data-testid="button-case-menu"
+            className="relative z-50 w-full md:w-auto flex items-center gap-1.5 px-2 py-1.5 -ml-2 rounded-[4px] hover:bg-[var(--ops-inner-rule)] transition-colors min-w-0"
+          >
+            <span className="text-[13px] font-semibold truncate md:max-w-[280px]">{app.applicantName}</span>
+            <ChevronDown
+              className={`w-3 h-3 text-[var(--ops-faint)] shrink-0 transition-transform duration-150 ${caseOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+          {caseOpen && <CasePanel model={model} />}
+        </div>
+
+        {/* lens tabs — labels on desktop, icons on mobile */}
+        <nav className="ml-auto hidden md:flex items-stretch self-stretch shrink-0">
+          {LENSES.map(({ key, label, icon: Icon }) => {
+            const active = key === lens;
+            const count =
+              key === 'triage' && model.stats.attention > 0
+                ? model.stats.attention
+                : key === 'timeline' && model.alarmCount > 0
+                  ? model.alarmCount
+                  : null;
+            return (
               <button
-                onClick={() => onLens('timeline')}
-                title={`${model.alarmCount} live ${model.alarmCount === 1 ? 'clock' : 'clocks'} inside 30 days`}
-                data-testid="button-clock-bell"
-                className={`relative flex items-center gap-1.5 h-9 px-2.5 rounded-[4px] border transition-colors ${
-                  model.alarmCount > 0
-                    ? 'bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] hover:bg-[#FEF3C7]'
-                    : 'bg-white border-[var(--ops-border)] text-[var(--ops-muted)] hover:bg-[var(--ops-inset)]'
+                key={key}
+                onClick={() => onLens(key)}
+                data-testid={`tab-${key}`}
+                className={`relative px-2.5 lg:px-3.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors ${
+                  active ? 'text-[var(--ops-ink)]' : 'text-[var(--ops-muted)] hover:text-[var(--ops-ink)]'
                 }`}
               >
-                <Bell className="w-3.5 h-3.5" />
-                {model.alarmCount > 0 && (
-                  <span className="ops-mono text-[11px] font-medium">{model.alarmCount}</span>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* lens tabs */}
-          <nav className="flex items-stretch gap-5 mt-2.5">
-            {LENSES.map(({ key, label, icon: Icon }) => {
-              const active = key === lens;
-              const count =
-                key === 'triage' && model.stats.attention > 0
-                  ? model.stats.attention
-                  : key === 'timeline' && model.alarmCount > 0
-                    ? model.alarmCount
-                    : null;
-              return (
-                <button
-                  key={key}
-                  onClick={() => onLens(key)}
-                  data-testid={`tab-${key}`}
-                  className={`flex items-center gap-1.5 pb-2 pt-1 text-[12.5px] font-medium border-b-2 transition-colors ${
-                    active
-                      ? 'border-[var(--ops-accent)] text-[var(--ops-ink)]'
-                      : 'border-transparent text-[var(--ops-muted)] hover:text-[var(--ops-ink)]'
-                  }`}
-                >
-                  <Icon className={`w-[13px] h-[13px] ${active ? 'text-[var(--ops-accent)]' : ''}`} />
-                  <span className="hidden sm:inline">{label}</span>
+                <span className="flex items-center gap-1.5">
+                  <Icon className={`w-[13px] h-[13px] ${active ? 'text-[var(--ops-accent)]' : 'text-[var(--ops-faint)]'}`} strokeWidth={2} />
+                  {label}
                   {count !== null && (
                     <span
                       className={`ops-mono text-[10px] px-1 rounded-[2px] border ${
@@ -123,14 +98,101 @@ export function CaseShell({
                       {count}
                     </span>
                   )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-      </div>
+                </span>
+                {active && <span className="absolute left-2 right-2 bottom-0 h-[2px] bg-[var(--ops-accent)]" />}
+              </button>
+            );
+          })}
+        </nav>
+        <nav className="flex md:hidden items-center gap-0.5 shrink-0 ml-1" aria-label="Lenses">
+          {LENSES.map(({ key, label, icon: Icon }) => {
+            const active = key === lens;
+            return (
+              <button
+                key={key}
+                onClick={() => onLens(key)}
+                data-testid={`tab-${key}-mobile`}
+                aria-label={label}
+                title={label}
+                className={`w-8 h-9 flex items-center justify-center rounded-[4px] transition-colors ${
+                  active
+                    ? 'text-[var(--ops-accent)] bg-[var(--ops-accent-wash)]'
+                    : 'text-[var(--ops-muted)] hover:bg-[var(--ops-inner-rule)]'
+                }`}
+              >
+                <Icon className="w-4 h-4" strokeWidth={2} />
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="hidden md:block h-5 w-px bg-[var(--ops-border)] shrink-0" />
+
+        {/* clock bell — count in the chrome, detail stays in the timeline */}
+        <button
+          onClick={() => onLens('timeline')}
+          data-testid="button-clock-bell"
+          title={`${model.alarmCount} live ${model.alarmCount === 1 ? 'clock' : 'clocks'} inside 30 days`}
+          className="relative w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-[4px] transition-colors text-[var(--ops-muted)] hover:bg-[var(--ops-inner-rule)] hover:text-[var(--ops-ink)] shrink-0"
+        >
+          <Bell className="w-4 h-4" />
+          {model.alarmCount > 0 && (
+            <span className="absolute top-[1px] right-[1px] min-w-[15px] h-[15px] px-[3px] flex items-center justify-center rounded-[3px] border ops-mono text-[9px] font-medium leading-none text-[var(--ops-warning-text)] bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)]">
+              {model.alarmCount}
+            </span>
+          )}
+        </button>
+
+        <UserMenu />
+      </header>
 
       <div className="flex-1 min-h-0">{children}</div>
+    </div>
+  );
+}
+
+/** Everything the old case header showed, one reveal deeper. */
+function CasePanel({ model }: { model: CaseModel }) {
+  const { app } = model;
+  const simulated = model.run?.pipelineVersion?.startsWith('simulated');
+
+  return (
+    <div className={`${PANEL} md:left-0 md:w-[324px]`} data-testid="menu-case-panel">
+      <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2.5 border-b border-[var(--ops-inner-rule)]">
+        <span className="ops-mono text-[11px] font-medium text-[var(--ops-ink)]">{app.id}</span>
+        {simulated && (
+          <span
+            data-testid="chip-simulated"
+            title="This report came from the deterministic simulator — the analyzer engine is not built yet."
+            className="ops-mono text-[9px] px-1.5 py-0.5 rounded-[3px] bg-[var(--ops-warning-wash)] border border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] tracking-[0.08em]"
+          >
+            SIMULATED RUN
+          </span>
+        )}
+      </div>
+      <div className="px-4 py-2.5 space-y-1.5">
+        <InfoRow k="Applicant" v={app.applicantName} />
+        <InfoRow k="Template" v={`${app.template.template} · v${app.version}`} />
+        <InfoRow k="Program" v={app.template.program} />
+      </div>
+      <TemplateUpgradeNudge model={model} />
+      <ClosingTargetRow model={model} />
+      <Link
+        href="/applications"
+        data-testid="link-back-applications"
+        className="block px-4 py-2 border-t border-[var(--ops-inner-rule)] text-[11.5px] font-medium text-[var(--ops-muted)] hover:text-[var(--ops-ink)] hover:bg-[var(--ops-inset)] transition-colors"
+      >
+        ← All applications
+      </Link>
+    </div>
+  );
+}
+
+function InfoRow({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex gap-3 text-[11.5px] leading-snug">
+      <span className="w-[64px] shrink-0 text-[var(--ops-muted)]">{k}</span>
+      <span className="text-[var(--ops-ink)] min-w-0">{v}</span>
     </div>
   );
 }
@@ -152,33 +214,35 @@ function TemplateUpgradeNudge({ model }: { model: CaseModel }) {
   if (newest === 0) return null;
 
   return (
-    <button
-      onClick={() => upgrade(newest)}
-      disabled={isPending}
-      data-testid="button-upgrade-template"
-      title="Additive-only upgrade: existing uploads, verdicts and analysis stay attached. Recorded in the audit trail."
-      className="ops-mono text-[9px] px-1.5 py-0.5 rounded-[3px] bg-[var(--ops-warning-wash)] border border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] tracking-[0.06em] hover:bg-[#FEF3C7] transition-colors disabled:opacity-60"
-    >
-      {isPending ? 'UPGRADING…' : `TEMPLATE v${newest} AVAILABLE — UPGRADE`}
-    </button>
+    <div className="px-4 pb-2.5">
+      <button
+        onClick={() => upgrade(newest)}
+        disabled={isPending}
+        data-testid="button-upgrade-template"
+        title="Additive-only upgrade: existing uploads, verdicts and analysis stay attached. Recorded in the audit trail."
+        className="w-full ops-mono text-[9px] px-1.5 py-1 rounded-[3px] bg-[var(--ops-warning-wash)] border border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] tracking-[0.06em] hover:bg-[#FEF3C7] transition-colors disabled:opacity-60"
+      >
+        {isPending ? 'UPGRADING…' : `TEMPLATE v${newest} AVAILABLE — UPGRADE`}
+      </button>
+    </div>
   );
 }
 
-function ClosingTarget({ model }: { model: CaseModel }) {
+function ClosingTargetRow({ model }: { model: CaseModel }) {
   const { setClosingDate, isPending } = useClosingDate(model.app.id);
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(model.app.projectedClosingDate ?? '');
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 px-4 py-2 border-t border-[var(--ops-border)] bg-[var(--ops-inset)]">
         <input
           type="date"
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
           data-testid="input-closing-date"
-          className="ops-mono text-[12px] bg-white border border-[var(--ops-strong-border)] rounded-[4px] px-2 py-1.5 focus:outline-none focus:border-[var(--ops-accent)]"
+          className="ops-mono text-[12px] flex-1 min-w-0 bg-white border border-[var(--ops-strong-border)] rounded-[4px] px-2 py-1.5 focus:outline-none focus:border-[var(--ops-accent)]"
         />
         <button
           className="btn-primary"
@@ -206,15 +270,15 @@ function ClosingTarget({ model }: { model: CaseModel }) {
       }}
       data-testid="button-edit-closing-date"
       title="Edit closing target"
-      className="text-right hover:bg-[var(--ops-inset)] rounded-[4px] px-2.5 py-1 transition-colors"
+      className="w-full flex items-center justify-between px-4 py-2 border-t border-[var(--ops-border)] bg-[var(--ops-inset)] hover:bg-[var(--ops-inner-rule)] transition-colors"
     >
-      <div className="micro-label text-[9px] mb-0.5">closing target</div>
+      <span className="text-[10.5px] text-[var(--ops-muted)]">Closing target</span>
       {model.closing ? (
-        <div className="ops-mono text-[12.5px] text-[var(--ops-ink)]">
+        <span className="ops-mono text-[11px] font-medium text-[var(--ops-ink)]">
           {fmt(model.closing)} · {model.daysToClose}d out
-        </div>
+        </span>
       ) : (
-        <div className="text-[12px] text-[var(--ops-accent)] font-medium">set date</div>
+        <span className="text-[11.5px] text-[var(--ops-accent)] font-medium">set date</span>
       )}
     </button>
   );

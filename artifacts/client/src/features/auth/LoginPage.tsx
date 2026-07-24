@@ -5,8 +5,9 @@ import { useProfileState } from './ProfileContext';
 
 /**
  * Demo sign-in: the boxes are the seeded users from the database; clicking
- * one pre-fills the credentials (every demo password is "1234"), Log In
- * validates against POST /login. No sessions — the user lives in localStorage.
+ * one signs in immediately (demo password auto-submitted through the real
+ * POST /login). The manual form below still works for typed credentials.
+ * No sessions — the user lives in localStorage.
  */
 const DEMO_PASSWORD = '1234';
 
@@ -32,6 +33,7 @@ export function LoginPage() {
     setUsername(u.username);
     setPassword(DEMO_PASSWORD);
     setError(null);
+    loginMutation.mutate({ data: { username: u.username, password: DEMO_PASSWORD } });
   };
 
   const submit = (e: FormEvent) => {
@@ -55,8 +57,8 @@ export function LoginPage() {
       <div className="w-full max-w-[560px] bg-white border border-[#E2E8F0] rounded-[6px] p-5">
         <div className="text-[15px] font-semibold mb-1">Who's working?</div>
         <p className="text-[12.5px] text-[#64748B] mb-4">
-          Pick a user — their credentials are filled in for you. Verdicts and edits are recorded under
-          their name and role.
+          Pick a user to sign in instantly — verdicts and edits are recorded under their name and
+          role. Or type credentials below.
         </p>
 
         {isLoading ? (
@@ -73,7 +75,8 @@ export function LoginPage() {
                   type="button"
                   data-testid={`button-profile-${u.id}`}
                   onClick={() => pick(u)}
-                  className={`flex items-center gap-3 p-3 rounded-[4px] border text-left transition-colors ${
+                  disabled={loginMutation.isPending}
+                  className={`flex items-center gap-3 p-3 rounded-[4px] border text-left transition-colors disabled:opacity-60 ${
                     active
                       ? 'border-[#1D4ED8] bg-[#EFF6FF]'
                       : 'border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] hover:border-[#CBD5E1]'

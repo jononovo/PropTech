@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
-import { useProfile } from "@/features/auth/ProfileContext";
+import { UserMenu } from "@/components/UserMenu";
 
 const TABS = [
   { key: "dashboard", label: "Dashboard", href: "/" },
@@ -43,31 +43,9 @@ export function AppShell({ active, children }: { active: ShellTab; children: Rea
           })}
         </nav>
         <div className="flex-1" />
-        <ProfileChip />
+        <UserMenu />
       </header>
       <div className="flex-1 flex flex-col">{children}</div>
     </div>
-  );
-}
-
-function ProfileChip() {
-  const { profile } = useProfile();
-  return (
-    <Link
-      href="/login"
-      data-testid="link-profile"
-      title="Switch profile"
-      className="flex items-center gap-2 px-2 py-1 rounded-[4px] hover:bg-[#F8FAFC] transition-colors"
-    >
-      <div className="w-6 h-6 rounded-[4px] bg-[#F1F5F9] border border-[#E2E8F0] text-[#334155] text-[10px] font-semibold flex items-center justify-center">
-        {profile.initials}
-      </div>
-      <div className="hidden sm:flex flex-col leading-none text-left">
-        <span className="text-[11.5px] font-medium text-[#0F172A]">{profile.name}</span>
-        <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-[#64748B] mt-0.5">
-          {profile.role}
-        </span>
-      </div>
-    </Link>
   );
 }

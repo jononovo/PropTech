@@ -15,6 +15,7 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 - **Real authentication** — replaces the 4-profile test sign-in; schema already auth-shaped. Never Clerk.
 - **Run history UI** — none, by decision. Latest run wins on every screen; older runs stay on disk in the analyzer sidecar for audit (user confirmed Jul 24, 2026).
 - **LangExtract + vector index — v2** (spec cut; v1 fraud = metadata/visual/core-field consistency only).
+- **LLM questions / per-application searchable index + chat — after analysis features are done.** Detailed ideas in `_future/llm-questions.md` (user decision Jul 24, 2026: analysis first, index later).
 
 ## Engine candidates (need spec-author sign-off)
 - **Span-gluing rule:** exclude preflight-flagged blank/duplicate pages from document spans before mapping. Both parse engines absorbed planted blank+dup pages into the grant-deed span (judge caught it each time) — see `models/parse-comparison-2026-07-24.md`.

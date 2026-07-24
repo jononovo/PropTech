@@ -1,6 +1,6 @@
 # Sheaf
 
-Document-ops platform for lending compliance: define document templates, collect applicant documents, and (in later phases) split/classify/score 300-page loan packets with AI + human verdicts. **Sheaf is the product brand; Homium is the client** whose deposit-assistance program runs inside it — no Homium branding in the app shell. The analyzer's source of truth is the IDCM master spec at `attached_assets/idcm-master-spec-v0.4.1_1784854482870.md`.
+Document-ops platform for lending compliance: define document templates, collect applicant documents, and (in later phases) split/classify/score 300-page loan packets with AI + human verdicts. **Sheaf is the product brand; Homium is the client** whose deposit-assistance program runs inside it — no Homium branding in the app shell. The analyzer's source of truth is the analyzer build spec at `attached_assets/homium-analyzer-spec-v0.6.2_1784857283923.md` (supersedes all prior IDCM spec versions; defers to the portal docs wherever they overlap).
 
 ## Architecture map — READ THIS FIRST
 

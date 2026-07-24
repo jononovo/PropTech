@@ -9,7 +9,7 @@ const router: IRouter = Router();
 router.get("/templates/:family/:version", async (req, res): Promise<void> => {
   const p = parseVersionParams(req, res);
   if (!p) return;
-  const tpl = readTemplate(p.family, p.version);
+  const tpl = await readTemplate(p.family, p.version);
   if (!tpl) {
     res.status(404).json({ error: "Template version not found" });
     return;
@@ -20,7 +20,7 @@ router.get("/templates/:family/:version", async (req, res): Promise<void> => {
 router.put("/templates/:family/:version", async (req, res): Promise<void> => {
   const p = parseVersionParams(req, res);
   if (!p) return;
-  const existing = readTemplate(p.family, p.version);
+  const existing = await readTemplate(p.family, p.version);
   if (!existing) {
     res.status(404).json({ error: "Template version not found" });
     return;
@@ -34,14 +34,14 @@ router.put("/templates/:family/:version", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  // Version and status come from the file system truth, not the client.
+  // Version and status come from the store truth, not the client.
   const next = { ...body.data, version: p.version, status: existing.status };
   const invariantError = validateTemplateInvariants(next);
   if (invariantError) {
     res.status(400).json({ error: invariantError });
     return;
   }
-  writeTemplate(p.family, next);
+  await writeTemplate(p.family, next);
   res.json(SaveTemplateResponse.parse(next));
 });
 

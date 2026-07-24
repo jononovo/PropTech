@@ -7,7 +7,7 @@ import { createInsertSchema } from "drizzle-zod";
  * `data` as ONE jsonb document — the OpenAPI contract is the schema; rows
  * exist for atomicity (SELECT ... FOR UPDATE) and multi-instance safety,
  * not for relational decomposition while the product shape is still moving.
- * Templates and saved sections remain file-based authored artifacts.
+ * Templates and saved sections follow the same pattern in their own tables.
  */
 export const applicationsTable = pgTable("applications", {
   id: text("id").primaryKey(),

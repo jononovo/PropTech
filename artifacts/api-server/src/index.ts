@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { seedStoresFromDisk } from "./lib/seedStores";
 
 const rawPort = process.env["PORT"];
 
@@ -15,11 +16,21 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
+async function main(): Promise<void> {
+  // Fresh databases (first prod boot) get the committed template fixtures.
+  await seedStoresFromDisk();
 
-  logger.info({ port }, "Server listening");
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+
+    logger.info({ port }, "Server listening");
+  });
+}
+
+main().catch((err) => {
+  logger.error({ err }, "Fatal startup error");
+  process.exit(1);
 });

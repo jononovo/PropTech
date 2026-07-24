@@ -33,7 +33,7 @@ router.post("/templates", async (req, res): Promise<void> => {
     return;
   }
   const family = slugify(parsed.data.name);
-  if (familyExists(family)) {
+  if (await familyExists(family)) {
     res.status(409).json({ error: `A template family "${family}" already exists.` });
     return;
   }
@@ -45,25 +45,25 @@ router.post("/templates", async (req, res): Promise<void> => {
     alternatives: [],
     sections: [],
   };
-  writeTemplate(family, tpl);
+  await writeTemplate(family, tpl);
   res.status(201).json(CreateTemplateResponse.parse({ family, version: 1 }));
 });
 
 router.post("/templates/:family/:version/new-version", async (req, res): Promise<void> => {
   const p = parseVersionParams(req, res);
   if (!p) return;
-  const tpl = readTemplate(p.family, p.version);
+  const tpl = await readTemplate(p.family, p.version);
   if (!tpl) {
     res.status(404).json({ error: "Template version not found" });
     return;
   }
-  const latest = familyVersions(p.family)[0] ?? 0;
+  const latest = (await familyVersions(p.family))[0] ?? 0;
   if (latest > p.version) {
     res.status(409).json({ error: `v${latest} already exists in this family.` });
     return;
   }
   const next: Template = { ...tpl, version: p.version + 1, status: "draft" };
-  writeTemplate(p.family, next);
+  await writeTemplate(p.family, next);
   res.status(201).json(CreateNewVersionResponse.parse({ family: p.family, version: next.version }));
 });
 
@@ -75,25 +75,25 @@ router.post("/templates/:family/:version/duplicate", async (req, res): Promise<v
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const tpl = readTemplate(p.family, p.version);
+  const tpl = await readTemplate(p.family, p.version);
   if (!tpl) {
     res.status(404).json({ error: "Template version not found" });
     return;
   }
   const family = slugify(body.data.name);
-  if (familyExists(family)) {
+  if (await familyExists(family)) {
     res.status(409).json({ error: `A template family "${family}" already exists.` });
     return;
   }
   const copy: Template = { ...tpl, template: body.data.name, version: 1, status: "draft" };
-  writeTemplate(family, copy);
+  await writeTemplate(family, copy);
   res.status(201).json(DuplicateTemplateResponse.parse({ family, version: 1 }));
 });
 
 router.post("/templates/:family/:version/activate", async (req, res): Promise<void> => {
   const p = parseVersionParams(req, res);
   if (!p) return;
-  const tpl = readTemplate(p.family, p.version);
+  const tpl = await readTemplate(p.family, p.version);
   if (!tpl) {
     res.status(404).json({ error: "Template version not found" });
     return;
@@ -103,7 +103,7 @@ router.post("/templates/:family/:version/activate", async (req, res): Promise<vo
     return;
   }
   const activated: Template = { ...tpl, status: "active" };
-  writeTemplate(p.family, activated);
+  await writeTemplate(p.family, activated);
   res.json(ActivateTemplateResponse.parse(await toListing(p.family, activated)));
 });
 

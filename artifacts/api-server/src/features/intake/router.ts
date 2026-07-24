@@ -39,7 +39,7 @@ router.post("/applications", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const tpl = readTemplate(parsed.data.family, parsed.data.version);
+  const tpl = await readTemplate(parsed.data.family, parsed.data.version);
   if (!tpl) {
     res.status(404).json({ error: "Template version not found" });
     return;
@@ -151,7 +151,7 @@ router.post("/applications/:applicationId/template-version", async (req, res): P
   }
   try {
     const app = id
-      ? await updateApplication(id, (app) => {
+      ? await updateApplication(id, async (app) => {
           const { targetVersion, decidedBy } = parsed.data;
           if (targetVersion <= app.version) {
             throw new HttpError(
@@ -159,7 +159,7 @@ router.post("/applications/:applicationId/template-version", async (req, res): P
               `Application pins v${app.version}; only upgrades to a newer version are allowed.`,
             );
           }
-          const tpl = readTemplate(app.family, targetVersion);
+          const tpl = await readTemplate(app.family, targetVersion);
           if (!tpl) {
             throw new HttpError(404, "Template version not found");
           }

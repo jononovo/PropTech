@@ -11,3 +11,4 @@ description: How this user prefers to receive questions and updates from the age
   **How to apply:** after a feature works end-to-end once, move on. Don't add speculative concurrency/robustness layers without a concrete failure story; keep existing guards but stop expanding them.
 
 **Standing order (July 24, 2026):** when hitting a wall, do NOT pick a workaround silently. Research the problem (web/docs/probes), then present findings + numbered options with a recommendation in plain chat, and wait for their pick before changing approach or technology. They explicitly flagged that silent roundabout fixes make the codebase feel complex.
+- Style (2026-07-24, explicit): MAX terseness. Point form for comparisons/decisions (~5 lines). Long-winded or "exaggerated" prose infuriates the user. Applies to chat replies, not docs.

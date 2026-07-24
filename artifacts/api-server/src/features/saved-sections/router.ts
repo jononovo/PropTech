@@ -6,7 +6,7 @@ import { listSavedSections, writeSavedSection } from "./store";
 const router: IRouter = Router();
 
 router.get("/saved-sections", async (_req, res): Promise<void> => {
-  res.json(ListSavedSectionsResponse.parse(listSavedSections()));
+  res.json(ListSavedSectionsResponse.parse(await listSavedSections()));
 });
 
 router.post("/saved-sections", async (req, res): Promise<void> => {
@@ -17,7 +17,7 @@ router.post("/saved-sections", async (req, res): Promise<void> => {
   }
   // Saved sections are copies, never links: store the section payload verbatim.
   const saved = { id: nanoid(10), ...parsed.data };
-  writeSavedSection(saved);
+  await writeSavedSection(saved);
   res.status(201).json(CreateSavedSectionResponse.parse(saved));
 });
 

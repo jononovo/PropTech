@@ -49,7 +49,9 @@ packages = ["openssl", "zlib"]
 [userenv.shared]
 ANALYZER_URL = "http://127.0.0.1:8000"
 PARSE_BACKEND = "paddle"
-PARSE_MODEL = "claude-sonnet-4-6"
+PARSE_MODEL = ""
 PADDLE_VL_MODEL = "accounts/creditclaw/deployments/p4tlc3h1"
 PADDLE_VL_URL = "https://api.fireworks.ai/inference/v1"
 RUN_TIMEOUT_S = "1800"
+TEXT_BACKEND = "fireworks"
+TEXT_MODEL = "accounts/fireworks/models/glm-5p2"

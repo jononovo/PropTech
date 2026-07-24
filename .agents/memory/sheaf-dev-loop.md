@@ -18,3 +18,7 @@ description: How to run/test the Sheaf monorepo day-to-day — restart rules, AP
   - **How to apply:** never write an application outside `insertApplication`/`updateApplication(id, mutate)` — mutate may throw `HttpError(status, msg)` to abort with a mapped response. Never hold the tx across preflight/ingest.
 - **`lib/db` is a composite TS project:** after schema changes run `pnpm --filter @workspace/db run push` AND `pnpm --filter @workspace/db exec tsc -b` — api-server typecheck resolves it via `dist/*.d.ts`, so stale dist yields TS2305 "no exported member" even though the source is right.
 - E2E probe gotchas: verdict `decidedBy` must be enum `Originator|Underwriter|Manager` (not a free string); packet thumbnails exist ONLY for flag-evidence pages (`pickThumbnails`) — probe a page from `.packet.preflight.thumbnails[].page`, not page 1.
+
+## Pipeline dev drivers (2026-07-24)
+- /tmp scripts die with container recycles. Durable drivers live in artifacts/api-server/scripts/: run-packet.mjs (upload→gate→poll→print run; POLL_SECS env) and repin-template.ts (move app to newer template version, validated, via updateApplication; pnpm dlx tsx).
+- Packet endpoints return the FULL application doc — packet fields nested under .packet (state/pages/preflight.flags/lastRunError), not top-level.

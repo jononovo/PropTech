@@ -20,3 +20,9 @@ description: Fireworks key scope, Paddle 1.6 deployment path, judge requirements
 - Run the pipeline in a dedicated subprocess per packet (analyzer does): crash isolation from the server, memory returned per packet, fresh main thread.
 - `res.markdown` is a dict with `markdown_texts`; use `save_to_markdown`/`save_to_json` and read files back. Tables come back as HTML inside the markdown.
 - Needs GCC runtime libs — see nix-gcc-runtime.md.
+
+## Fireworks account suspension (seen 2026-07-24)
+- Symptom: VL deployment + every Fireworks model return 404 "Model not found, inaccessible, and/or not deployed"; control-plane API returns HTTP 412 "Account creditclaw is suspended" (spending limit / unpaid invoice). Fix is user-side: fireworks.ai/account/billing.
+- Suspension kills BOTH the paddle VL deployment AND GLM text passes (TEXT_BACKEND default). Working escape hatch: flip PARSE_BACKEND/TEXT_BACKEND=anthropic + *_MODEL=claude-sonnet-4-6 (llm.py supports both backends for every stage), run, revert.
+- **Why:** a "paddle broke again" symptom can be pure billing — check the provider account (one curl to control plane) before debugging code.
+- Gotcha: packet lastRunError double-truncates (my 800-char stderr tail is then head-truncated downstream), hiding the terminal exception line. Worker workflow logs carry the full traceback — read those, not lastRunError.

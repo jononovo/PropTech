@@ -12,7 +12,8 @@ Scrutiny and naming are deterministic logic, not models — no docs here.
 
 ## The modular contract
 
-- **Backends are env-only** — `<STAGE>_BACKEND` + `<STAGE>_MODEL`, no code changes; `llm.py` supports fireworks + anthropic for every stage. Set vars → restart Analyzer Worker → verify the pipeline string in `/health`.
+- **Per-run plans (Jul 24, 2026):** the worker now owns a per-stage option registry (`services/analyzer/models.py`, served at worker `GET /models`, proxied at portal `GET /api/models/options`). The gate card renders per-stage dropdowns; the chosen option ids travel with the gate decision → `POST /runs` `plan` → resolved at run start (unknown/unavailable = loud failure, never substitution) → frozen into the run's `config.json` + per-run `pipelineVersion`. Env config is now only the *default*. The spec §3 auto-proceed rule is suspended: every packet gates so staff pick the plan.
+- **Backends are env-only** — `<STAGE>_BACKEND` + `<STAGE>_MODEL`, no code changes; `llm.py` supports fireworks + anthropic + generic OpenAI-compatible (`openai` backend + base URL/key, e.g. Novita) for every stage; `mistral` is a parse-only document-API backend (`mistral_ocr_parse.py`). Set vars → restart Analyzer Worker → verify the pipeline string in `/health`.
 - Every run is honestly labeled via `pipelineVersion` — a run always says what produced it.
 - **Adding a candidate** = a new row/subsection in the stage doc. **Promoting one** = env flip + a dated comparison note in this folder (same packet through old and new — see `parse-comparison-2026-07-24.md` for the pattern).
 
@@ -27,3 +28,5 @@ Scrutiny and naming are deterministic logic, not models — no docs here.
 - Spec config live in worker: `parse=paddle:vl-1.6@p4tlc3h1 judge=anthropic:claude-sonnet-4-6`.
 - **Paddle deployment DISARMED** (second time that day; account in good standing) — next Paddle run 404s until a console re-arm. Signature + fix in `parse.md`.
 - Comparisons on file: `parse-comparison-2026-07-24.md` — Paddle vs Claude, both test packets; verdict: spec config stands.
+- **Local-CPU Paddle: RULED OUT (Jul 24, 2026 spike).** PaddleOCR-VL 0.9B on dev box (8 vCPU/16GiB): init ~52s, >6 min/page, 6.4GiB RSS — hours per packet and OOM-margin on prod (2 vCPU/8GB Reserved VM). Corroborated by external Mac benchmark (35–161s/page). Serverless API-only direction confirmed by user.
+- **Parse candidates wired, unproven (need keys + head-to-head):** `mistral-ocr-4` (Document AI, $4/1k pages, md+blocks+confidence — closest native match to our contract), `paddle-vl-novita` + `deepseek-ocr2-novita` (Novita OpenAI-compatible catalog, ~$0.02–0.03/1M tokens; Novita paddle = older VL weights than 1.6). All experimental in the registry until compared on our test packets.

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import config
 import portal
+from models import resolve_plan
 from judge import judge_document
 from naming import derive_name
 from parse import parse_document
@@ -20,9 +21,9 @@ from split_classify import (classify_segment, deterministic_boundaries,
 from taxonomy import TAXONOMY
 
 
-async def execute_run(app_id: str, packet_sha256: str, gate: str) -> None:
+async def execute_run(app_id: str, packet_sha256: str, gate: str, plan_ids: dict | None = None) -> None:
     try:
-        await asyncio.wait_for(_pipeline(app_id, packet_sha256, gate), timeout=config.RUN_TIMEOUT_S)
+        await asyncio.wait_for(_pipeline(app_id, packet_sha256, gate, plan_ids), timeout=config.RUN_TIMEOUT_S)
     except Exception as e:  # noqa: BLE001 — every failure reverts the portal state honestly
         reason = f"{type(e).__name__}: {e}" if not isinstance(e, asyncio.TimeoutError) else \
             f"run exceeded {config.RUN_TIMEOUT_S}s timeout"
@@ -33,10 +34,10 @@ async def execute_run(app_id: str, packet_sha256: str, gate: str) -> None:
             traceback.print_exc()
 
 
-async def _pipeline(app_id: str, packet_sha256: str, gate: str) -> None:
-    problems = config.missing_backends()
-    if problems:
-        raise RuntimeError("analyzer backends not configured — " + "; ".join(problems))
+async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict | None) -> None:
+    # Resolve the per-run model plan FIRST — unknown/unavailable options fail
+    # loudly here, before any spend (never a silent engine substitution).
+    plan = resolve_plan(plan_ids)
 
     app = await portal.get_application(app_id)
     packet = app.get("packet") or {}
@@ -51,11 +52,12 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str) -> None:
     ref = f"store://{app_id}/{run_id}"
     # Config + versions saved with the run's artifacts (spec v0.6.3 §2).
     (store / "config.json").write_text(json.dumps({
-        "pipelineVersion": config.PIPELINE_VERSION,
+        "pipelineVersion": plan.pipeline_version(),
         "spec": "homium-analyzer-spec-v0.6.3",
-        "parse": {"backend": config.PARSE_BACKEND, "model": config.PARSE_MODEL},
-        "judge": {"backend": config.JUDGE_BACKEND, "model": config.JUDGE_MODEL},
-        "text": {"backend": config.TEXT_BACKEND, "model": config.TEXT_MODEL},
+        "plan": plan.ids,
+        "parse": {"backend": plan.parse.backend, "model": plan.parse.model},
+        "judge": {"backend": plan.judge.backend, "model": plan.judge.model},
+        "text": {"backend": plan.text.backend, "model": plan.text.model},
         "renderDpi": config.RENDER_DPI,
         "gate": gate,
         "packetSha256": packet_sha256,
@@ -66,9 +68,9 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str) -> None:
     pdf_path.write_bytes(pdf)
 
     pages = await render_pages(str(pdf_path), str(store / "pages"))
-    mds = await parse_document(pages, str(store / "md"))
+    mds = await parse_document(pages, str(store / "md"), plan.parse, str(pdf_path))
 
-    starts = await llm_refine_boundaries(mds, deterministic_boundaries(mds))
+    starts = await llm_refine_boundaries(mds, deterministic_boundaries(mds), plan.text)
     segments = to_segments(starts, len(mds))
 
     blocks_by_id = block_index(app["template"])
@@ -80,7 +82,7 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str) -> None:
 
     for first, last in segments:
         seg_md = mds[first - 1]
-        tax_id, desc = await classify_segment(seg_md)
+        tax_id, desc = await classify_segment(seg_md, plan.text)
         block_id = map_to_block(tax_id, blocks, claimed) if tax_id != "unassigned" else None
         if block_id is None:
             unassigned.append({"pages": [first, last], "description": desc})
@@ -90,7 +92,7 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str) -> None:
 
         seg_pngs = [pages[first - 1]] + ([pages[last - 1]] if last > first else [])
         seg_flags = [f for f in pf_flags if _flag_touches(f, first, last)]
-        verdict = await judge_document(TAXONOMY[tax_id]["display"], seg_md, seg_pngs, seg_flags)
+        verdict = await judge_document(TAXONOMY[tax_id]["display"], seg_md, seg_pngs, seg_flags, plan.judge)
 
         core = verdict["core_fields"]
         if core["primary_party_name"] == "unknown":
@@ -132,7 +134,7 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str) -> None:
     run = {
         "runId": run_id,
         "startedAt": now.isoformat().replace("+00:00", "Z"),
-        "pipelineVersion": config.PIPELINE_VERSION,
+        "pipelineVersion": plan.pipeline_version(),
         "preflight": {"pages": len(mds), "flags": pf_flags, "gate": gate},
         "documents": documents,
         "unassigned": unassigned,

@@ -7,6 +7,15 @@ PORTAL_API_BASE = os.environ.get("PORTAL_API_BASE", "http://127.0.0.1:80/api")
 FIREWORKS_BASE = os.environ.get("FIREWORKS_BASE", "https://api.fireworks.ai/inference/v1")
 FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY", "")
 
+# Mistral — Document AI OCR processor (native document API, not chat-shaped).
+MISTRAL_BASE = os.environ.get("MISTRAL_BASE", "https://api.mistral.ai")
+MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "")
+MISTRAL_OCR_MODEL = os.environ.get("MISTRAL_OCR_MODEL", "mistral-ocr-latest")
+
+# Novita — serverless pay-per-token catalog, OpenAI-compatible (LLM Model API).
+NOVITA_BASE = os.environ.get("NOVITA_BASE", "https://api.novita.ai/v3/openai")
+NOVITA_API_KEY = os.environ.get("NOVITA_API_KEY", "")
+
 # Anthropic — either a direct key or the Replit AI-integrations proxy pair.
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "") or os.environ.get("AI_INTEGRATIONS_ANTHROPIC_API_KEY", "")
 ANTHROPIC_BASE = os.environ.get("AI_INTEGRATIONS_ANTHROPIC_BASE_URL", "https://api.anthropic.com")

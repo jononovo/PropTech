@@ -8,6 +8,7 @@ import intakeUploadsRouter from "../features/intake-uploads/router";
 import analysisRouter from "../features/analysis/router";
 import packetRouter from "../features/packet/router";
 import usersRouter from "../features/users/router";
+import modelsRouter from "../features/models/router";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(intakeUploadsRouter);
 router.use(analysisRouter);
 router.use(packetRouter);
 router.use(usersRouter);
+router.use(modelsRouter);
 
 export default router;

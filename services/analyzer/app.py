@@ -19,6 +19,15 @@ class RunRequest(BaseModel):
     applicationId: str
     packetSha256: str
     gate: Literal["auto", "confirmed", "bypassed"]
+    plan: dict[str, str] | None = None  # per-stage model option ids (parse/text/judge)
+
+
+@app.get("/models")
+async def models() -> dict:
+    """Per-stage model options + availability — the registry the portal's
+    dropdowns proxy. Single source of truth lives here, next to the engines."""
+    import models as registry
+    return registry.list_options()
 
 
 @app.get("/health")
@@ -40,7 +49,7 @@ async def kick_run(req: RunRequest, background: BackgroundTasks) -> dict:
 
     async def run_and_release() -> None:
         try:
-            await execute_run(req.applicationId, req.packetSha256, req.gate)
+            await execute_run(req.applicationId, req.packetSha256, req.gate, req.plan)
         finally:
             async with _lock:
                 _running.discard(req.applicationId)

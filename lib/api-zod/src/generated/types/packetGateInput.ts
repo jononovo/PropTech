@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PacketGateInputDecision } from './packetGateInputDecision';
+import type { RunPlan } from './runPlan';
 
 export interface PacketGateInput {
   decision: PacketGateInputDecision;
   decidedBy: string;
+  plan?: RunPlan;
 }

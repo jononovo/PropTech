@@ -194,9 +194,9 @@ export function usePacketActions(applicationId: string) {
 
   const uploadPacket = (file: File) => upload.mutate({ applicationId, data: { file } });
 
-  const decide = (decision: 'confirmed' | 'bypassed') =>
+  const decide = (decision: 'confirmed' | 'bypassed', plan?: { parse?: string; text?: string; judge?: string }) =>
     gate.mutate(
-      { applicationId, data: { decision, decidedBy: `${profile.name} · ${profile.role}` } },
+      { applicationId, data: { decision, decidedBy: `${profile.name} · ${profile.role}`, plan } },
       {
         onSuccess: () =>
           toast({

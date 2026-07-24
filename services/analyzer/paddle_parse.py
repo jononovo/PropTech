@@ -10,10 +10,11 @@ Failure semantics: any missing artifact or backend error raises — a parse that
 did not happen must never look like one that did.
 """
 import asyncio
+import os
 import threading
 from pathlib import Path
 
-from config import FIREWORKS_API_KEY, PADDLE_VL_MODEL, PADDLE_VL_URL, PARSE_CONCURRENCY
+from config import PARSE_CONCURRENCY
 
 _lock = threading.Lock()
 _pipeline = None
@@ -58,12 +59,14 @@ def _get_pipeline():
             _preload_gcc_runtime()
             from paddleocr import PaddleOCRVL  # deferred: heavy import chain
 
+            # VL endpoint/model/key arrive via env from the parent (per-run
+            # plan) — the CLI subprocess has no other channel.
             _pipeline = PaddleOCRVL(
-                pipeline_version="v1.6",
+                pipeline_version=os.environ.get("PADDLE_PIPELINE_VERSION", "v1.6"),
                 vl_rec_backend="vllm-server",
-                vl_rec_server_url=PADDLE_VL_URL,
-                vl_rec_api_model_name=PADDLE_VL_MODEL,
-                vl_rec_api_key=FIREWORKS_API_KEY,
+                vl_rec_server_url=os.environ["PADDLE_VL_URL"],
+                vl_rec_api_model_name=os.environ["PADDLE_VL_MODEL"],
+                vl_rec_api_key=os.environ.get("PADDLE_VL_KEY", ""),
                 vl_rec_max_concurrency=PARSE_CONCURRENCY,
                 use_doc_orientation_classify=True,   # fixes 90/180 rotations
                 use_doc_unwarping=False,             # UVDoc too heavy for v1; slight skew is fine
@@ -101,7 +104,7 @@ def _parse_all_sync(page_pngs: list[str], md_dir: str, elements_dir: str) -> lis
     return mds
 
 
-async def parse_pages_paddle(page_pngs: list[str], md_dir: str) -> list[str]:
+async def parse_pages_paddle(page_pngs: list[str], md_dir: str, choice) -> list[str]:
     """Same contract as parse_document(): page PNGs in, markdown list out,
     p<N>.md saved. Runs paddle_cli.py as a subprocess per packet — a native
     crash must never take the worker down, and the pipeline's memory is
@@ -114,9 +117,14 @@ async def parse_pages_paddle(page_pngs: list[str], md_dir: str) -> list[str]:
     Path(elements_dir).mkdir(parents=True, exist_ok=True)
 
     here = Path(__file__).parent
+    env = dict(os.environ,
+               PADDLE_VL_URL=choice.base_url,
+               PADDLE_VL_MODEL=choice.model,
+               PADDLE_VL_KEY=choice.api_key,
+               PADDLE_PIPELINE_VERSION=str(choice.extra.get("pipelineVersion") or "v1.6"))
     proc = await asyncio.create_subprocess_exec(
         sys.executable, str(here / "paddle_cli.py"), md_dir, elements_dir, *page_pngs,
-        cwd=str(here),
+        cwd=str(here), env=env,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )

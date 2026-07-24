@@ -528,7 +528,7 @@ export const CreateApplicationResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -645,7 +645,7 @@ export const GetApplicationResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -767,7 +767,7 @@ export const UpdateApplicationResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -890,7 +890,7 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1012,7 +1012,7 @@ export const SaveFieldValuesResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1099,6 +1099,27 @@ export const DeleteDocumentParams = zod.object({
 })
 
 export const DeleteDocumentResponse = zod.void()
+
+
+/**
+ * The analyzer worker's model registry, proxied verbatim — per-stage options (parse / text / judge) with validation status and live availability (missing keys make an option unavailable, never a silent fallback). The dropdowns on the gate card render exactly this; the chosen ids travel with the gate decision.
+ * @summary Per-stage model options for the run plan
+ */
+export const ListModelOptionsResponse = zod.object({
+  "stages": zod.array(zod.object({
+  "stage": zod.enum(['parse', 'text', 'judge']),
+  "locked": zod.boolean().describe('Locked stages render but cannot be changed (judge in v1, spec §1.2).'),
+  "options": zod.array(zod.object({
+  "id": zod.string(),
+  "label": zod.string(),
+  "status": zod.enum(['validated', 'experimental']),
+  "note": zod.string().optional(),
+  "available": zod.boolean(),
+  "unavailableReason": zod.string().optional(),
+  "default": zod.boolean()
+}))
+}))
+})
 
 
 /**
@@ -1353,7 +1374,7 @@ export const UploadPacketResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1421,7 +1442,12 @@ export const DecidePacketGateParams = zod.object({
 
 export const DecidePacketGateBody = zod.object({
   "decision": zod.enum(['confirmed', 'bypassed']),
-  "decidedBy": zod.string()
+  "decidedBy": zod.string(),
+  "plan": zod.object({
+  "parse": zod.string().optional(),
+  "text": zod.string().optional(),
+  "judge": zod.string().optional()
+}).optional().describe('Per-stage model option ids (from GET \/models\/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown\/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run\'s config artifact (pipelineVersion honesty).\n')
 })
 
 export const DecidePacketGateResponse = zod.object({
@@ -1476,7 +1502,7 @@ export const DecidePacketGateResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1610,7 +1636,7 @@ export const ReportPacketRunFailureResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1750,7 +1776,7 @@ export const RecordVerdictResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n')
-}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.\n'),
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),

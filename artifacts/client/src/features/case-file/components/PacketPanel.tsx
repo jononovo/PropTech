@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getGetAnalysisQueryKey, getGetApplicationQueryKey } from '@workspace/api-client-react';
+import {
+  getGetAnalysisQueryKey,
+  getGetApplicationQueryKey,
+  useListModelOptions,
+  type ModelStageOptions,
+} from '@workspace/api-client-react';
 import { AlertCircle, FileText, Loader2, UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '../../auth/ProfileContext';
@@ -134,6 +139,65 @@ function Dropzone({ applicationId, retry }: { applicationId: string; retry: bool
 
 // ─── gated — the decision card ──────────────────────────────────────────────
 
+const STAGE_COPY: Record<string, { title: string; hint: string }> = {
+  parse: { title: 'Parse', hint: 'page OCR → markdown' },
+  text: { title: 'Split / classify', hint: 'boundaries + taxonomy' },
+  judge: { title: 'Judge', hint: 'scores + core fields' },
+};
+
+/** Per-stage engine dropdowns — the run plan travels with the gate decision. */
+function RunPlanPicker({
+  stages,
+  plan,
+  setPlan,
+}: {
+  stages: ModelStageOptions[];
+  plan: Record<string, string>;
+  setPlan: (stage: string, id: string) => void;
+}) {
+  return (
+    <div className="bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] rounded p-3 flex flex-col gap-2.5">
+      <div className="flex items-baseline gap-3">
+        <span className="micro-label text-[9.5px]">run plan — engines for this run</span>
+        <span className="text-[10.5px] text-[var(--ops-faint)]">recorded with the run, per-run cost varies</span>
+      </div>
+      <div className="grid sm:grid-cols-3 gap-2.5">
+        {stages.map((s) => {
+          const copy = STAGE_COPY[s.stage] ?? { title: s.stage, hint: '' };
+          const selected = s.options.find((o) => o.id === plan[s.stage]);
+          return (
+            <label key={s.stage} className="flex flex-col gap-1 min-w-0">
+              <span className="micro-label text-[8.5px]">
+                {copy.title}
+                <span className="normal-case text-[var(--ops-faint)]"> · {copy.hint}</span>
+              </span>
+              <select
+                value={plan[s.stage] ?? ''}
+                disabled={s.locked}
+                data-testid={`select-model-${s.stage}`}
+                onChange={(e) => setPlan(s.stage, e.target.value)}
+                className="h-8 rounded-[4px] border border-[var(--ops-strong-border)] bg-white px-2 text-[12px] text-[var(--ops-ink)] disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {s.options.map((o) => (
+                  <option key={o.id} value={o.id} disabled={!o.available}>
+                    {o.label}
+                    {o.status === 'experimental' ? ' · experimental' : ''}
+                    {!o.available ? ' · unavailable' : ''}
+                  </option>
+                ))}
+              </select>
+              <span className="text-[10px] leading-snug text-[var(--ops-faint)]">
+                {selected ? (selected.available ? selected.note : selected.unavailableReason) : ''}
+                {s.locked ? ' (locked in v1)' : ''}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function GateCard({ model, applicationId }: { model: CaseModel; applicationId: string }) {
   const packet = model.app.packet;
   const pf = packet?.preflight;
@@ -141,8 +205,24 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
   const { profile } = useProfile();
   const { toast } = useToast();
 
+  const optionsQ = useListModelOptions();
+  const stages = optionsQ.data?.stages ?? [];
+  const defaults = useMemo(() => {
+    const d: Record<string, string> = {};
+    for (const s of stages) {
+      const pick = s.options.find((o) => o.default && o.available) ?? s.options.find((o) => o.available);
+      if (pick) d[s.stage] = pick.id;
+    }
+    return d;
+  }, [stages]);
+  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const plan = { ...defaults, ...overrides };
+
   if (!packet || !pf) return null;
   const flags = pf.flags;
+  const planReady = optionsQ.isSuccess && ['parse', 'text', 'judge'].every((s) => plan[s]);
+  const start = (decision: 'confirmed' | 'bypassed') =>
+    decide(decision, { parse: plan['parse'], text: plan['text'], judge: plan['judge'] });
 
   const copyLink = async () => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -227,6 +307,22 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
           </div>
         )}
 
+        {optionsQ.isError && (
+          <div className="flex items-start gap-2 rounded border bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)] p-2.5">
+            <AlertCircle className="w-3.5 h-3.5 text-[var(--ops-warning-text)] shrink-0 mt-0.5" />
+            <div className="text-[12.5px] text-[var(--ops-warning-text)] leading-relaxed">
+              Model options unavailable — the analyzer worker isn’t reachable, so a run can’t start.
+            </div>
+          </div>
+        )}
+        {stages.length > 0 && (
+          <RunPlanPicker
+            stages={stages}
+            plan={plan}
+            setPlan={(stage, id) => setOverrides((p) => ({ ...p, [stage]: id }))}
+          />
+        )}
+
         <div className="bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] rounded p-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <span className="micro-label text-[9.5px]">full-run estimate</span>
           <span className="ops-mono text-[12.5px] text-[var(--ops-ink)]">
@@ -248,8 +344,8 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
           </button>
           {flags.length > 0 ? (
             <button
-              onClick={() => decide('bypassed')}
-              disabled={gate.isPending}
+              onClick={() => start('bypassed')}
+              disabled={gate.isPending || !planReady}
               data-testid="button-process-anyway"
               className="h-9 px-3.5 rounded-[4px] border text-[12.5px] font-medium bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)] text-[var(--ops-warning-text)] hover:bg-[#FEF3C7] transition-colors disabled:opacity-60"
             >
@@ -257,8 +353,8 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
             </button>
           ) : (
             <button
-              onClick={() => decide('confirmed')}
-              disabled={gate.isPending}
+              onClick={() => start('confirmed')}
+              disabled={gate.isPending || !planReady}
               data-testid="button-process-packet"
               className="btn-primary"
             >

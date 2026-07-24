@@ -31,6 +31,7 @@ import type {
   FieldValues,
   HealthStatus,
   LoginInput,
+  ModelOptionsResponse,
   PacketGateInput,
   PacketRunFailure,
   PacketUpload,
@@ -1567,6 +1568,84 @@ export const useDeleteDocument = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getDeleteDocumentMutationOptions(options));
     }
+
+export const getListModelOptionsUrl = () => {
+
+
+
+
+  return `/api/models/options`
+}
+
+/**
+ * The analyzer worker's model registry, proxied verbatim — per-stage options (parse / text / judge) with validation status and live availability (missing keys make an option unavailable, never a silent fallback). The dropdowns on the gate card render exactly this; the chosen ids travel with the gate decision.
+ * @summary Per-stage model options for the run plan
+ */
+export const listModelOptions = async ( options?: RequestInit): Promise<ModelOptionsResponse> => {
+
+  return customFetch<ModelOptionsResponse>(getListModelOptionsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListModelOptionsQueryKey = () => {
+    return [
+    `/api/models/options`
+    ] as const;
+    }
+
+
+export const getListModelOptionsQueryOptions = <TData = Awaited<ReturnType<typeof listModelOptions>>, TError = ErrorType<ApiMessage>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listModelOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListModelOptionsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listModelOptions>>> = ({ signal }) => listModelOptions({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listModelOptions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListModelOptionsQueryResult = NonNullable<Awaited<ReturnType<typeof listModelOptions>>>
+export type ListModelOptionsQueryError = ErrorType<ApiMessage>
+
+
+/**
+ * @summary Per-stage model options for the run plan
+ */
+
+export function useListModelOptions<TData = Awaited<ReturnType<typeof listModelOptions>>, TError = ErrorType<ApiMessage>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listModelOptions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListModelOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetAnalysisUrl = (applicationId: string,) => {
 

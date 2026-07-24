@@ -10,7 +10,7 @@ import type { PacketPreflight } from './packetPreflight';
 import type { PacketStateState } from './packetStateState';
 
 /**
- * Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.
+ * Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run's model plan before spend.
  */
 export interface PacketState {
   filename: string;

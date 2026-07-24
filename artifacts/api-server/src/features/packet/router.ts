@@ -65,13 +65,18 @@ async function withPacketLock(appId: string, fn: () => Promise<void>): Promise<v
  * real ingest endpoint). 202 expected immediately; the run lands later.
  * No ANALYZER_URL / unreachable worker = honest failure, never a silent skip.
  */
-async function kickAnalyzer(applicationId: string, packetSha256: string, gate: "auto" | "confirmed" | "bypassed"): Promise<void> {
+async function kickAnalyzer(
+  applicationId: string,
+  packetSha256: string,
+  gate: "auto" | "confirmed" | "bypassed",
+  plan?: { parse?: string; text?: string; judge?: string },
+): Promise<void> {
   const base = process.env["ANALYZER_URL"];
   if (!base) throw new Error("ANALYZER_URL is not configured — analyzer worker unreachable");
   const res = await fetch(`${base.replace(/\/$/, "")}/runs`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ applicationId, packetSha256, gate }),
+    body: JSON.stringify({ applicationId, packetSha256, gate, ...(plan ? { plan } : {}) }),
     signal: AbortSignal.timeout(8000),
   }).catch((err: unknown) => {
     throw new Error(`Analyzer worker unreachable: ${err instanceof Error ? err.message : String(err)}`);
@@ -229,8 +234,9 @@ router.post(
         rmSync(tempPath, { force: true });
       }
 
-      // Gate rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.
-      const auto = info.pages < 20 && packet.preflight.flags.length === 0;
+      // Spec §3 auto rule (<20 clean pages) is SUSPENDED for now: every packet
+      // gates so staff pick the run's model plan before any spend.
+      const auto = false as boolean;
       if (!auto) {
         packet.state = "gated";
         let app: Application | undefined;
@@ -356,7 +362,7 @@ router.post("/applications/:applicationId/packet/gate", validateTarget, async (r
   // Analyzer kick OUTSIDE the transaction — the persisted processing state is
   // what blocks competing mutations while the run is in flight.
   try {
-    await kickAnalyzer(decided.id, packet.sha256, parsed.data.decision);
+    await kickAnalyzer(decided.id, packet.sha256, parsed.data.decision, parsed.data.plan);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     await revertToGated(ctx.app.id, packet.sha256, reason);

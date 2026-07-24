@@ -393,7 +393,7 @@ export interface PacketGateDecision {
 }
 
 /**
- * Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. Auto rule (spec §3): fewer than 20 pages AND zero red flags → auto-proceed.
+ * Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run's model plan before spend.
  */
 export interface PacketState {
   filename: string;
@@ -478,9 +478,57 @@ export const PacketGateInputDecision = {
   bypassed: 'bypassed',
 } as const;
 
+/**
+ * Per-stage model option ids (from GET /models/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run's config artifact (pipelineVersion honesty).
+ */
+export interface RunPlan {
+  parse?: string;
+  text?: string;
+  judge?: string;
+}
+
 export interface PacketGateInput {
   decision: PacketGateInputDecision;
   decidedBy: string;
+  plan?: RunPlan;
+}
+
+export type ModelOptionStatus = typeof ModelOptionStatus[keyof typeof ModelOptionStatus];
+
+
+export const ModelOptionStatus = {
+  validated: 'validated',
+  experimental: 'experimental',
+} as const;
+
+export interface ModelOption {
+  id: string;
+  label: string;
+  status: ModelOptionStatus;
+  note?: string;
+  available: boolean;
+  unavailableReason?: string;
+  default: boolean;
+}
+
+export type ModelStageOptionsStage = typeof ModelStageOptionsStage[keyof typeof ModelStageOptionsStage];
+
+
+export const ModelStageOptionsStage = {
+  parse: 'parse',
+  text: 'text',
+  judge: 'judge',
+} as const;
+
+export interface ModelStageOptions {
+  stage: ModelStageOptionsStage;
+  /** Locked stages render but cannot be changed (judge in v1, spec §1.2). */
+  locked: boolean;
+  options: ModelOption[];
+}
+
+export interface ModelOptionsResponse {
+  stages: ModelStageOptions[];
 }
 
 export interface PacketRunFailure {

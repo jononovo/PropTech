@@ -3,8 +3,8 @@ parsed md + pre-flight flags -> quality/formatting/fraud-signal scores,
 description, and the universal core fields (§1.4) that make the portal's clocks
 computable. Core fields are ungrounded in v1; the verdict UI makes a human
 confirm the dates. AI never writes verdicts (§1.6)."""
-from config import JUDGE_BACKEND, JUDGE_MODEL
 from llm import chat, extract_json
+from models import ModelChoice
 
 PROMPT_TMPL = """You are the independent judge in a mortgage document pipeline. You see page image(s) of ONE document plus its machine-parsed markdown. Assess honestly.
 
@@ -31,12 +31,14 @@ Answer ONLY JSON:
 Only report what you can actually see. Do not invent dates or names."""
 
 
-async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[str], pf_flags: list[str]) -> dict:
+async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[str],
+                         pf_flags: list[str], judge: ModelChoice) -> dict:
     prompt = PROMPT_TMPL.format(tax_display=tax_display, pf_flags="; ".join(pf_flags) or "none", md=md_excerpt[:4000])
 
     async def ask() -> dict:
         return extract_json(
-            await chat(JUDGE_BACKEND, JUDGE_MODEL, prompt, image_paths, max_tokens=1200),
+            await chat(judge.backend, judge.model, prompt, image_paths, max_tokens=1200,
+                       base_url=judge.base_url, api_key=judge.api_key),
             required_keys=("quality", "formatting", "fraud_signal"),
         )
 

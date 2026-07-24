@@ -6,8 +6,8 @@ import difflib
 import json
 import re
 
-from config import TEXT_BACKEND, TEXT_MODEL
 from llm import chat, extract_json
+from models import ModelChoice
 from taxonomy import FORM_ID_SIGNALS, TAXONOMY
 
 PAGE_ONE = re.compile(r"page\s*1\s*(of|/)\s*\d+", re.IGNORECASE)
@@ -38,7 +38,7 @@ def deterministic_boundaries(mds: list[str]) -> list[int]:
     return sorted(starts)
 
 
-async def llm_refine_boundaries(mds: list[str], starts: list[int]) -> list[int]:
+async def llm_refine_boundaries(mds: list[str], starts: list[int], text: ModelChoice) -> list[int]:
     """One text-model pass over per-page openings — catches boundaries with no
     printed signal (letters, statements). Deterministic starts are kept."""
     lines = [f"[page {i + 1}] {' '.join(md.split())[:200]}" for i, md in enumerate(mds)]
@@ -54,7 +54,8 @@ async def llm_refine_boundaries(mds: list[str], starts: list[int]) -> list[int]:
         out = extract_json(
             # Reasoning models (glm) think at length before the JSON — leave room,
             # or the answer never gets emitted and refinement silently no-ops.
-            await chat(TEXT_BACKEND, TEXT_MODEL, prompt, max_tokens=4096),
+            await chat(text.backend, text.model, prompt, max_tokens=4096,
+                       base_url=text.base_url, api_key=text.api_key),
             required_keys=("additional_starts",),
         )
         extra = {int(p) - 1 for p in out.get("additional_starts", []) if 1 <= int(p) <= len(mds)}
@@ -72,7 +73,7 @@ def to_segments(starts: list[int], total: int) -> list[tuple[int, int]]:
     return out
 
 
-async def classify_segment(seg_md: str) -> tuple[str, str]:
+async def classify_segment(seg_md: str, text: ModelChoice) -> tuple[str, str]:
     """-> (taxonomy id | 'unassigned', one-line description)."""
     menu = "\n".join(f"- {tid}: {t['display']} (hints: {', '.join(t['hints'][:3])})" for tid, t in TAXONOMY.items())
     prompt = (
@@ -84,7 +85,8 @@ async def classify_segment(seg_md: str) -> tuple[str, str]:
     )
     try:
         out = extract_json(
-            await chat(TEXT_BACKEND, TEXT_MODEL, prompt, max_tokens=4096),
+            await chat(text.backend, text.model, prompt, max_tokens=4096,
+                       base_url=text.base_url, api_key=text.api_key),
             required_keys=("taxonomy_id",),
         )
         tid = str(out.get("taxonomy_id", "unassigned"))

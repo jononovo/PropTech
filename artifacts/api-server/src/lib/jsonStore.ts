@@ -1,8 +1,27 @@
 import { mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync, existsSync, statSync } from "node:fs";
 import path from "node:path";
 
-/** Root data directory: artifacts/api-server/data */
-export const DATA_DIR = path.resolve(process.cwd(), "data");
+/**
+ * Root data directory: artifacts/api-server/data.
+ * Dev runs with cwd = artifacts/api-server, so cwd/data is correct there.
+ * Production runs with a different cwd, which silently resolved to an empty
+ * directory and made the template library look empty in prod. Probe the known
+ * candidates and take the first that actually contains seed data; an explicit
+ * DATA_DIR env var always wins.
+ */
+function resolveDataDir(): string {
+  const candidates = [
+    process.env.DATA_DIR,
+    path.resolve(process.cwd(), "data"),
+    path.resolve(process.cwd(), "artifacts/api-server/data"),
+  ].filter((p): p is string => Boolean(p));
+  for (const c of candidates) {
+    if (existsSync(path.join(c, "templates"))) return c;
+  }
+  return path.resolve(process.cwd(), "data");
+}
+export const DATA_DIR = resolveDataDir();
+console.log(`[jsonStore] DATA_DIR = ${DATA_DIR}`);
 
 export function ensureDir(dir: string): void {
   mkdirSync(dir, { recursive: true });

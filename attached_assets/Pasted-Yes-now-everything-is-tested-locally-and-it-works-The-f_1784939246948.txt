@@ -1,0 +1,15 @@
+Yes — now everything is tested locally, and it works. The full production pipeline just ran end-to-end from this machine through the real UI, and every piece verified:
+
+The run (Marco Diaz, 10-page stress packet, plan picked in the dropdowns: Mistral parse + GLM split + Claude judge, "Process anyway — $0.15"):
+
+Landed in state report, zero errors, ~106s wall.
+Triage report: 4 documents found, 1 filed quietly, 2 unassigned, honest whisper line ("Split 10 pages into 4 documents; 2 unassigned; 4 flagged"), missing-doc cards blocking underwriting (SSN Verification, Gift Letter).
+Review room, populated for the first time: filmstrip with banded page cells, real page render center-stage, URLA stop showing Q 93 / FMT 72 / FRD 5 score chips, 6 judge callouts on the rail (SAMPLE watermark, unsigned, missing date, checking-mask discrepancy…), Accept-as-is / Request re-scan / keyboard nav. It's a real working review surface.
+Receipts on disk: judge/doc-01..04.json — full raw judge output, claude-sonnet-4-6, judge-v1, real token counts (2289 in / 469 out on doc 1), per-doc latency.
+Telemetry: plan frozen (mistral-ocr-4 / glm-5p2 / claude-judge), timings recorded — and they confirm the agent's finding hard: GLM split/classify ate 69s of the 106s; judging 36s; parsing under a second.
+Two honest observations for the agent (relay when convenient):
+
+parseMs: 377 can't be the real Mistral wall for 10 pages — the parse timer likely isn't wrapping the full OCR call (their own run showed 1.2s). Telemetry calibration nit, not a blocker.
+The deed span came out pages 5–8 again — blank p.7 and duplicate p.8 glued in, third engine in a row. The span-gluing fix (already green-lit) is well-motivated; this run is another exhibit.
+So the answer to your question: the storage fallback, the model-plan dropdowns, the gate, the full analyzer pipeline, the receipts, the timings, the report, and the filmstrip review room — all verified working locally, on the real APIs, no mocks anywhere. Cost of the proof: ~20¢. Remaining on your side: merge PR #5 (the baked v0.7 draft), then "blessed" when ready.
+

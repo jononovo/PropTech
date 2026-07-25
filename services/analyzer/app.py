@@ -23,7 +23,7 @@ class RunRequest(BaseModel):
     applicationId: str
     packetSha256: str
     gate: Literal["auto", "confirmed", "bypassed"]
-    plan: dict[str, str] | None = None  # per-stage model option ids (parse/text/judge)
+    plan: dict[str, str | bool] | None = None  # per-stage model option ids (parse/text/judge) + plan toggles (fraudScoring: bool)
 
 
 @app.get("/models")

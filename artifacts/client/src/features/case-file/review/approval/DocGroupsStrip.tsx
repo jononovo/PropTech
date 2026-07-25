@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Flag, Link as LinkIcon, X } from 'lucide-react';
+import { Check, Flag, ImageOff, Link as LinkIcon, X } from 'lucide-react';
 import { pageImageUrl } from '../reviewModel';
 import type { DocGroup, PageDecisionValue } from './docGroups';
 
@@ -175,6 +175,7 @@ function StripThumb({
   onClick: () => void;
   onDecide: (v: PageDecisionValue) => void;
 }) {
+  const [broken, setBroken] = useState(false);
   return (
     <div
       className={`relative w-[52px] h-[68px] md:w-[62px] md:h-[82px] shrink-0 bg-white border overflow-visible transition-all group/thumb cursor-pointer ${
@@ -185,14 +186,22 @@ function StripThumb({
       onClick={onClick}
       data-testid={`strip-thumb-${page}`}
     >
-      <img
-        src={pageImageUrl(appId, runId, page, 'strip')}
-        alt=""
-        loading="lazy"
-        className={`absolute inset-0 w-full h-full object-cover object-top transition-all ${
-          !settled ? 'group-hover/thumb:blur-[1px] group-hover/thumb:opacity-40' : ''
-        }`}
-      />
+      {broken ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[var(--ops-inset)]">
+          <ImageOff className="w-4 h-4 text-[var(--ops-faint)]" />
+          <span className="ops-mono text-[8px] text-[var(--ops-faint)] uppercase tracking-wider">no scan</span>
+        </div>
+      ) : (
+        <img
+          src={pageImageUrl(appId, runId, page, 'strip')}
+          alt=""
+          loading="lazy"
+          onError={() => setBroken(true)}
+          className={`absolute inset-0 w-full h-full object-cover object-top transition-all ${
+            !settled ? 'group-hover/thumb:blur-[1px] group-hover/thumb:opacity-40' : ''
+          }`}
+        />
+      )}
       <span
         className={`absolute bottom-0.5 left-0.5 px-1 rounded-[2px] ops-mono text-[9px] leading-[14px] z-10 ${
           active ? 'bg-[var(--ops-accent)] text-white' : 'bg-white/90 text-[var(--ops-muted)] border border-[var(--ops-border)]'

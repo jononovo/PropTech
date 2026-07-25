@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 import { confidencePct, pageSpan, type CaseModel } from '../caseData';
 import { useCaseFile } from '../useCaseFile';
 import { buildReviewModel, pageImageUrl, type PageCell, type ReviewModel, type ReviewStop } from './reviewModel';
@@ -57,6 +57,30 @@ export function ReviewPage({ id }: { id: string }) {
     );
   }
   return <ReviewRoom id={id} model={model} review={review} />;
+}
+
+/** One page in the document-mode spread — honest placeholder when no render exists. */
+function SpreadPage({ appId, runId, page }: { appId: string; runId: string; page: number }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <div className="shrink-0 h-full flex flex-col items-center gap-1.5">
+      {broken ? (
+        <div className="h-[calc(100%-24px)] aspect-[8.5/11] bg-white border border-dashed border-[var(--ops-strong-border)] rounded-[2px] flex flex-col items-center justify-center gap-2">
+          <ImageOff className="w-5 h-5 text-[var(--ops-faint)]" />
+          <span className="ops-mono text-[10px] text-[var(--ops-faint)] uppercase tracking-wider">no scan on file</span>
+        </div>
+      ) : (
+        <img
+          src={pageImageUrl(appId, runId, page)}
+          alt={`Page ${page}`}
+          data-testid={`img-spread-page-${page}`}
+          onError={() => setBroken(true)}
+          className="h-[calc(100%-24px)] w-auto object-contain bg-white rounded-[2px] shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+        />
+      )}
+      <span className="ops-mono text-[10px] text-[var(--ops-muted)]">p. {page}</span>
+    </div>
+  );
 }
 
 // ─── the room ────────────────────────────────────────────────────────────────
@@ -266,15 +290,7 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
             {docGroup ? (
               <div className="absolute inset-0 overflow-auto p-4 md:p-6 flex items-start gap-6 bg-[var(--ops-inset)]">
                 {docGroup.pageList.map((p) => (
-                  <div key={p} className="shrink-0 h-full flex flex-col items-center gap-1.5">
-                    <img
-                      src={pageImageUrl(id, run.runId, p)}
-                      alt={`Page ${p}`}
-                      data-testid={`img-spread-page-${p}`}
-                      className="h-[calc(100%-24px)] w-auto object-contain bg-white rounded-[2px] shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
-                    />
-                    <span className="ops-mono text-[10px] text-[var(--ops-muted)]">p. {p}</span>
-                  </div>
+                  <SpreadPage key={p} appId={id} runId={run.runId} page={p} />
                 ))}
               </div>
             ) : emptyQueue ? (

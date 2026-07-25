@@ -238,12 +238,20 @@ router.post(
         return;
       }
       // Accepted — bytes go to App Storage BEFORE any state the client can see
-      // lands, so a visible packet always references durable bytes.
+      // lands, so a visible packet always references durable bytes. Write order
+      // matters on REPLACE: thumbnails (cosmetic, rewritten on every upload)
+      // go first; the PDF — the integrity-bearing object the record's sha
+      // references — goes LAST. Any failure before the PDF write leaves the
+      // previous packet's bytes untouched, so releaseClaim() restores a record
+      // whose sha still matches its bytes. Residual (rare): a failure AFTER
+      // the PDF write can still restore a record over replaced bytes — the
+      // full fix is sha-versioned object keys, deferred until it earns its
+      // prod-data migration (v0.7 ops notes).
       try {
-        await putPacketPdf(ctx.app.id, tempPath);
         for (const t of packet.preflight.thumbnails) {
           await putPageThumbnail(ctx.app.id, t.page, path.join(thumbsStagingDir, `page-${t.page}.png`));
         }
+        await putPacketPdf(ctx.app.id, tempPath);
       } catch (err) {
         await releaseClaim();
         res.status(500).json({ error: `Packet storage write failed: ${err instanceof Error ? err.message : String(err)}` });

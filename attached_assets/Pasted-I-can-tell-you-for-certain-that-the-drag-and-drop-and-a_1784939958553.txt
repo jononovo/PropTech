@@ -1,0 +1,550 @@
+I can tell you for certain that the drag and drop and a bunch of other components within the form builder/template builder are completely broken, and that whole feature actually doesn't work at all from the UI perspective for the user.
+
+It's a complete travesty so if you don't have anything to do, you can do deep research there none of the blocks on the left or actually dragon drop and can be pulled in for example
+
+From what I could see
+Show less
+On it — deep dive into the template builder. Starting the repro in the browser and a parallel code-map of the drag-and-drop implementation:
+
+Agent:Map template-builder DnD code
+IN
+Repo: /Users/happy/Documents/2026 Codex Tryout/proptech (work on branch main as checked out). Map the template builder / form builder feature's drag-and-drop implementation in artifacts/client/src/features/template-editor/ (and any shared components it uses, plus the /builder route wiring in App.tsx and template-library).
+
+Answer precisely with file:line:
+1. What drag-and-drop mechanism is used — a library (@dnd-kit, react-dnd, react-beautiful-dnd?) or native HTML5 draggable/onDragStart/onDrop? Quote the relevant handlers/props on the left-palette block items and the drop targets (canvas/sections/subsections).
+2. Trace the full expected DnD flow: palette item → drag payload → drop target → state update → API save. Where could it break such that blocks "cannot be dragged at all" (e.g. missing draggable attr, preventDefault missing on dragover, event handlers not attached, pointer-events/CSS overlay swallowing events, library provider/context missing, strict-mode double-mount issues)?
+3. Check package.json for the DnD library version and any React version compatibility red flags (React 18/19 + react-beautiful-dnd is a classic breakage).
+4. Any recent commits touching template-editor (git log --oneline -15 -- artifacts/client/src/features/template-editor) that could have broken it — note what changed.
+5. List every interactive affordance the builder promises (drag from palette, reorder, delete, edit fields, save/activate) so a tester can walk them.
+Search breadth: very thorough. Return a compact map with the smoking guns ranked.
+Claude in Chrome [browser_batch]
+IN
+{
+  "actions": [
+    {
+      "name": "navigate",
+      "input": {
+        "url": "http://localhost:3000/templates",
+        "tabId": 1578255927
+      }
+    },
+    {
+      "name": "find",
+      "input": {
+        "query": "New Template v1 draft row edit button or link",
+        "tabId": 1578255927
+      }
+    }
+  ]
+}
+OUT
+[navigate] Navigated to http://localhost:3000/templates
+
+actions[1] (find) failed: The accessibility tree provided does not contain any elements related to "New Template v1 draft row edit button or link". The tree shows only the banner navigation and header elements (Dashboard, Applications, Templates links, user menu). The actual template list content with "New Template v1 draft" and its associated edit controls is not present in the provided accessibility tree. You may need to scroll down or navigate to the Templates page to see the template rows and their edit buttons. (1 completed, 0 remaining)
+Bash Check package.json for DnD libs and React version
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && cat artifacts/client/package.json 2>/dev/null | grep -iE "dnd|drag|react\"|react-dom|beautiful" ; echo "---ROOT PKG---"; cat package.json 2>/dev/null | grep -iE "dnd|drag|react\"|beautiful"
+
+OUT
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@workspace/api-client-react": "workspace:*",
+    "embla-carousel-react": "^8.6.0",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+---ROOT PKG---
+Bash Dump template-library files
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && find artifacts/client/src/features/template-library -type f -exec echo "=== {} ===" \; -exec cat {} \;
+
+OUT
+=== artifacts/client/src/features/template-library/TemplateLibrary.tsx ===
+import React, { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { MoreHorizontal } from "lucide-react";
+import {
+  useListTemplates,
+  useCreateNewVersion,
+  useDuplicateTemplate,
+  useActivateTemplate,
+  useCreateTemplate,
+  getListTemplatesQueryKey
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { TemplateListing } from "@workspace/api-client-react";
+
+export function TemplateLibrary() {
+  const { data: templates = [], isLoading, error } = useListTemplates();
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const createVersion = useCreateNewVersion();
+  const duplicateTpl = useDuplicateTemplate();
+  const activateTpl = useActivateTemplate();
+  const createTpl = useCreateTemplate();
+
+  useEffect(() => {
+    const handleClickOutside = () => setOpenMenuId(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  if (isLoading) {
+    return <div className="p-8 font-mono text-sm text-[#64748B]">Loading library...</div>;
+  }
+  if (error) {
+    return <div className="p-8 font-mono text-sm text-[#B91C1C]">Failed to load templates.</div>;
+  }
+
+  const families = Object.values(templates.reduce((acc, t) => {
+    if (!acc[t.family]) acc[t.family] = { family: t.family, name: t.name, program: t.program, versions: [] };
+    acc[t.family].versions.push(t);
+    return acc;
+  }, {} as Record<string, { family: string, name: string, program: string, versions: TemplateListing[] }>));
+
+  const handleCreateTemplate = () => {
+    createTpl.mutate(
+      { data: { name: "New Template", program: "General" } },
+      {
+        onSuccess: (res) => {
+          queryClient.invalidateQueries({ queryKey: getListTemplatesQueryKey() });
+          setLocation(`/builder/${res.family}/${res.version}`);
+        }
+      }
+    );
+  };
+
+  const handleUpdateVersion = (family: string, version: number) => {
+    createVersion.mutate(
+      { family, version },
+      {
+        onSuccess: (res) => {
+          queryClient.invalidateQueries({ queryKey: getListTemplatesQueryKey() });
+          setLocation(`/builder/${res.family}/${res.version}`);
+        }
+      }
+    );
+  };
+
+  const handleActivate = (family: string, version: number) => {
+    activateTpl.mutate(
+      { family, version },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListTemplatesQueryKey() });
+        }
+      }
+    );
+  };
+
+  const handleDuplicate = (family: string, version: number, name: string) => {
+    duplicateTpl.mutate(
+      { family, version, data: { name: `${name} (Copy)` } },
+      {
+        onSuccess: (res) => {
+          queryClient.invalidateQueries({ queryKey: getListTemplatesQueryKey() });
+          setLocation(`/builder/${res.family}/${res.version}`);
+        }
+      }
+    );
+  };
+
+  const handleExportJson = (family: string, version: number) => {
+    // In a real app we'd fetch the template JSON and download it.
+    // For now we just alert.
+    alert(`Exporting ${family} v${version}`);
+  };
+
+  const totalVersions = templates.length;
+  const totalFamilies = families.length;
+
+  return (
+    <div className="w-full flex flex-col flex-1">
+      <main className="flex-1 p-8 pb-32">
+        <div className="max-w-[960px] mx-auto space-y-10">
+          <div className="flex items-end justify-between">
+            <div>
+              <h1 className="text-[16px] font-semibold text-[#0F172A]">Form Templates</h1>
+              <div className="font-mono text-[11px] text-[#64748B] tracking-wide mt-1">
+                {totalFamilies} families · {totalVersions} versions
+              </div>
+            </div>
+            <button
+              onClick={handleCreateTemplate}
+              data-testid="button-new-template"
+              className="bg-[#1D4ED8] hover:bg-[#1E40AF] transition-colors text-white text-[12.5px] font-medium px-3.5 py-1.5 rounded-[4px] shadow-sm"
+            >
+              New template
+            </button>
+          </div>
+          {families.length === 0 ? (
+            <div className="text-center py-20">
+              <div className="text-[14px] text-[#64748B]">No templates found.</div>
+            </div>
+          ) : (
+            families.map((family) => (
+              <div key={family.family}>
+                <div className="mb-4">
+                  <h2 className="text-[15px] font-semibold text-[#0F172A]">{family.name}</h2>
+                  <div className="font-mono text-[10.5px] text-[#64748B] mt-0.5">{family.program}</div>
+                </div>
+                
+                <div className="bg-white border border-[#E2E8F0] rounded-[6px] shadow-sm flex flex-col">
+                  {family.versions.map((v, vIdx) => {
+                    const uniqueId = `${family.family}-v${v.version}`;
+                    const isMenuOpen = openMenuId === uniqueId;
+                    const nextVersionNumber = v.version + 1;
+                    
+                    return (
+                      <div 
+                        key={uniqueId} 
+                        className={`flex items-center p-4 group ${vIdx < family.versions.length - 1 ? 'border-b border-[#E2E8F0]' : ''}`}
+                      >
+                        <div className="font-mono text-[11px] font-medium text-[#64748B] bg-[#F1F5F9] px-1.5 py-0.5 rounded-[2px] mr-3">
+                          v{v.version}
+                        </div>
+                        
+                        {v.status === "draft" ? (
+                          <div className="font-mono text-[10px] font-medium text-[#64748B] uppercase tracking-[0.06em] border border-[#CBD5E1] px-1.5 py-0.5 rounded-[2px] mr-4">
+                            draft
+                          </div>
+                        ) : (
+                          <div className="font-mono text-[10px] font-medium text-[#1D4ED8] uppercase tracking-[0.06em] border border-[#BFDBFE] px-1.5 py-0.5 rounded-[2px] mr-4">
+                            active
+                          </div>
+                        )}
+
+                        <div className="font-mono text-[11px] text-[#64748B] flex-1">
+                          {v.sections} sections · {v.docs} docs · updated {new Date(v.updated).toLocaleDateString()}
+                        </div>
+                        
+                        <div className="font-mono text-[11px] text-[#94A3B8] mr-4 text-right min-w-[180px]">
+                          {v.status === "draft" ? "— not assignable" : `in use by ${v.inUseBy} applications`}
+                        </div>
+
+                        <div className="relative">
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setOpenMenuId(isMenuOpen ? null : uniqueId);
+                            }} 
+                            className={`p-1.5 text-[#94A3B8] hover:text-[#0F172A] transition-colors rounded-[4px] hover:bg-[#F1F5F9] ${isMenuOpen ? 'opacity-100 bg-[#F1F5F9] text-[#0F172A]' : 'opacity-0 group-hover:opacity-100'}`}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                          
+                          {isMenuOpen && (
+                            <div className="absolute right-0 top-full mt-1 w-[220px] bg-white border border-[#E2E8F0] shadow-[0_8px_24px_rgba(15,23,42,0.12)] rounded-[4px] py-1 z-50">
+                              <button 
+                                onClick={() => setLocation(`/builder/${family.family}/${v.version}`)}
+                                className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors"
+                              >
+                                {v.status === 'draft' ? 'Edit' : 'View'}
+                              </button>
+                              
+                              <button 
+                                onClick={() => handleUpdateVersion(family.family, v.version)}
+                                className="w-full text-left px-3 py-1.5 hover:bg-[#F8FAFC] transition-colors flex flex-col group/update"
+                              >
+                                <span className="text-[12.5px] text-[#334155] group-hover/update:text-[#0F172A]">Update to a new version</span>
+                                <span className="font-mono text-[10px] text-[#64748B] mt-0.5">copies v{v.version} → v{nextVersionNumber} draft</span>
+                              </button>
+                              
+                              <button 
+                                onClick={() => handleDuplicate(family.family, v.version, family.name)}
+                                className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors"
+                              >
+                                Duplicate
+                              </button>
+                              
+                              <button 
+                                onClick={() => handleExportJson(family.family, v.version)}
+                                className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#334155] hover:bg-[#F8FAFC] hover:text-[#0F172A] transition-colors"
+                              >
+                                Export JSON
+                              </button>
+                              <div className="h-px bg-[#E2E8F0] my-1" />
+                              {v.status === "draft" ? (
+                                <button 
+                                  onClick={() => handleActivate(family.family, v.version)}
+                                  className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#1D4ED8] hover:bg-[#EFF6FF] transition-colors"
+                                >
+                                  Activate
+                                </button>
+                              ) : (
+                                <button disabled className="w-full text-left px-3 py-1.5 text-[12.5px] text-[#94A3B8] cursor-not-allowed">
+                                  Retire version
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
+Claude in Chrome [browser_batch]
+Bash Check git status and log for template-editor
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && echo "=== git repo? ==="; git -C artifacts rev-parse --is-inside-work-tree 2>/dev/null; git rev-parse --is-inside-work-tree 2>/dev/null; echo "=== find any .git ==="; find . -maxdepth 3 -name ".git" -not -path "*/node_modules/*" 2>/dev/null; echo "=== git log template-editor ==="; git log --oneline -15 -- artifacts/client/src/features/template-editor 2>&1 | head -20
+
+OUT
+=== git repo? ===
+true
+true
+=== find any .git ===
+./.git
+=== git log template-editor ===
+5cc470d Updates
+87d459b Implement dashboard view and app shell layout
+dfb92c5 Remove the portal artifact directory and update design notes
+Claude in Chrome [browser_batch]
+Bash Inspect what the Updates commit changed re DnD
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && echo "=== diff of 5cc470d for TemplateEditor: did DnD get touched/removed? search for drag-related +/- ==="; git show 5cc470d -- artifacts/client/src/features/template-editor/TemplateEditor.tsx | grep -niE "^[-+].*(draggable|onDrag|onDrop|cursor-grab|dnd|dataTransfer|dropped|handleDrop|useState)" | head -40; echo "=== how large was that diff ==="; git show --numstat 5cc470d -- artifacts/client/src/features/template-editor/TemplateEditor.tsx
+
+OUT
+=== diff of 5cc470d for TemplateEditor: did DnD get touched/removed? search for drag-related +/- ===
+=== how large was that diff ===
+commit 5cc470d69a7bf2b2e8b21c05845cbe3ebbf57d6a
+Author: jononovo <novotny.jonathan@gmail.com>
+Date:   Fri Jul 24 04:15:00 2026 +0000
+
+    Updates
+
+65	0	artifacts/client/src/features/template-editor/TemplateEditor.tsx
+Row exposes a ⋯ menu instead of navigating — opening it:
+
+Claude in Chrome [browser_batch]
+Bash Confirm the 65 added lines were the docType feature
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && git show 5cc470d -- artifacts/client/src/features/template-editor/TemplateEditor.tsx | grep -E "^\+" | grep -iE "DOC_TYPES|docType|updateBlockDocType|analyzer|taxonomy|Type:|auto-match" | head -20
+
+OUT
++// Analyzer taxonomy ids (analyzer spec v0.6.2 §4–6, plus the ids the seed
++// templates were tagged with on creation). docType is an OPEN string in the
++// is a UI affordance, not enforcement. The engine's taxonomy registry becomes
++const DOC_TYPES = [
++  // docType is the one block-level edit the analyzer depends on (exact
++  const updateBlockDocType = (blockId: string, docType: string) => {
++          blocks: ss.blocks.map(b => (b.id === blockId ? { ...b, docType: docType || undefined } : b)),
++                                                <span className="text-[#64748B]">Type:</span>
++                                                  value={block.docType ?? ""}
++                                                  onChange={(e) => updateBlockDocType(block.id, e.target.value)}
++                                                  title="Analyzer document type — exact classification when set; falls back to name-matching on auto"
++                                                  <option value="">auto-match</option>
++                                                  {/* Guard: a tag from a future taxonomy version must stay visible and
++                                                      selectable — never silently rewritten to auto-match. */}
++                                                  {block.docType && !DOC_TYPES.some(t => t.id === block.docType) && (
++                                                    <option value={block.docType}>{block.docType}</option>
++                                                  {DOC_TYPES.map(t => (
++                                          {block.docType && (
++                                              <span className="text-[#94A3B8]" title="Analyzer document type (exact classification)">{block.docType}</span>
+Claude in Chrome [browser_batch]
+I have a complete picture. Here is the map.
+
+Template Builder DnD — Findings Map
+Scope covered: TemplateEditor.tsx (the entire feature is one file), App.tsx route wiring, TemplateLibrary.tsx, and a repo-wide sweep for any DnD library or drag handler.
+
+🔴 SMOKING GUN #1 — There is no drag-and-drop implementation at all
+The blocks "cannot be dragged" because nothing makes them draggable and nothing can receive a drop. This is a static visual mockup, not a wired DnD feature.
+
+No library: repo-wide grep for @dnd-kit, react-dnd, react-beautiful-dnd, @hello-pangea/dnd, useDrag, useDrop, useSortable, DragDropContext, Droppable, Draggable returns zero hits in artifacts/client/src. None is in artifacts/client/package.json either.
+No native HTML5 drag on palette items: the left-palette blocks are plain <div>s with only a cursor-grab CSS class — no draggable attribute, no onDragStart, no dataTransfer:
+Palette "Blocks" item: TemplateEditor.tsx:172 — <div ... className="... cursor-grab ..."> (inside PALETTE.map, TemplateEditor.tsx:171-179)
+"Saved Sections" item: TemplateEditor.tsx:190 — same pattern, cursor-grab only
+No drop targets: the canvas <main> (TemplateEditor.tsx:211), each section (:219), each subsection (:310), and each block container (:403) have no onDragOver, no onDrop, no preventDefault. So even if a source were draggable, there is no receiver.
+The five GripVertical handle icons (:173, :191, :244, :321, :407) are purely decorative lucide-react icons with cursor-grab — not wired to any drag source.
+The only native drag in the whole client is unrelated: case-file/components/PacketPanel.tsx:84-92 handles OS file-drop for document uploads (e.dataTransfer.files?.[0]), not template blocks.
+Bottom line for Q1/Q2: No mechanism exists. The DnD flow (palette item → drag payload → drop target → state update → API save) is broken at step 1 (source not draggable) and step 3 (no drop target). It is not a CSS overlay / pointer-events / provider-missing / strict-mode problem — the handlers were simply never written.
+
+🟠 SMOKING GUN #2 — Many other "interactive" affordances are inert placeholders
+Buttons render but have no onClick, so a tester will find them dead:
+
++ Add block — TemplateEditor.tsx:447-449 (no handler)
++ Add subsection — :455-459 (no handler)
++ Add Section — :466-469 (no handler)
+Save as block — :270 (no handler)
+Remove section (delete) — :272 (no handler)
+per-block MoreHorizontal (delete affordance) — :438-440 (no handler)
++ add alternative — :396-398 (no handler)
+Permission View/Upload toggles — :290, :296 (no handler; read-only visual)
+Block "Weight" select — :350 uncontrolled defaultValue, no onChange (won't persist)
+"Fmt" (formats) input — :359 defaultValue, no onChange (won't persist)
+Block name input in edit mode — :324-328 defaultValue, no onChange (won't persist)
+"Req" select — :336-345 updates localReq state (:72) but that state is never written back into template, so it also won't save.
+🟢 What actually works (state → API)
+Template title edit (header) — :133-137 writes to template state.
+docType select — :364-379 → updateBlockDocType (:97-108) writes into template state. (This is the only block-level edit that persists; it was the sole thing the last commit added.)
+Collapse/expand section — :221-226; section … menu — :247-255; Permissions panel open — :261-266; JSON viewer — :150; open/close block editor — :405 / Done :329.
+Save Draft — :155-162 → handleSave (:82-93) → saveTemplateFn.mutate(...) → @workspace/api-client-react useSaveTemplate, with onSuccess writing back to the query cache. This is the real API save path; it just has very little real edited data to send.
+Read-only guard: isReadOnly = template.status === "active" (:123) hides edit affordances and adds opacity-50 pointer-events-none to the palette (:168, :183). Note: for an active template the palette is intentionally pointer-events-none — expected, not the bug.
+Q3 — package.json / React compatibility
+React is 19.1.0 / react-dom 19.1.0, @types/react 19.2.0 (from pnpm-workspace.yaml catalog; artifacts/client/package.json uses catalog:).
+No DnD library is installed, so there is no direct version red flag. Worth flagging preemptively: the classic trap here is that react-beautiful-dnd is incompatible with React 18/19 (unmaintained, breaks under StrictMode/React 19). If anyone "adds drag-and-drop" they must use @dnd-kit/* or @hello-pangea/dnd, not react-beautiful-dnd. (Also note: no <StrictMode> wrapper exists in the client, so strict-mode double-mount is not a factor.)
+Q4 — Recent commits touching template-editor
+git log --follow on the file shows 4 commits; only the top one is substantive to this feature:
+
+5cc470d "Updates" — the most recent. --numstat = +65 / -0. Diff contains no drag-related lines; it added the analyzer DOC_TYPES taxonomy list, updateBlockDocType, and the docType <select>. So the last change neither added nor removed DnD — DnD was never present in history. The regression framing ("broke it") is misleading; it was never built.
+87d459b "Implement dashboard view and app shell layout", dfb92c5 "Remove the portal artifact directory...", 34af3b7 "Update API schemas..." — incidental/earlier touches, no DnD.
+Note on branch: the task says "branch main as checked out," but the working tree is actually on claude/v07-draft-bake (git branch --show-current). Flagging in case that matters; I made no changes (read-only).
+
+Q5 — Affordances the builder promises vs. reality (tester walk-through)
+Promised affordance	Where	Status
+Drag block from palette → canvas	palette :172, :190	❌ not draggable, no drop target
+Drag saved section → canvas	:190	❌ same
+Reorder sections/blocks (grip handles)	:244, :321, :407	❌ decorative icons only
+Add section / subsection / block	:466, :455, :447	❌ no onClick
+Delete block / Remove section	:438, :272	❌ no onClick
+Save as block	:270	❌ no onClick
+Add alternative (required_alt)	:396	❌ no onClick
+Edit block name / formats / weight	:324, :359, :350	⚠️ uncontrolled, not persisted
+Edit requirement (Req)	:336	⚠️ local-only state, not persisted
+Edit docType	:364	✅ persists to state
+Permission toggles	:290, :296	❌ visual only
+Edit template title	:133	✅ works
+Collapse/expand, menus, JSON view	:221,:247,:150	✅ works
+Save Draft → API	:155 → handleSave :82	✅ works (real mutation)
+Activate (in library)	TemplateLibrary.tsx handleActivate	✅ works (from library list, useActivateTemplate)
+Ranked smoking guns: (1) DnD is entirely unimplemented — no library and no native handlers/drop targets, so blocks literally cannot be dragged; (2) most add/delete/reorder/edit buttons are handler-less placeholders; (3) several inputs are uncontrolled/local-only and silently discard edits on save. The last commit only added the docType feature and did not remove any drag code.
+
+The builder is open — palette on the left (Section/Subsection/Document upload/Field group + saved sections), empty canvas. Attempting the exact repro: dragging "Section" onto the canvas, then reading the console:
+
+Claude in Chrome [browser_batch]
+Claude in Chrome [javascript_tool][Show Tab]execute
+IN
+{
+  "action": "javascript_exec",
+  "text": "const out = {};\nout.draggableEls = document.querySelectorAll('[draggable=\"true\"]').length;\nout.anyDraggableAttr = document.querySelectorAll('[draggable]').length;\n// find a palette card by its text\nconst card = [...document.querySelectorAll('div,button,li')].find(e => e.textContent?.trim().startsWith('Section') && e.textContent.includes('Top-level group'));\nif (card) {\n  out.cardTag = card.tagName;\n  out.cardDraggable = card.getAttribute('draggable');\n  out.cardClasses = (card.className||'').slice(0,120);\n  // react props: look for __reactProps key and list on* handlers up the tree\n  let el = card, chain = [];\n  for (let i=0; i<4 && el; i++) {\n    const key = Object.keys(el).find(k => k.startsWith('__reactProps'));\n    const props = key ? el[key] : null;\n    chain.push({tag: el.tagName, handlers: props ? Object.keys(props).filter(k=>k.startsWith('on')) : [], draggable: el.getAttribute && el.getAttribute('draggable')});\n    el = el.parentElement;\n  }\n  out.chain = chain;\n}\nJSON.stringify(out, null, 1)",
+  "tabId": 1578255927
+}
+OUT
+{
+"draggableEls": 0,
+"anyDraggableAttr": 0,
+"cardTag": "DIV",
+"cardDraggable": null,
+"cardClasses": "space-y-2",
+"chain": [
+{
+"tag": "DIV",
+"handlers": [],
+"draggable": null
+},
+{
+"tag": "DIV",
+"handlers": [],
+"draggable": null
+},
+{
+"tag": "DIV",
+"handlers": [],
+"draggable": null
+},
+{
+"tag": "ASIDE",
+"handlers": [],
+"draggable": null
+}
+]
+}
+
+Deep research done — and the verdict is worse (and more useful) than "broken": the template builder's drag-and-drop was never built. It's a visual mockup that was never wired. Three independent probes agree:
+
+Evidence:
+
+Live repro: dragging "Section" from the palette does text selection (everything highlights blue) — the browser's fallback when literally no drag machinery intercepts. Zero console errors because zero code runs.
+DOM probe: the page contains 0 elements with a draggable attribute, and the palette cards have no React event handlers at all — they're plain divs with a cursor-grab cursor style. The grip-dot icons are decoration.
+Code map: no DnD library exists anywhere in the client (no @dnd-kit, react-dnd, nothing in package.json), no drop targets on the canvas/sections, and git history shows drag code never existed in any commit — nothing regressed; it was never there.
+And it goes beyond drag-and-drop. The audit found most of the builder is inert placeholders (TemplateEditor.tsx — one 470-line file):
+
+Dead buttons (no onClick): + Add Section · + Add subsection · + Add block · Remove section · Save as block · + add alternative · per-block ⋯ menu · permission View/Upload toggles.
+Inputs that silently discard edits: block name, formats, weight (uncontrolled), Req (local state never saved).
+What actually works: template title, docType select, collapse/menus, JSON view, Save Draft (real API), Activate. That's it.
+Why nobody noticed: every real template so far (Purchase Loan v1→v4) was built by the agent in code/seed files, never through this UI. The builder has never produced a template.
+
+Recommendation — and it's the anti-over-engineering one: don't start with drag-and-drop. Wire click-to-add + up/down reorder + delete + controlled inputs first — that's ~90% of builder utility, ~20% of the work (roughly a day), zero new libraries, and every dead button becomes real. DnD then becomes polish on top (if added later: @dnd-kit or @hello-pangea/dnd — not react-beautiful-dnd, which is incompatible with React 19).
+
+Paste block for the agent:
+
+
+Spec author → builder: template-builder audit (verified in browser + DOM + code)
+Finding: the builder UI is an unwired mockup — no DnD lib installed, palette
+items have no draggable/no handlers, no drop targets (TemplateEditor.tsx:172,
+190, 211+). Dead buttons: Add Section/subsection/block, Remove section, Save
+as block, add-alternative, permission toggles. Unpersisted inputs: name/fmt/
+weight (uncontrolled), Req (local-only). Working: title, docType, Save Draft,
+Activate. DnD never existed in git history — build, not regression.
+Proposed build order (owner to confirm): 1) wire click-to-add pickers +
+up/down reorder + delete + make inputs controlled → Save Draft already works;
+2) DnD as enhancement AFTER (use @dnd-kit or @hello-pangea/dnd — NOT
+react-beautiful-dnd on React 19). Full affordance table available on request.
+Who takes it — the agent (it's their file), or me as a PR? And do you agree with click-to-add-first, or do you specifically want drag-and-drop in the first pass?
+
+1. both click to add and drag and drop - don't fuck around.
+2. 
+
+ and also it seems like it was supposed to be a dragon drop within the components within like the form so I could move one section above the other and within the section I could collapse and move subsections or even specific like elements within it not only drag new blocks in and none of that works. It's all a complete embarrassment.
+
+But before you start fixing things, I want to do a complete analysis and not over engineer this sore throat in some quick fix. I want everything to be high-level planned modular maintainable simple and according to spec basically I don't want you to oversimplify things. I just want you to create it in a maintainable and efficient
+
+And not over engineer it
+
+It should have separation of concerns and detail named functions and files
+
+Of course, clear document
+
+And yeah, obviously the form builder is very important and
+
+I think also there should be drop-down that work and like in advance drop-down where the user can add more details to a block and they're obviously there some various goals that can be set per element that is required like you know the criticality and the source, ability levels and all that.
+
+I'll think that's possible right now in the builder from a UI perspective.
+
+That should be analyzed deeply and like basically there should be like a very deep, very detailed master plan created.
+
+I don't think you should start fixing it until you have a complete understanding of everything that needs to be done and then also look at the original mock up/s
+Show less
+Agreed — full analysis first, no code until the master plan is complete. Launching the deep-dive: four parallel investigations (the template contract the builder must author, the original mockups' intent, the current code + house conventions, and the DnD technology choice for React 19), then synthesis into a master-plan document. My earlier audit feeds in as the fifth input:
+
+Workflow
+IN
+{
+  "script": "export const meta = {\n  name: 'template-builder-master-plan',\n  description: 'Deep analysis of the template builder: contract, mockups, current code, DnD tech — synthesized into a build master plan',\n  phases: [\n    { title: 'Investigate', detail: 'contract / mockups / current-code / dnd-tech in parallel' },\n    { title: 'Synthesize', detail: 'master plan: phases, file map, invariants, acceptance' },\n  ],\n}\n\nconst ROOT = '/Users/happy/Documents/2026 Codex Tryout/proptech'\n\nconst FINDINGS = {\n  type: 'object',\n  additionalProperties: false,\n  required: ['area', 'findings', 'requirements', 'risks', 'evidence'],\n  properties: {\n    area: { type: 'string' },\n    findings: { type: 'string', description: 'What is true, with file:line / URLs' },\n    requirements: { type: 'array', items: { type: 'string' }, description: 'Hard requirements this area imposes on the builder build' },\n    risks: { type: 'array', items: { type: 'string' } },\n    evidence: { type: 'array', items: { type: 'string' } },\n  },\n}\n\nphase('Investigate')\nconst readers = [\n  {\n    label: 'contract',\n    prompt: `Repo: ${ROOT}. Determine EVERYTHING the template builder must be able to author — the full template contract. Read: docs/homium-template-schema-spec.md (the authoritative template contract), the Template/Section/Subsection/Block schemas in lib/api-spec/openapi.yaml, one real fixture (artifacts/api-server/data/templates/ — read the purchase-loan-ca v4 JSON), internal_docs/templates.md + applications.md, and the additive-repin rules (block IDs are pinned by applications: artifacts/api-server/src/features/intake/router.ts template-version endpoint).\nAnswer: (1) complete field inventory per level (template, section incl. owner+permissions, subsection, block kinds upload vs fields, requirement/criticality/sourcing enums, alternatives groups, expiry schema, docType, formats, weight) — everything an \"advanced block editor\" must expose, with allowed values; (2) INVARIANTS the editor must never violate — especially block-ID stability (uploads/verdicts/repin key on ids: what breaks if an editor regenerates ids on reorder?), draft-editable/active-immutable, additive-only versioning; (3) what the current Save Draft API accepts (template-editor save path + zod schema) — can it already persist the full contract?`,\n  },\n  {\n    label: 'mockups',\n    prompt: `Repo: ${ROOT}. Recover the ORIGINAL DESIGN INTENT for the template/form builder from the mockups. Read: artifacts/mockup-sandbox/src/components/mockups/homium/ (builder-related components + builderData.ts — this is what seed.ts imported), any other builder mockups in mockup-sandbox, and list what's in attached_assets (screenshots, Sheaf html mockups) that shows builder UI; also .agents/memory/homium-design-direction.md and internal_docs/_pages/template-editor.md (the agent's own page doc — what it says is done vs missing).\nAnswer: (1) every interaction the mockup promises (palette drag-in, section/subsection/block reorder, collapse, saved sections, save-as-block, permission editing, advanced block detail editing — criticality/sourcing dropdowns, alternatives, expiry) with evidence; (2) visual/UX patterns to preserve (Ops Desk design family); (3) anything the mockup promises that the spec/contract does NOT support (mockup-only fantasies to cut).`,\n  },\n  {\n    label: 'current-code',\n    prompt: `Repo: ${ROOT}. Map what EXISTS and the house conventions the rebuild must follow. Read: artifacts/client/src/features/template-editor/TemplateEditor.tsx (all of it), template-library feature (store/router client+server, useSaveTemplate, saved-sections feature end-to-end), artifacts/client feature-folder conventions (pick 2 exemplar features e.g. case-file structure: components/ hooks/ pure-model files), components/ui primitives available (select, dropdown-menu, dialog, etc — list what exists in artifacts/client/src/components/ui), react-query usage patterns (useCaseFile.ts style), and CLAUDE.md + _overview.md norms (≤~250 lines/file mandate, contract-first codegen).\nAnswer: (1) reusable pieces (UI primitives, mutation hooks, saved-sections endpoints); (2) exactly how the current 470-line TemplateEditor violates the file-size mandate and how sibling features decompose (naming patterns for hooks/components/pure models); (3) the Save Draft mutation + query-cache pattern to keep; (4) any server-side validation gaps for templates (can a malformed template be saved?).`,\n  },\n  {\n    label: 'dnd-tech',\n    prompt: `Research task (WebSearch/WebFetch available): choose the drag-and-drop technology for a React 19.1 app (Vite, no StrictMode) that needs ALL of: (a) palette-to-canvas insertion drags, (b) sortable reordering of sections (vertical list), (c) nested sortables — subsections within sections, blocks within subsections, (d) cross-container moves (block from one subsection to another), (e) keyboard accessibility nice-to-have.\nCompare @dnd-kit (core/sortable versions + React 19 compatibility status as of mid-2026 — check their repo/issues), @hello-pangea/dnd (React 19 support, nested-container limitations — it does NOT support nested drag containers well), pragmatic-drag-and-drop (Atlassian, framework-agnostic, actively maintained), and native HTML5 DnD (why it fails for nested sortables/mobile).\nAnswer: (1) recommendation with version pins verified at source; (2) the known pitfalls for our exact shape (nested containers: collision detection strategy, DragOverlay/portal, id namespacing between palette items and canvas items); (3) bundle size + maintenance status; (4) fallback pick if the primary has a React 19 blocker.`,\n  },\n]\n\nconst results = await parallel(readers.map((r) => () =>\n  agent(r.prompt, { label: r.label, phase: 'Investigate', schema: FINDINGS })\n))\n\nphase('Synthesize')\nconst PLAN = {\n  type: 'object',\n  additionalProperties: false,\n  required: ['executiveSummary', 'invariants', 'architecture', 'phases', 'fileMap', 'notBuilding', 'acceptance', 'openDecisions'],\n  properties: {\n    executiveSummary: { type: 'string' },\n    invariants: { type: 'array', items: { type: 'string' }, description: 'Rules the implementation must never violate (id stability, immutability, contract-first...)' },\n    architecture: { type: 'string', description: 'State model (reducer), DnD layer, component decomposition, separation of concerns — with rationale' },\n    phases: {\n      type: 'array',\n      items: {\n        type: 'object',\n        additionalProperties: false,\n        required: ['name', 'delivers', 'details', 'effort', 'acceptance'],\n        properties: {\n          name: { type: 'string' },\n          delivers: { type: 'string' },\n          details: { type: 'string' },\n          effort: { type: 'string' },\n          acceptance: { type: 'string' },\n        },\n      },\n    },\n    fileMap: { type: 'array', items: { type: 'string' }, description: 'Every new/changed file with one-line purpose, following house naming + <=250-line mandate' },\n    notBuilding: { type: 'array', items: { type: 'string' } },\n    acceptance: { type: 'array', items: { type: 'string' }, description: 'End-to-end acceptance walk for the whole feature' },\n    openDecisions: { type: 'array', items: { type: 'string' } },\n  },\n}\n\nconst audit = `PRIOR AUDIT (verified in browser + DOM + code): DnD never existed — no library installed, palette items are plain divs (cursor-grab CSS only), zero drop targets, grip icons decorative. Dead buttons (no onClick): +Add Section/subsection/block, Remove section, Save as block, +add alternative, permission toggles, block ... menu. Unpersisted inputs: block name/formats/weight (uncontrolled defaultValue), Req (local-only state). Working: title edit, docType select (persists), collapse/menus, JSON view, Save Draft mutation (real API), Activate from library. TemplateEditor.tsx is one 470-line file. User mandate: BOTH click-to-add AND full DnD (palette-in + reorder sections + reorder/move subsections and blocks), working dropdowns incl. advanced per-block details (criticality, sourcing, requirement, alternatives, expiry), modular/maintainable/simple, separation of concerns, well-named files/functions, <=250 lines per file, no over-engineering, no quick fixes.`\n\nconst plan = await agent(\n  `You are the spec author writing the MASTER PLAN for rebuilding the Sheaf template builder. Inputs:\n${audit}\n\nFour investigation reports (JSON):\n${JSON.stringify(results.filter(Boolean), null, 2)}\n\nWrite the definitive build plan. Hard requirements: click-to-add AND full DnD (palette insertion + reorder at every level + cross-container block moves); advanced block editor exposing the FULL contract (requirement/criticality/sourcing/docType/formats/expiry/alternatives/permissions) with working dropdowns; controlled inputs persisting through the existing Save Draft mutation; block-ID stability invariant enforced structurally (reorder/move NEVER regenerates ids; only genuinely new blocks mint ids); draft-only editing; decomposition into small well-named files per house conventions; a pure reducer for ALL template mutations (testable without React); DnD as a thin adapter layer over the same reducer actions the buttons use (click-to-add and drag share one mutation path — that is the separation of concerns that keeps this simple). Phase the work so each phase lands usable value and is independently verifiable in the browser. Be explicit about what NOT to build (undo/redo? autosave? multi-select?) with one-line reasons. Keep it simple-but-complete: no speculative abstraction, no second state library, no new global stores.`,\n  { label: 'master-plan', phase: 'Synthesize', schema: PLAN, effort: 'high' }\n)\n\nreturn { plan, readerCount: results.filter(Boolean).length }\n"
+}
+OUT
+Workflow launched in background. Task ID: w3vrlc0i0
+Summary: Deep analysis of the template builder: contract, mockups, current code, DnD tech — synthesized into a build master plan
+Transcript dir: /Users/happy/.claude/projects/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/subagents/workflows/wf_c6673eb5-4a6
+Script file: /Users/happy/.claude/projects/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/workflows/scripts/template-builder-master-plan-wf_c6673eb5-4a6.js
+(Edit this file with Write/Edit and re-invoke Workflow with {scriptPath: "/Users/happy/.claude/projects/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/workflows/scripts/template-builder-master-plan-wf_c6673eb5-4a6.js"} to iterate without resending the script.)
+Run ID: wf_c6673eb5-4a6
+To resume after editing the script: Workflow({scriptPath: "/Users/happy/.claude/projects/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/workflows/scripts/template-builder-master-plan-wf_c6673eb5-4a6.js", resumeFromRunId: "wf_c6673eb5-4a6"}) — completed agents return cached results (cached results may themselves be empty — inspect journal.jsonl before assuming there is something to recover).
+
+You will be notified when it completes. Use /workflows to watch live progress.
+can you create a MD file with all of this information?
+
+I will give it to the other AI agent to build.
+Master-plan analysis is running — four parallel deep-dives, then synthesis:
+
+The contract — every field the builder must author (requirement/criticality/sourcing levels, alternatives, expiry, docType, permissions…) from the template schema spec + live API + real v4 template, and the invariants (the big one: block IDs are pinned by applications and the repin feature — reordering must never regenerate an ID, or uploads and verdicts orphan).
+The original mockups — recovering design intent from mockup-sandbox (the homium builder mockups that seeded the real templates) + the design-direction notes, including exactly the interactions you named: section reorder, subsection/element moves within sections, collapse, advanced block detail editing.
+Current code + house rules — what's reusable (Save Draft mutation works, saved-sections endpoints exist, UI primitives), and the decomposition pattern that fixes the 470-line single file against the ≤250-line mandate.
+DnD technology — verified-at-source React 19 compatibility for the nested-sortable shape we need (sections ⊃ subsections ⊃ blocks + palette drag-in + cross-container moves); this is where wrong library choices quietly kill projects.
+Committed scope per your instruction: click-to-add AND full drag-and-drop (palette-in, section reorder, subsection/element reorder and moves), working advanced dropdowns for all per-block goals, one shared mutation path so buttons and drags do the same thing (that's the separation-of-concerns that keeps it simple), small well-named files. No code until the plan is in front of you.
+
+Deliverable: a detailed master-plan document PR'd into internal_docs/ — phases, file map, invariants, acceptance walks, and the explicit not-building list. Landing here the moment synthesis completes.
+
+Yes — that's exactly the deliverable in flight. The four investigations + synthesis are still running (a few minutes); the moment they land I'll write the complete master plan as a markdown file in the repo (internal_docs/ — build-ready, addressed to the agent: phases, file map, invariants, acceptance criteria, not-building list), PR it so you can merge and hand it over, and give you the link plus a one-paragraph summary here.
+
+Nothing needed from you until then — I'll post the moment it's ready.

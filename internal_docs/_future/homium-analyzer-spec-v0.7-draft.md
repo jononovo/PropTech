@@ -48,10 +48,11 @@ Intake → pre-flight → gate (+plan pick) → parse (per plan; save per docume
 
 **v1 (done):** sidecar+fixtures ✓ · pre-flight+gate ✓ · docType ✓ · closing-date field ✓ · parse via registry (Paddle/Mistral/Claude validated) ✓ · split/classify ✓ · judge ✓ · scrutiny ✓ · naming ✓ · real packets end-to-end ✓ · per-run plans ✓ · review room + placements ✓.
 **v1.x approved, to build (owner + spec author + builder aligned, Jul 24–25):**
-- **Span-gluing rule:** exclude pages preflight flagged as blank or exact-duplicate from document spans before mapping. DETERMINISTIC preflight flags only — never model judgments; excluded pages stay visible as flagged junk, never silently dropped. Evidence: every engine tested glued planted blank+dup pages into the Grant Deed span, so the filed document carried wrong pages.
 - ~~Region crops on demand~~ — struck as a decision: crops stay empty until a consumer exists; nothing to build or spec.
 
-**v1.x built (Jul 24, validated on a real run — see `_future/judge-verdict-artifacts.md`):**
+**v1.x built (Jul 24–25, each validated on a real run — see `_future/judge-verdict-artifacts.md` and `_future.md`):**
+- **Span-gluing rule** (built + validated Jul 25, run-20260725-002934-b0b7): pages preflight-flagged blank or exact-duplicate are excluded from document spans before mapping — DETERMINISTIC preflight flags only, never model judgments; the duplicate's original stays; excluded pages are hard span breaks and surface as visible junk in unassigned ("Pre-flight junk (…)"), never silently dropped; whisper records the exclusions. Validation: deed span shed planted p.6 (blank) + p.7 (dup) to p.5 alone. Origin evidence: every engine tested glued those pages into the Grant Deed span.
+- **Fraud-scoring toggle** (built + validated Jul 25, same run): `RunPlan.fraudScoring`, default ON, frozen into `config.json` (`judgePromptVersion`: `judge-v1` / `judge-v1-nofraud`). OFF drops fraud from the judge prompt, receipts, scores, and sidecar — `fraud_signal` absent means "not scored this run", never a fake 0, and every portal surface renders the absence honestly (Register, Review chips, checks count). Contract additive: `AnalysisScores.fraud_signal` now optional; the run echoes `fraudScoring`. Scope ruling: fraud only — quality/formatting are never optional.
 - **Judge verdict receipts:** `judge/doc-<N>.json` per document — raw model output (2MB cap with truncation marker), tokens as the backend's `usage` reports (nullable), per-doc `latencyMs`, `promptVersion` (`judge-v1`, bump on any prompt change). Write-once before the run POST; referenced additively via `artifacts.judge`.
 - **Run telemetry:** per-stage `timings` (`renderMs/parseMs/splitClassifyMs/judgeMs/totalMs`) in `config.json`; additive `durationMs` + `artifactsProduced` on the run object and sidecar — artifact coverage recorded per run, never assumed per engine. First datapoint: split/classify (GLM) dominates wall-clock, not parsing — an optimization candidate, not a decision.
 **v2 (additive only):** LangExtract + schemas (+precedence) · amount-level fraud · md-offset→bbox region highlighting in the review room · per-application index + chat with citations (`_future/llm-questions.md`).
@@ -66,14 +67,15 @@ Intake → pre-flight → gate (+plan pick) → parse (per plan; save per docume
 
 ## 7. Rulings record (all deltas resolved Jul 24–25; owner + spec author + builder)
 
-1. Default parse plan: **Mistral OCR 4** (§2.1). Paddle stays as quality benchmark.
+1. Default parse plan: **Mistral OCR 4** (§2.1). Paddle stays as quality benchmark. **Live Jul 25:** env default flipped; the registry maps `mistral-ocr-4` as the parse default. Burn-in count runs on this plan (flagged test packets don't count).
 2. Auto-proceed: **reinstate after ~10-clean-run burn-in on the default plan** (§0.3).
-3. Span-gluing: **approved** (deterministic flags only). Crops-on-demand: **struck** (§5).
-4. Judge receipts + run telemetry: **built as specced** (§5); as-built choices (2MB raw cap, nullable tokens, per-doc latency, sidecar `artifactsProduced`) ratified.
+3. Span-gluing: **approved → built + validated Jul 25** (deterministic flags only; §5). Crops-on-demand: **struck** (§5).
+4. Judge receipts + run telemetry: **built as specced** (§5); as-built choices (2MB raw cap, nullable tokens, per-doc latency, sidecar `artifactsProduced`) ratified. parseMs calibration checked at code level Jul 25: the timer wraps the entire Mistral OCR call (single batched request) — sub-second small-packet parses are real, not a timer gap.
+5. Fraud-scoring per-run toggle: **approved (scope: fraud only, default ON) → built + validated Jul 25** (§5). Absent score = "not scored this run" — never fabricated.
 
 **Remaining step:** owner blesses this file → it moves to `attached_assets/` as v0.7 FINAL and v0.6.3 is deleted (one spec authority at a time).
 
 ## 8. Ops standing notes (new since 0.6.3)
 
-- **Off-Replit dev:** document bytes fall back to local disk (`DATA_DIR/object-store`) ONLY when both `PRIVATE_OBJECT_DIR` and `REPL_ID` are absent; on Replit with missing config every storage call fails loudly. Known non-blocking edge: PDF-write-succeeds/thumbnail-write-fails leaves the restored packet's sha pointing at replaced bytes — strictly better than the pre-fix stuck-forever state; fix opportunistically.
+- **Off-Replit dev:** document bytes fall back to local disk (`DATA_DIR/object-store`) ONLY when both `PRIVATE_OBJECT_DIR` and `REPL_ID` are absent; on Replit with missing config every storage call fails loudly. The stale-bytes edge (PDF-write-succeeds/thumb-fails restoring a record over replaced bytes) was **fixed Jul 25** by write ordering: thumbnails (cosmetic, rewritten every upload) first, the sha-referenced PDF LAST — any failure before the PDF write restores a record whose sha still matches its bytes. Residual (rare, accepted): a failure after the PDF write can still mismatch; the full fix is sha-versioned object keys, deferred until it earns its prod-data migration.
 - The Replit **workspace dev server** often runs ahead of both prod and GitHub; check it when "latest" matters.

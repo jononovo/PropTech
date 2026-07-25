@@ -218,7 +218,7 @@ function StripThumb({
           loading="lazy"
           onError={() => setBroken(true)}
           className={`absolute inset-0 w-full h-full object-cover object-top transition-all duration-150 delay-0 ${
-            !settled ? 'group-hover/thumb:blur-[1px] group-hover/thumb:opacity-40 group-hover/thumb:delay-[400ms]' : ''
+            !settled ? 'group-hover/thumb:blur-[1px] group-hover/thumb:opacity-40 group-hover/thumb:delay-[700ms]' : ''
           }`}
         />
       )}
@@ -251,7 +251,7 @@ function StripThumb({
       )}
       {/* hover ✓/✕/⚑ cluster — centered floating pill (A1), the page pre-step, no popups */}
       {!settled && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] rounded-full border border-[var(--ops-border)] p-0.5 z-20 opacity-0 pointer-events-none transition-opacity duration-150 delay-0 group-hover/thumb:opacity-100 group-hover/thumb:pointer-events-auto group-hover/thumb:delay-[400ms]">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] rounded-full border border-[var(--ops-border)] p-0.5 z-20 opacity-0 pointer-events-none transition-opacity duration-150 delay-0 group-hover/thumb:opacity-100 group-hover/thumb:pointer-events-auto group-hover/thumb:delay-[700ms]">
           <button
             onClick={(e) => {
               e.stopPropagation();

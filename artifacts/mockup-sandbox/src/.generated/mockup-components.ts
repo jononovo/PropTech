@@ -2,8 +2,10 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/doc-approval/DocumentDocket.tsx": () => import("../components/mockups/doc-approval/DocumentDocket.tsx"),
+  "./components/mockups/doc-approval/FilmstripFastLane.tsx": () => import("../components/mockups/doc-approval/FilmstripFastLane.tsx"),
   "./components/mockups/doc-approval/FilmstripGroups.tsx": () => import("../components/mockups/doc-approval/FilmstripGroups.tsx"),
   "./components/mockups/doc-approval/GalleryRow.tsx": () => import("../components/mockups/doc-approval/GalleryRow.tsx"),
+  "./components/mockups/doc-approval/SpreadAndRail.tsx": () => import("../components/mockups/doc-approval/SpreadAndRail.tsx"),
   "./components/mockups/homium/Backbone.tsx": () => import("../components/mockups/homium/Backbone.tsx"),
   "./components/mockups/homium/DocDimensions.tsx": () => import("../components/mockups/homium/DocDimensions.tsx"),
   "./components/mockups/homium/FormBuilderA.tsx": () => import("../components/mockups/homium/FormBuilderA.tsx"),

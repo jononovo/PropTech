@@ -42,12 +42,12 @@ export function buildSidecarMarkdown(opts: {
   }
   lines.push("derivedFrom:");
   if (doc.source === "extract") {
-    lines.push(`  sourceKey: ${yamlStr(`packets/${doc.applicationId}/packet.pdf`)}`);
+    lines.push(`  sourceKey: ${yamlStr(`applications/${doc.applicationId}/packet/packet.pdf`)}`);
     lines.push(`  pages: [${(doc.pages ?? []).join(", ")}]`);
     if (doc.runId) lines.push(`  runId: ${yamlStr(doc.runId)}`);
     if (doc.packetSha256) lines.push(`  packetSha256: ${yamlStr(doc.packetSha256)}`);
   } else {
-    lines.push(`  sourceKey: ${yamlStr(`uploads/${doc.applicationId}/${doc.blockId}/${doc.sourceFilename ?? ""}`)}`);
+    lines.push(`  sourceKey: ${yamlStr(`applications/${doc.applicationId}/uploads/${doc.blockId}/${doc.sourceFilename ?? ""}`)}`);
   }
   lines.push(`  operation: ${yamlStr(doc.source)}`);
   lines.push(`  actor: ${yamlStr(doc.approvedBy)}`);

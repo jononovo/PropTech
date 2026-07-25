@@ -9,9 +9,14 @@ import { objectStorageClient } from "./objectStorage";
  * Domain layout for document bytes. This is the ONLY module that knows where
  * bytes live:
  *
- *   <root>/packets/<applicationId>/packet.pdf
- *   <root>/packets/<applicationId>/thumbs/page-<n>.png
- *   <root>/uploads/<applicationId>/<blockId>/<filename>
+ *   <root>/applications/<applicationId>/packet/packet.pdf
+ *   <root>/applications/<applicationId>/packet/thumbs/page-<n>.png
+ *   <root>/applications/<applicationId>/uploads/<blockId>/<filename>
+ *   <root>/applications/<applicationId>/approved/<basename>.pdf|.md
+ *
+ * One self-contained folder per application (ruled Jul 25 2026) so a whole
+ * case can be downloaded in one click. Uploads are the immutable originals;
+ * approved/ holds materialized copies that point back to their sources.
  *
  * Two roots, resolved once at boot:
  *   - App Storage (GCS) when PRIVATE_OBJECT_DIR is set — the Replit path,
@@ -65,15 +70,16 @@ function gcsFile(key: string) {
   return objectStorageClient.bucket(bucketName).file(objectName);
 }
 
-const packetPdfKey = (applicationId: string): string => `packets/${applicationId}/packet.pdf`;
+const appRoot = (applicationId: string): string => `applications/${applicationId}`;
+const packetPdfKey = (applicationId: string): string => `${appRoot(applicationId)}/packet/packet.pdf`;
 const pageThumbnailKey = (applicationId: string, page: number): string =>
-  `packets/${applicationId}/thumbs/page-${page}.png`;
+  `${appRoot(applicationId)}/packet/thumbs/page-${page}.png`;
 const intakeUploadKey = (applicationId: string, blockId: string, filename: string): string =>
-  `uploads/${applicationId}/${blockId}/${filename}`;
+  `${appRoot(applicationId)}/uploads/${blockId}/${filename}`;
 // Approved registry bytes — flat per application, paired same-basename .pdf/.md
-// (set-blocks master plan, storage option B). Existing prefixes never move.
+// (set-blocks master plan, storage option B).
 const approvedKey = (applicationId: string, basename: string, ext: "pdf" | "md"): string =>
-  `approved/${applicationId}/${basename}.${ext}`;
+  `${appRoot(applicationId)}/approved/${basename}.${ext}`;
 
 /** Upload the accepted packet PDF from its local staging path. Re-upload overwrites. */
 export async function putPacketPdf(applicationId: string, localPdfPath: string): Promise<void> {

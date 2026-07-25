@@ -5,7 +5,8 @@ description: Rulings + phase status for the set-blocks/variants/approved-docs bu
 
 User rulings (Jul 25, 2026):
 - Variants are GENERIC (accounts, persons, …) and declared PER-APPLICATION; the template only declares the shape (variant noun + descriptor field keys + docs-per-variant rules). Never bake accounts into templates.
-- Storage: option B — flat `approved/<appId>/` folder, paired same-basename `.pdf` + `.md` (YAML front matter with scores/desc/provenance). NO moving of existing storage.
+- Storage (superseded Jul 25 2026 night): ONE self-contained folder per application — `applications/<appId>/{packet,uploads,approved}/` — so a whole case downloads in one click. Approved stays flat paired same-basename `.pdf` + `.md`. All keys minted only in packetObjectStore.ts; old prefixes migrated & deleted.
+- Intake immutability RULING: originals are never edited/merged in place — audit trail (financial data). Merges/splits materialize only as new approved artifacts pointing back to sources. IP-address capture on upload not yet implemented (user mentioned wanting it).
 - Physical extraction at APPROVAL ONLY; pre-approval splits stay in the intake/run flow, never in the approved registry.
 - Phase 3 SHIPPED Jul 25 2026: append-only approved_documents registry, one materialization seam, flat approved/<appId>/ store, loud materializationErrors + retry; worker now serves per-page md over HTTP. Set blocks 409 at block-level accept until per-document flow exists.
 - Cost of satisfaction pass: user said don't worry; fold into existing gate anyway.

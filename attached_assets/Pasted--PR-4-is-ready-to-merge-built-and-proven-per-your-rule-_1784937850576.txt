@@ -1,0 +1,129 @@
+ PR #4 is ready to merge, built and proven per your rule:
+
+What it fixes:
+
+Local disk fallback for document bytes — PRIVATE_OBJECT_DIR set (Replit) → GCS exactly as today, byte-identical; absent (local) → same key layout under data/object-store/. One module, mode logged at boot, nothing above it can tell the difference.
+A real production bug found on the way: preflight/storage failures left packets stuck in preflight_running forever — on Replit too, for any GCS hiccup. Failures now restore the previous packet state and reopen the gate honestly.
+Proof (all local, in the browser): upload → preflight report with rendering thumbnails → gated with 3 correct red flags → PDF + thumbnail routes streaming HTTP 200 from disk. Typecheck clean. Replit behavior untouched except failures becoming honest.
+
+This unblocks full packet-flow testing locally — the only remaining local gap is actual analyzer runs, which hit remote APIs (Mistral/Claude keys already in my .env, so gate → process → review-room-with-content now works here too when we want it).
+
+Novita: agreed and already true in code — it's in the dropdown as experimental with an honest note; it needs account credits to actually serve. When you top up, it works with zero code changes.
+
+Still waiting on you:
+
+Ruling 3 — span-gluing + crops-on-demand (explained last message: stop gluing known-blank/duplicate pages into document spans; crop regions only when deep-scan asks). Yes/no?
+The amendments spec (judge artifacts + run telemetry) — shared for the other agent's input last message; once feedback lands I bake everything into v0.7 and PR it for blessing.
+Merge #4 when ready → sync Replit.
+You should also add into Claude.MD that this is the development server on Replit where you can see like if it's active recently you can see the most recent work done. 
+
+Because sometimes it's not been pushed to production.
+
+Does that make sense?
+
+Just something to keep in mind.
+Don't get bothered about it now though: https://5c5c5d45-be54-4997-b8bc-818eaad36a15-00-ibpr96xgx796.janeway.replit.dev/
+
+----
+
+Also, the other agent mentioned this:
+
+
+Other agent — yes, I'm fine with it. PR #3 is merged, it's current, and the lanes work (it PRs, you merge, I pull). Two things to pass it:
+
+Storage-fallback PR: dev-only — prod with a missing sidecar must still fail loudly; keep packetObjectStore the only module that knows byte layout; preflight-failure revert must respect the existing guarded finalize (sha + state claim).
+Phase A: does it plan the additive list-endpoint extension (per-app band counts + nearest clock — today's list has no requirement breakdown), and will it define the ranking in one shared place so the bell queue can reuse it?
+
+
+---
+
+
+Regarding this, it sounds like over engineering.
+
+And you haven't been able to explain to me exactly what this is for and where and give me an example so I know exactly what you're talking about.
+
+---
+
+Ruling 3 — span-gluing + crops-on-demand (explained last message: stop gluing known-blank/duplicate pages into document spans; crop regions only when deep-scan asks). Yes/no?
+The amendments spec (judge artifacts + run telemetry) — shared for the other agent's input last message; once feedback lands I bake everything into v0.7 and PR it for blessing.
+Three threads: the agent's storage conditions (one is a real catch — fixing it now), the CLAUDE.md dev-server note (folding into the open PR), and — most important — concrete examples for the things you're calling over-engineering, because you're partly right and I'll show you which part.
+
+First the agent's catch: my fallback keys off PRIVATE_OBJECT_DIR alone, so a misconfigured production would silently write bytes to an ephemeral disk instead of failing loudly. Fixing — disk mode only when genuinely off-Replit:
+
+Edit packetObjectStore.ts
+Added 6 lines
+Edit CLAUDE.md
+Added 3 lines
+Bash Typecheck, rebuild, restart, verify disk mode still works
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech/artifacts/api-server" && pnpm exec tsc -p tsconfig.json --noEmit && pnpm run build 2>&1 | tail -1 && pkill -f "dist/index.mjs"; PORT=3001 DATABASE_URL=postgres://localhost:5432/sheaf_dev NODE_ENV=development node --enable-source-maps ./dist/index.mjs > /private/tmp/claude-501/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/scratchpad/api-server.log 2>&1 &
+until curl -s --max-time 2 http://127.0.0.1:3001/api/templates >/dev/null; do sleep 1; done; grep packetObjectStore /private/tmp/claude-501/-Users-happy-Documents-2026-Codex-Tryout-proptech/5a2dcebb-0195-42ce-b7ad-ea2da221b2d4/scratchpad/api-server.log; curl -s -o /dev/null -w "thumb p6 still serving: HTTP %{http_code}\n" "http://127.0.0.1:3001/api/applications/MDWu392Q81/packet/thumbnails/6"
+
+OUT
+⚡ Done in 174ms
+[packetObjectStore] off-Replit, PRIVATE_OBJECT_DIR not set — document bytes on local disk at /Users/happy/Documents/2026 Codex Tryout/proptech/artifacts/api-server/data/object-store
+thumb p6 still serving: HTTP 200
+Bash Commit amendments, push, comment on PR 4
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && git add artifacts/api-server/src/lib/packetObjectStore.ts CLAUDE.md && git commit -q -m "Disk fallback is dev-only: on Replit without PRIVATE_OBJECT_DIR, fail loudly (agent review); CLAUDE.md dev-server pointer
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" && git push 2>&1 | tail -1 && gh pr comment 4 --body "Amended per the building agent's review: disk mode now requires BOTH no PRIVATE_OBJECT_DIR AND no REPL_ID — on Replit with missing config, every storage call fails loudly exactly as before (no silent ephemeral-disk writes in prod). Other two conditions were already true: packetObjectStore remains the only byte-layout module; the failure revert reuses the existing sha+state guarded-claim pattern. Re-verified locally after the change (disk mode boots, thumbnails still serve HTTP 200)." 2>&1 | tail -1
+
+OUT
+   edfa453..fb2dd6b  claude/object-store-disk-fallback -> claude/object-store-disk-fallback
+https://github.com/jononovo/PropTech/pull/4#issuecomment-5075678445
+PR #4 amended per the agent's review (its catch was right — misconfigured prod now fails loudly instead of silently writing to ephemeral disk), CLAUDE.md dev-server pointer included, re-verified, comment posted for the agent.
+
+Now the fair challenge — concrete examples, and where you're right about over-engineering:
+
+1. Span-gluing — real bug, visible in today's screenshot. Our v2 test packet: page 7 is blank, page 8 is an exact duplicate of page 3. Preflight catches both (the red flags you saw: "p.7 appears blank", "p.8 exact duplicate of p.3"). But when the analyzer then cuts the packet into documents, every engine we've tested reports the Grant Deed as "pages 5–8" — it swallowed the blank page and the duplicated bank page into the deed. So the filed deed document contains a stray copy of a bank-statement page. For a compliance product, the filed artifact is literally wrong. The rule = one sentence: pages preflight already flagged as blank/duplicate don't get counted into documents. Deed becomes pages 5–6; junk stays out. Where you see it: the page ranges on Workfile/report doc cards, review-room stops, and anything filed. Verdict: keep — it's a correctness fix, not polish.
+
+2. Crops-on-demand — you're right, and I'm striking it. Unmasked, it means: "don't pre-generate cropped images nobody consumes yet." Since nothing consumes crops today, the honest ruling is simply build nothing until something needs a crop — which needs no name, no spec line, no decision. Dropped.
+
+3. Judge artifacts + timings — here's the example, then you decide. After a run, the report says the deed scored fraud_signal 0.15 with flag wrong_document_mixed_in. If Homium's compliance officer asks "why did the AI score it that way?" — today the answer is gone: the judge's actual output is discarded the moment the run ends; only the mapped numbers survive. The artifact file is just "keep the receipt" (~30 lines, one JSON file per document next to the run's existing files). The timings half: when we compared Mistral vs Paddle vs Claude today, the wall-times in the comparison docs were hand-copied from console logs — one timings field makes every future comparison automatic. Worth noting this started as the note you pasted me this morning; my additions were the timings and honesty-about-artifacts fields. If you want the minimal cut: timings only (~5 lines), receipts later. Your call — no build until you say.
+
+4. Phase A, one concrete example (since the agent asked about it): today the dashboard row says "Elena Torres — 0/17 filed." Phase A makes it say "Elena Torres — 2 flagged docs waiting on you · ID expires before closing" and sorts her to the top. To the agent's two questions: yes — additive fields on the existing list endpoint only; and yes — the ranking lives in one shared module so its bell "Needs you" queue reuses the identical order.
+
+Standing (one line each): span-gluing yes/no? · judge-receipts / timings-only / neither? · merge #4 → sync Replit when ready.
+
+Do you have a note? I should send to the other agent or should I just send everything that you just said?
+Don't send the whole thing — that was written for you. Here's the note written for the agent, one paste block, decisions only:
+
+
+Spec author → builder agent (via product owner, Jul 24)
+
+1. Storage-fallback PR #4 — all three of your conditions met, one via amendment:
+   - Dev-only enforced: disk mode requires no PRIVATE_OBJECT_DIR AND no REPL_ID.
+     On Replit with missing config, every storage call fails loudly (no silent
+     ephemeral-disk writes in prod). Amended + re-verified locally; comment on
+     the PR has details.
+   - packetObjectStore stays the only byte-layout module (fallback lives inside it).
+   - The preflight-failure release reuses the existing guarded-claim pattern
+     (sha + state check) — only our own claim is ever restored.
+
+2. Your two Phase A questions — yes and yes:
+   - Additive-only: optional fields on the existing ApplicationSummary
+     (flaggedAwaitingVerdict, missingCriticalCount, nextStaleOn,
+     earliestHardExpiry — dates, not day-counts). No new endpoints, no breaking
+     changes; codegen regen coordinated with you.
+   - Ranking defined once, in a shared workspace module (same home as the
+     lifted buildClock math), exported so your bell "Needs you" queue and the
+     dashboard consume the identical order. Not built yet — awaiting product
+     owner green-light.
+
+3. Ruling status for the v0.7 draft:
+   - Mistral OCR 4 default parse: APPROVED (owner).
+   - Auto-proceed: APPROVED — reinstate after the default plan has a short
+     clean burn-in; <20pp/zero-flags rule unchanged.
+   - Crops-on-demand: STRUCK from the draft — the real ruling is "crops stay
+     empty until a consumer exists," which needs no spec line.
+   - Span-gluing (exclude preflight-flagged blank/exact-duplicate pages from
+     document spans): pending owner yes/no.
+   - Judge verdict artifacts + per-stage timings: pending owner decision
+     (full / timings-only / neither). Spec text already shared for your input —
+     comments welcome, especially the 4 open questions at the bottom.
+
+4. Once the pending decisions land, I bake everything into
+   _future/homium-analyzer-spec-v0.7-draft.md and PR it for blessing;
+   on merge you promote it to attached_assets and delete v0.6.3 (one authority).
+That's everything the agent needs and nothing it doesn't. The explanations and examples from my last message were for your decisions, which are still open: span-gluing yes/no, and judge-receipts / timings-only / neither.

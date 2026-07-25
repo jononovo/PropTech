@@ -1,0 +1,56 @@
+PR #4 amended per the agent's review (its catch was right — misconfigured prod now fails loudly instead of silently writing to ephemeral disk), CLAUDE.md dev-server pointer included, re-verified, comment posted for the agent.
+
+Now the fair challenge — concrete examples, and where you're right about over-engineering:
+
+1. Span-gluing — real bug, visible in today's screenshot. Our v2 test packet: page 7 is blank, page 8 is an exact duplicate of page 3. Preflight catches both (the red flags you saw: "p.7 appears blank", "p.8 exact duplicate of p.3"). But when the analyzer then cuts the packet into documents, every engine we've tested reports the Grant Deed as "pages 5–8" — it swallowed the blank page and the duplicated bank page into the deed. So the filed deed document contains a stray copy of a bank-statement page. For a compliance product, the filed artifact is literally wrong. The rule = one sentence: pages preflight already flagged as blank/duplicate don't get counted into documents. Deed becomes pages 5–6; junk stays out. Where you see it: the page ranges on Workfile/report doc cards, review-room stops, and anything filed. Verdict: keep — it's a correctness fix, not polish.
+
+2. Crops-on-demand — you're right, and I'm striking it. Unmasked, it means: "don't pre-generate cropped images nobody consumes yet." Since nothing consumes crops today, the honest ruling is simply build nothing until something needs a crop — which needs no name, no spec line, no decision. Dropped.
+
+3. Judge artifacts + timings — here's the example, then you decide. After a run, the report says the deed scored fraud_signal 0.15 with flag wrong_document_mixed_in. If Homium's compliance officer asks "why did the AI score it that way?" — today the answer is gone: the judge's actual output is discarded the moment the run ends; only the mapped numbers survive. The artifact file is just "keep the receipt" (~30 lines, one JSON file per document next to the run's existing files). The timings half: when we compared Mistral vs Paddle vs Claude today, the wall-times in the comparison docs were hand-copied from console logs — one timings field makes every future comparison automatic. Worth noting this started as the note you pasted me this morning; my additions were the timings and honesty-about-artifacts fields. If you want the minimal cut: timings only (~5 lines), receipts later. Your call — no build until you say.
+
+4. Phase A, one concrete example (since the agent asked about it): today the dashboard row says "Elena Torres — 0/17 filed." Phase A makes it say "Elena Torres — 2 flagged docs waiting on you · ID expires before closing" and sorts her to the top. To the agent's two questions: yes — additive fields on the existing list endpoint only; and yes — the ranking lives in one shared module so its bell "Needs you" queue reuses the identical order.
+
+Standing (one line each): span-gluing yes/no? · judge-receipts / timings-only / neither? · merge #4 → sync Replit when ready.
+
+Do you have a note? I should send to the other agent or should I just send everything that you just said?
+Don't send the whole thing — that was written for you. Here's the note written for the agent, one paste block, decisions only:
+
+
+Spec author → builder agent (via product owner, Jul 24)
+
+1. Storage-fallback PR #4 — all three of your conditions met, one via amendment:
+   - Dev-only enforced: disk mode requires no PRIVATE_OBJECT_DIR AND no REPL_ID.
+     On Replit with missing config, every storage call fails loudly (no silent
+     ephemeral-disk writes in prod). Amended + re-verified locally; comment on
+     the PR has details.
+   - packetObjectStore stays the only byte-layout module (fallback lives inside it).
+   - The preflight-failure release reuses the existing guarded-claim pattern
+     (sha + state check) — only our own claim is ever restored.
+
+2. Your two Phase A questions — yes and yes:
+   - Additive-only: optional fields on the existing ApplicationSummary
+     (flaggedAwaitingVerdict, missingCriticalCount, nextStaleOn,
+     earliestHardExpiry — dates, not day-counts). No new endpoints, no breaking
+     changes; codegen regen coordinated with you.
+   - Ranking defined once, in a shared workspace module (same home as the
+     lifted buildClock math), exported so your bell "Needs you" queue and the
+     dashboard consume the identical order. Not built yet — awaiting product
+     owner green-light.
+
+3. Ruling status for the v0.7 draft:
+   - Mistral OCR 4 default parse: APPROVED (owner).
+   - Auto-proceed: APPROVED — reinstate after the default plan has a short
+     clean burn-in; <20pp/zero-flags rule unchanged.
+   - Crops-on-demand: STRUCK from the draft — the real ruling is "crops stay
+     empty until a consumer exists," which needs no spec line.
+   - Span-gluing (exclude preflight-flagged blank/exact-duplicate pages from
+     document spans): pending owner yes/no.
+   - Judge verdict artifacts + per-stage timings: pending owner decision
+     (full / timings-only / neither). Spec text already shared for your input —
+     comments welcome, especially the 4 open questions at the bottom.
+
+4. Once the pending decisions land, I bake everything into
+   _future/homium-analyzer-spec-v0.7-draft.md and PR it for blessing;
+   on merge you promote it to attached_assets and delete v0.6.3 (one authority).
+That's everything the agent needs and nothing it doesn't. The explanations and examples from my last message were for your decisions, which are still open: span-gluing yes/no, and judge-receipts / timings-only / neither.
+

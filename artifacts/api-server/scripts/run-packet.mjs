@@ -45,7 +45,9 @@ console.log(`upload: ${res.status} state=${pkt.state} pages=${pkt.pages} flags=$
 
 // 2. Gate (skip if upload auto-started processing)
 if (pkt.state === "gated") {
-  const decision = flag === "--auto" ? { decision: "auto" } : { decision: "bypassed", decidedBy: "Underwriter" };
+  // Auto-proceed is suspended (every packet gates; staff pick the plan) — the
+  // gate enum is confirmed|bypassed only. --auto now means "clean packet, confirm".
+  const decision = flag === "--auto" ? { decision: "confirmed", decidedBy: "Underwriter" } : { decision: "bypassed", decidedBy: "Underwriter" };
   if (Object.keys(plan).length) decision.plan = plan;
   res = await fetch(`${API}/applications/${appId}/packet/gate`, {
     method: "POST",

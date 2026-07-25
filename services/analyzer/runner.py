@@ -52,12 +52,12 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
     store = Path(config.STORE_DIR) / app_id / run_id
     store.mkdir(parents=True, exist_ok=True)
     ref = f"store://{app_id}/{run_id}"
-    # Config + versions saved with the run's artifacts (spec v0.6.3 §2). Rewritten
+    # Config + versions saved with the run's artifacts (spec v0.7 §3). Rewritten
     # once at the END of the run with timings + artifactsProduced (judge-verdict-
     # artifacts spec) — immutable from the moment the run POSTs.
     run_config = {
         "pipelineVersion": plan.pipeline_version(),
-        "spec": "homium-analyzer-spec-v0.6.3",
+        "spec": "homium-analyzer-spec-v0.7",
         "plan": plan.ids,
         "parse": {"backend": plan.parse.backend, "model": plan.parse.model},
         "judge": {"backend": plan.judge.backend, "model": plan.judge.model},

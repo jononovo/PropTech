@@ -7,7 +7,7 @@ home-loan packets. Originators upload large merged PDFs; the system splits, clas
 names, files, freshness-checks, and fraud-scores them against a per-loan checklist
 template. Deep field extraction is deliberately v2.
 
-- **Spec authority:** `attached_assets/homium-analyzer-spec-v0.6.3-FINAL_1784868742753.md` —
+- **Spec authority:** `attached_assets/homium-analyzer-spec-v0.7-FINAL.md` —
   the ONLY analyzer spec. One spec authority at a time; superseded copies get deleted.
 - **Internal docs:** `internal_docs/` — `_overview.md` (architecture), `_future.md`
   (parking lot: decided-but-deferred; don't relitigate, schedule), per-feature docs

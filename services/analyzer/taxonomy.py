@@ -42,7 +42,7 @@ FORM_ID_SIGNALS: list[tuple[str, str]] = [
     ("Earnings Statement", "pay_stub"),
     ("Gift Letter", "gift_letter"),
     ("Verification of Employment", "employment_verification_letter"),
-    # Boundary-only signals (spec v0.6.3 §2 lists 1008 as a split signal). The
+    # Boundary-only signals (spec v0.7 §3 lists 1008 as a split signal). The
     # sentinel id is not in TAXONOMY, so it can only start a new segment —
     # classification runs separately and can never emit it.
     ("Uniform Underwriting and Transmittal Summary", "form_1008"),

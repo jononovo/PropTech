@@ -1,6 +1,6 @@
-# Homium Analyzer — Build Spec v0.7 (DRAFT — awaiting spec-author blessing)
+# Homium Analyzer — Build Spec v0.7 (FINAL — blessed Jul 25, 2026; supersedes ALL prior copies)
 
-**Status:** draft, Jul 24, 2026. Rebased on v0.6.3 FINAL plus everything built and learned since. **v0.6.3 (`attached_assets/homium-analyzer-spec-v0.6.3-FINAL_*.md`) stays the governing spec until the product owner blesses this file** — at that point this one supersedes all prior copies. Style unchanged: decisions, not prose.
+**Status:** FINAL — blessed by the product owner Jul 25, 2026. **This is the ONE governing spec**; v0.6.3 and every older copy are superseded and deleted from the repo (one spec authority at a time). Rebased on v0.6.3 plus everything built and validated since. Style unchanged: decisions, not prose.
 
 ---
 
@@ -73,7 +73,7 @@ Intake → pre-flight → gate (+plan pick) → parse (per plan; save per docume
 4. Judge receipts + run telemetry: **built as specced** (§5); as-built choices (2MB raw cap, nullable tokens, per-doc latency, sidecar `artifactsProduced`) ratified. parseMs calibration checked at code level Jul 25: the timer wraps the entire Mistral OCR call (single batched request) — sub-second small-packet parses are real, not a timer gap.
 5. Fraud-scoring per-run toggle: **approved (scope: fraud only, default ON) → built + validated Jul 25** (§5). Absent score = "not scored this run" — never fabricated.
 
-**Remaining step:** owner blesses this file → it moves to `attached_assets/` as v0.7 FINAL and v0.6.3 is deleted (one spec authority at a time).
+**Blessed Jul 25, 2026** — promoted to `attached_assets/` as v0.7 FINAL; both v0.6.3 copies deleted.
 
 ## 8. Ops standing notes (new since 0.6.3)
 

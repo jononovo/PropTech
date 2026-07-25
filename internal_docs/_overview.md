@@ -10,7 +10,7 @@ End-to-end flow: **sign in → pick/build template → create application → ap
 | --- | --- |
 | `_overview.md` | This file — architecture + how we build. |
 | `_future.md` | Parking lot: decided-but-deferred work. Don't relitigate; schedule. |
-| `_future/` | Deep dives for deferred/next work: `llm-questions.md`, `homium-analyzer-spec-v0.7-draft.md`, `judge-verdict-artifacts.md`. |
+| `_future/` | Deep dives for deferred/next work: `llm-questions.md`, `judge-verdict-artifacts.md`. |
 | `_pages/` | One doc per routed page: purpose, thinking, logic, quirks, done vs open/hardcoded. Start at `_pages/_index.md`. |
 | `auth.md` | Demo sign-in (4 seeded profiles, one-click). |
 | `dashboard.md` | Front door: stat strip + blockers-first "Needs you". |
@@ -40,7 +40,7 @@ pnpm monorepo, three runtime pieces + shared libs:
 | `artifacts/mockup-sandbox/` | Historical record of approved design mockups. Not production code. |
 | `docs/` | Product specs: `homium-product-spec.md` (handoff), `homium-template-schema-spec.md` (template JSON contract). |
 
-The analyzer build spec **v0.6.3 FINAL** (`attached_assets/homium-analyzer-spec-v0.6.3-FINAL_*.md`) governs the engine. A rebased **v0.7 draft** — current reality: per-run model plans, auto-proceed suspended, review room + placements, parser status — sits at `internal_docs/_future/homium-analyzer-spec-v0.7-draft.md` awaiting spec-author blessing; until then v0.6.3 wins.
+The analyzer build spec **v0.7 FINAL** (`attached_assets/homium-analyzer-spec-v0.7-FINAL.md`, blessed Jul 25, 2026) governs the engine — per-run model plans, Mistral OCR 4 default parse, review room + placements, judge receipts + run telemetry. It supersedes all prior copies.
 
 ## How we build
 

@@ -11,11 +11,17 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { TemplateListing } from "@workspace/api-client-react";
+import { useToast } from "@/hooks/use-toast";
+
+/** Server derives the family id from the name with this same rule. */
+const slugify = (name: string): string =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 export function TemplateLibrary() {
   const { data: templates = [], isLoading, error } = useListTemplates();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const createVersion = useCreateNewVersion();
@@ -43,13 +49,25 @@ export function TemplateLibrary() {
   }, {} as Record<string, { family: string, name: string, program: string, versions: TemplateListing[] }>));
 
   const handleCreateTemplate = () => {
+    // The server 409s on an existing family (family id = slug of the name), so
+    // a fixed default name only ever works once. Pick the first free one:
+    // "New Template", "New Template 2", ...
+    const taken = new Set(templates.map((t) => t.family));
+    let name = "New Template";
+    for (let n = 2; taken.has(slugify(name)); n++) name = `New Template ${n}`;
     createTpl.mutate(
-      { data: { name: "New Template", program: "General" } },
+      { data: { name, program: "General" } },
       {
         onSuccess: (res) => {
           queryClient.invalidateQueries({ queryKey: getListTemplatesQueryKey() });
           setLocation(`/builder/${res.family}/${res.version}`);
-        }
+        },
+        onError: (err: unknown) => {
+          const msg =
+            (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+            (err instanceof Error ? err.message : "unknown error");
+          toast({ description: `Template not created — ${msg}` });
+        },
       }
     );
   };

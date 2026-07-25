@@ -1,6 +1,6 @@
 # Analyzer — the engine (Python worker)
 
-FastAPI worker (`services/analyzer/`, uvicorn :8000). Governed by the analyzer build spec **v0.6.3 FINAL** (`attached_assets/homium-analyzer-spec-v0.6.3-FINAL_*.md`) — the source of truth for pipeline decisions; supersedes everything older.
+FastAPI worker (`services/analyzer/`, uvicorn :8000). Governed by the analyzer build spec **v0.7 FINAL** (`attached_assets/homium-analyzer-spec-v0.7-FINAL.md`) — the source of truth for pipeline decisions; supersedes everything older.
 
 Talks to the portal **only through the public API**: pulls the packet via `GET /packet/file`, POSTs exactly one run to `POST /applications/{id}/analysis`, reports failure via `POST /packet/run-failed`. Its own `store/` working dir is local by design (engine workspace; re-fetches bytes per run; gitignored).
 

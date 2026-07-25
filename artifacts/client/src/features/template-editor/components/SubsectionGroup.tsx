@@ -36,6 +36,10 @@ export function SubsectionGroup({
     data: { payload: { type: "subsection", subsectionId: subsection.id, sectionId, index } },
     disabled: readOnly,
   });
+  // Registered on the WHOLE card (not just the inner list): with pointerWithin
+  // collision, an inner-only droppable leaves the header row as dead space and
+  // block drops there silently void. Block cards still beat this container in
+  // collision, so precise reordering is unaffected.
   const dropList = useDroppable({
     id: `blocklist:${subsection.id}`,
     data: { payload: { type: "block-list", subsectionId: subsection.id } },
@@ -43,7 +47,10 @@ export function SubsectionGroup({
 
   return (
     <div
-      ref={sortable.setNodeRef}
+      ref={(el) => {
+        sortable.setNodeRef(el);
+        dropList.setNodeRef(el);
+      }}
       style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
       className={`relative ${sortable.isDragging ? "opacity-40" : ""}`}
       data-testid={`subsection-${subsection.id}`}
@@ -82,7 +89,6 @@ export function SubsectionGroup({
       </div>
 
       <div
-        ref={dropList.setNodeRef}
         className={`space-y-2.5 ml-4 rounded-[4px] transition-colors ${dropList.isOver ? "bg-[#EFF6FF] outline outline-1 outline-[#BFDBFE] -m-1 p-1 ml-3" : ""}`}
       >
         <SortableContext

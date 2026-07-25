@@ -40,6 +40,10 @@ export function SectionCard({
     data: { payload: { type: "section", sectionId: section.id, index } },
     disabled: readOnly,
   });
+  // Registered on the WHOLE card: an inner-only droppable makes the section
+  // header dead space for subsection drops (silent void under pointerWithin),
+  // and a collapsed section unmounts the inner area entirely. Subsection cards
+  // still beat this container in collision, so sorting stays precise.
   const dropArea = useDroppable({
     id: `sectionarea:${section.id}`,
     data: { payload: { type: "section-area", sectionId: section.id } },
@@ -53,9 +57,12 @@ export function SectionCard({
 
   return (
     <div
-      ref={sortable.setNodeRef}
+      ref={(el) => {
+        sortable.setNodeRef(el);
+        dropArea.setNodeRef(el);
+      }}
       style={{ transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition }}
-      className={`relative mb-10 last:mb-0 ${sortable.isDragging ? "opacity-40" : ""}`}
+      className={`relative mb-10 last:mb-0 ${sortable.isDragging ? "opacity-40" : ""} ${collapsed && dropArea.isOver ? "bg-[#EFF6FF] rounded-[4px]" : ""}`}
       data-testid={`section-${section.id}`}
     >
       <div className="flex items-center group mb-4 relative z-20">

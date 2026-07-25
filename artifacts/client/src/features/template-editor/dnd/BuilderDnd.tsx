@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   DndContext,
@@ -9,7 +9,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DragMoveEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
@@ -17,65 +17,142 @@ import type { Template } from "@workspace/api-client-react";
 import { findBlock, findSubsection } from "../state/templateTree";
 import type { TemplateAction } from "../state/templateActions";
 import { builderCollisionDetection, type DragPayload, type DropPayload } from "./dndModel";
-import { DropIndicatorContext, type DropSide } from "./dropIndicator";
 
 const PALETTE_LABELS = { section: "Section", subsection: "Subsection", document: "Document upload", fields: "Field group" } as const;
 const END = Number.MAX_SAFE_INTEGER; // reducer clamps to list length
 
+type DraftSnapshot = { template: Template; dirty: boolean };
+
 /**
- * The DnD adapter: mounts the single DndContext and translates drops into the
- * SAME reducer actions the click-to-add buttons dispatch. Standard sortable
- * convention throughout: hovering an item's upper half inserts above it,
- * lower half below — tracked on drag-move, rendered by the cards via
- * DropIndicatorContext, applied to the insert index on drop.
- * Finalize-on-drop only; nothing outside dnd/ imports @dnd-kit.
+ * The DnD adapter, kit-native (dnd-kit's standard multi-container pattern):
+ *
+ * - Same-container position preview comes from @dnd-kit/sortable's own
+ *   sibling transforms — no custom indicator.
+ * - Cross-container drags transfer the item LIVE in onDragOver (the real
+ *   reducer MOVE, safe because ids are stable), so the preview is identical
+ *   everywhere; onDragEnd only fixes the final position within the list.
+ * - Esc or dropping outside any target restores the pre-drag snapshot.
+ * - Palette / saved-section drags create nothing until drop: the container
+ *   highlight shows the target list and the new item appends to its end.
+ *
+ * Every drop still resolves to the SAME reducer actions the buttons dispatch;
+ * nothing outside dnd/ imports @dnd-kit.
  */
 export function BuilderDnd({
   template,
   dispatch,
+  getSnapshot,
+  restoreSnapshot,
   children,
 }: {
   template: Template;
   dispatch: (a: TemplateAction) => void;
+  getSnapshot: () => DraftSnapshot | null;
+  restoreSnapshot: (s: DraftSnapshot) => void;
   children: React.ReactNode;
 }) {
   const [active, setActive] = useState<DragPayload | null>(null);
-  const [over, setOver] = useState<{ id: string; side: DropSide } | null>(null);
+  const preDrag = useRef<DraftSnapshot | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const onDragStart = (e: DragStartEvent) =>
+  const onDragStart = (e: DragStartEvent) => {
+    preDrag.current = getSnapshot();
     setActive((e.active.data.current?.["payload"] as DragPayload) ?? null);
-
-  const onDragMove = (e: DragMoveEvent) => {
-    const overNode = e.over;
-    const activeRect = e.active.rect.current.translated ?? e.active.rect.current.initial;
-    if (!overNode || !activeRect) {
-      setOver(null);
-      return;
-    }
-    const drop = overNode.data.current?.["payload"] as DropPayload | undefined;
-    const isItem = drop && (drop.type === "section" || drop.type === "subsection" || drop.type === "block");
-    if (!isItem) {
-      setOver(null);
-      return;
-    }
-    const activeMidY = activeRect.top + activeRect.height / 2;
-    const overMidY = overNode.rect.top + overNode.rect.height / 2;
-    setOver({ id: String(overNode.id), side: activeMidY < overMidY ? "above" : "below" });
   };
 
-  const onDragEnd = (e: DragEndEvent) => {
-    const after = over?.side === "below";
-    setActive(null);
-    setOver(null);
+  /** Live cross-container transfer. Payloads re-render after each move, so
+   * `drag` always reflects the item's CURRENT container — the same-container
+   * guard makes this settle instead of oscillate. */
+  const onDragOver = (e: DragOverEvent) => {
     const drag = e.active.data.current?.["payload"] as DragPayload | undefined;
     const drop = e.over?.data.current?.["payload"] as DropPayload | undefined;
     if (!drag || !drop) return;
-    const action = dropToAction(drag, drop, after);
-    if (action) dispatch(action);
+
+    if (drag.type === "block") {
+      const toSubsectionId =
+        drop.type === "block" ? drop.subsectionId : drop.type === "block-list" ? drop.subsectionId : null;
+      if (toSubsectionId && toSubsectionId !== drag.subsectionId) {
+        dispatch({
+          type: "MOVE_BLOCK",
+          blockId: drag.blockId,
+          toSubsectionId,
+          toIndex: drop.type === "block" ? drop.index : END,
+        });
+      }
+      return;
+    }
+    if (drag.type === "subsection") {
+      const toSectionId =
+        drop.type === "subsection" ? drop.sectionId : drop.type === "section-area" ? drop.sectionId : null;
+      if (toSectionId && toSectionId !== drag.sectionId) {
+        dispatch({
+          type: "MOVE_SUBSECTION",
+          subsectionId: drag.subsectionId,
+          toSectionId,
+          toIndex: drop.type === "subsection" ? drop.index : END,
+        });
+      }
+    }
+  };
+
+  const onDragEnd = (e: DragEndEvent) => {
+    setActive(null);
+    const drag = e.active.data.current?.["payload"] as DragPayload | undefined;
+    const drop = e.over?.data.current?.["payload"] as DropPayload | undefined;
+    const snapshot = preDrag.current;
+    preDrag.current = null;
+    if (!drag) return;
+
+    // Dropped outside any legal target → the drag is void; any live
+    // transfers that happened along the way are rolled back.
+    if (!drop) {
+      if (snapshot) restoreSnapshot(snapshot);
+      return;
+    }
+
+    if (drag.type === "palette" || drag.type === "saved-section") {
+      const action = paletteDropAction(drag, drop);
+      if (action) dispatch(action);
+      return;
+    }
+
+    // Existing items: cross-container transfers already happened in
+    // onDragOver — what's left is the final position within the list
+    // (arrayMove semantics mapped to the reducer's insert-before contract).
+    const insertBefore = (overIndex: number, activeIndex: number) =>
+      overIndex > activeIndex ? overIndex + 1 : overIndex;
+
+    if (drag.type === "block" && drop.type === "block" && drop.blockId !== drag.blockId) {
+      dispatch({
+        type: "MOVE_BLOCK",
+        blockId: drag.blockId,
+        toSubsectionId: drop.subsectionId,
+        toIndex: insertBefore(drop.index, drag.index),
+      });
+    } else if (drag.type === "subsection" && drop.type === "subsection" && drop.subsectionId !== drag.subsectionId) {
+      dispatch({
+        type: "MOVE_SUBSECTION",
+        subsectionId: drag.subsectionId,
+        toSectionId: drop.sectionId,
+        toIndex: insertBefore(drop.index, drag.index),
+      });
+    } else if (drag.type === "section" && drop.type === "section" && drop.sectionId !== drag.sectionId) {
+      dispatch({
+        type: "MOVE_SECTION",
+        sectionId: drag.sectionId,
+        toIndex: insertBefore(drop.index, drag.index),
+      });
+    }
+  };
+
+  const onDragCancel = () => {
+    setActive(null);
+    const snapshot = preDrag.current;
+    preDrag.current = null;
+    if (snapshot) restoreSnapshot(snapshot);
   };
 
   return (
@@ -84,14 +161,11 @@ export function BuilderDnd({
       collisionDetection={builderCollisionDetection}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={onDragStart}
-      onDragMove={onDragMove}
+      onDragOver={onDragOver}
       onDragEnd={onDragEnd}
-      onDragCancel={() => {
-        setActive(null);
-        setOver(null);
-      }}
+      onDragCancel={onDragCancel}
     >
-      <DropIndicatorContext.Provider value={over}>{children}</DropIndicatorContext.Provider>
+      {children}
       {createPortal(
         <DragOverlay dropAnimation={null}>
           {active && (
@@ -121,77 +195,26 @@ function overlayLabel(template: Template, p: DragPayload): string {
   }
 }
 
-/**
- * The single mapping from a drop to a reducer action. `after` = pointer was
- * below the hovered item's midpoint, so the insert lands AFTER it. Moves
- * address the dragged item by id (the WHAT); indices only say WHERE — the
- * reducer resolves the source position itself, so a stale index can never
- * move the wrong item.
- */
-function dropToAction(drag: DragPayload, drop: DropPayload, after: boolean): TemplateAction | null {
-  const at = (index: number) => index + (after ? 1 : 0);
-  switch (drag.type) {
-    case "palette":
-      if (drag.kind === "section")
-        return drop.type === "section"
-          ? { type: "ADD_SECTION", atIndex: at(drop.index) }
-          : { type: "ADD_SECTION" };
-      if (drag.kind === "subsection") {
-        if (drop.type === "subsection")
-          return { type: "ADD_SUBSECTION", sectionId: drop.sectionId, atIndex: at(drop.index) };
-        if (drop.type === "section-area") return { type: "ADD_SUBSECTION", sectionId: drop.sectionId };
-        return null;
-      }
-      if (drop.type === "block")
-        return { type: "ADD_BLOCK", subsectionId: drop.subsectionId, kind: drag.kind, atIndex: at(drop.index) };
-      if (drop.type === "block-list")
-        return { type: "ADD_BLOCK", subsectionId: drop.subsectionId, kind: drag.kind };
-      return null;
-
-    case "saved-section":
-      return {
-        type: "INSERT_SAVED_SECTION",
-        section: drag.section,
-        ...(drop.type === "section" ? { atIndex: at(drop.index) } : {}),
-      };
-
+/** New items append to the end of the hovered container (the highlight is
+ * the cue); repositioning afterwards gets the full live preview. */
+function paletteDropAction(
+  drag: Extract<DragPayload, { type: "palette" | "saved-section" }>,
+  drop: DropPayload,
+): TemplateAction | null {
+  if (drag.type === "saved-section") return { type: "INSERT_SAVED_SECTION", section: drag.section };
+  switch (drag.kind) {
     case "section":
-      if (drop.type === "section" && drop.sectionId !== drag.sectionId)
-        return { type: "MOVE_SECTION", sectionId: drag.sectionId, toIndex: at(drop.index) };
-      return null;
-
-    case "subsection":
-      if (drop.type === "subsection" && drop.subsectionId !== drag.subsectionId)
-        return {
-          type: "MOVE_SUBSECTION",
-          subsectionId: drag.subsectionId,
-          toSectionId: drop.sectionId,
-          toIndex: at(drop.index),
-        };
-      if (drop.type === "section-area" && drop.sectionId !== drag.sectionId)
-        return {
-          type: "MOVE_SUBSECTION",
-          subsectionId: drag.subsectionId,
-          toSectionId: drop.sectionId,
-          toIndex: END,
-        };
-      return null;
-
-    case "block":
-      if (drop.type === "block" && drop.blockId !== drag.blockId)
-        return {
-          type: "MOVE_BLOCK",
-          blockId: drag.blockId,
-          toSubsectionId: drop.subsectionId,
-          toIndex: at(drop.index),
-        };
-      if (drop.type === "block-list")
-        return {
-          type: "MOVE_BLOCK",
-          blockId: drag.blockId,
-          toSubsectionId: drop.subsectionId,
-          toIndex: END,
-        };
-      return null;
+      return { type: "ADD_SECTION" };
+    case "subsection": {
+      const sectionId =
+        drop.type === "section-area" ? drop.sectionId : drop.type === "subsection" ? drop.sectionId : null;
+      return sectionId ? { type: "ADD_SUBSECTION", sectionId } : null;
+    }
+    case "document":
+    case "fields": {
+      const subsectionId =
+        drop.type === "block-list" ? drop.subsectionId : drop.type === "block" ? drop.subsectionId : null;
+      return subsectionId ? { type: "ADD_BLOCK", subsectionId, kind: drag.kind } : null;
+    }
   }
 }

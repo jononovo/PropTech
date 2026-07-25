@@ -105,7 +105,12 @@ export function TemplateEditor() {
         )}
       </header>
 
-      <BuilderDnd template={template} dispatch={draft.dispatch}>
+      <BuilderDnd
+        template={template}
+        dispatch={draft.dispatch}
+        getSnapshot={draft.getSnapshot}
+        restoreSnapshot={draft.restoreSnapshot}
+      >
         <div className="flex flex-1 overflow-hidden">
           <Palette
             template={template}

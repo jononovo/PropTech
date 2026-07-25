@@ -6,7 +6,6 @@ import { ChevronDown, ChevronRight, GripVertical, MoreHorizontal } from "lucide-
 import type { Section, Template } from "@workspace/api-client-react";
 import type { TemplateAction } from "../state/templateActions";
 import { SubsectionGroup } from "./SubsectionGroup";
-import { DropRule, useDropIndicator } from "../dnd/dropIndicator";
 
 const OWNERS: Section["owner"][] = ["Applicant", "Originator", "Escrow", "Homium"];
 
@@ -36,7 +35,6 @@ export function SectionCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const [permsOpen, setPermsOpen] = useState(false);
 
-  const indicator = useDropIndicator(`section:${section.id}`);
   const sortable = useSortable({
     id: `section:${section.id}`,
     data: { payload: { type: "section", sectionId: section.id, index } },
@@ -60,7 +58,6 @@ export function SectionCard({
       className={`relative mb-10 last:mb-0 ${sortable.isDragging ? "opacity-40" : ""}`}
       data-testid={`section-${section.id}`}
     >
-      {indicator && <DropRule side={indicator} />}
       <div className="flex items-center group mb-4 relative z-20">
         <button
           onClick={() => setCollapsed(!collapsed)}

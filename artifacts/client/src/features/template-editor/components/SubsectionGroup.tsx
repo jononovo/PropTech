@@ -5,7 +5,6 @@ import { GripVertical, Trash2 } from "lucide-react";
 import type { Subsection, Template } from "@workspace/api-client-react";
 import type { TemplateAction } from "../state/templateActions";
 import { BlockCard } from "./BlockCard";
-import { DropRule, useDropIndicator } from "../dnd/dropIndicator";
 import { BlockEditor } from "./BlockEditor";
 
 /**
@@ -32,7 +31,6 @@ export function SubsectionGroup({
   onEditBlock: (id: string | null) => void;
   dispatch: (a: TemplateAction) => void;
 }) {
-  const indicator = useDropIndicator(`sub:${subsection.id}`);
   const sortable = useSortable({
     id: `sub:${subsection.id}`,
     data: { payload: { type: "subsection", subsectionId: subsection.id, sectionId, index } },
@@ -50,7 +48,6 @@ export function SubsectionGroup({
       className={`relative ${sortable.isDragging ? "opacity-40" : ""}`}
       data-testid={`subsection-${subsection.id}`}
     >
-      {indicator && <DropRule side={indicator} />}
       <div className="mb-3 -ml-[25px] bg-[#F3F5F7] px-1 inline-flex items-center gap-1.5 group/sub">
         {!readOnly && (
           <span

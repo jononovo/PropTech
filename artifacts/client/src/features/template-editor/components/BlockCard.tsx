@@ -3,7 +3,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import type { Block, Template } from "@workspace/api-client-react";
 import { DocDimensions } from "../../dimensions/DocDimensions";
-import { DropRule, useDropIndicator } from "../dnd/dropIndicator";
 import { expiryLabel } from "../../dimensions/helpers";
 
 /**
@@ -28,7 +27,6 @@ export function BlockCard({
   onEdit: () => void;
   onRemove: () => void;
 }) {
-  const indicator = useDropIndicator(`block:${block.id}`);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: `block:${block.id}`,
     data: { payload: { type: "block", blockId: block.id, subsectionId, index } },
@@ -45,7 +43,6 @@ export function BlockCard({
       } ${isDragging ? "opacity-40" : ""}`}
       onClick={() => !readOnly && onEdit()}
     >
-      {indicator && <DropRule side={indicator} />}
       {!readOnly && (
         <span
           {...attributes}

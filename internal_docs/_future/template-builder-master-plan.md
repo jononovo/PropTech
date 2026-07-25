@@ -67,9 +67,16 @@ template-editor/
 ```
 
 - **DnD tech:** `@dnd-kit/core@6.3.1 + sortable@10.0.0 + utilities@3.2.2` (pins verified against
-  npm + React 19.1; the experimental `@dnd-kit/react` 0.x is deliberately NOT used). Finalize-on-drop
-  only (no onDragOver mutations) — simpler, immune to cross-container key-churn crashes; DragOverlay
-  gives feedback. All @dnd-kit imports confined to `dnd/` for cheap future swaps.
+  npm + React 19.1; the experimental `@dnd-kit/react` 0.x is deliberately NOT used). **Kit-native
+  live preview everywhere** (owner decision Jul 25): same-container position preview via sortable's
+  own sibling transforms; cross-container drags transfer the item LIVE in onDragOver (real reducer
+  MOVE — safe because ids are stable and never re-minted), so the preview is identical across
+  sections/subsections. Esc or releasing over empty space restores the pre-drag snapshot. Collision
+  is pointer-based (rect overlap only for keyboard), measuring=Always because containers resize
+  during live transfers. Palette/saved-section drags create nothing until drop: container highlight
+  marks the target list, the new item appends at its end, repositioning then gets full live preview.
+  No custom drop indicator exists — one feedback system, the kit's. All @dnd-kit imports confined
+  to `dnd/` for cheap future swaps.
 - **No API/codegen changes** — PUT already accepts the full contract; server owns version/status.
 
 ## 4. Verified in browser (Jul 25, local, real API round-trips)

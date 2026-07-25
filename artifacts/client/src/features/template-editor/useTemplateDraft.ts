@@ -41,6 +41,17 @@ export function useTemplateDraft(family: string, version: number) {
     }
   }, [query.data, family, version]);
 
+  /** Snapshot/restore for drag lifecycles: Esc or an aborted drop puts the
+   * draft back exactly as it was when the drag started (incl. dirty flag). */
+  const getSnapshot = useCallback(
+    () => (template ? { template, dirty } : null),
+    [template, dirty],
+  );
+  const restoreSnapshot = useCallback((s: { template: Template; dirty: boolean }) => {
+    setTemplate(s.template);
+    setDirty(s.dirty);
+  }, []);
+
   const dispatch = useCallback((action: TemplateAction) => {
     setTemplate((prev) => {
       if (!prev) return prev;
@@ -90,6 +101,8 @@ export function useTemplateDraft(family: string, version: number) {
   return {
     template,
     dispatch,
+    getSnapshot,
+    restoreSnapshot,
     dirty,
     save,
     saving: saveMutation.isPending,

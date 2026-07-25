@@ -1,9 +1,4 @@
-import {
-  closestCorners,
-  pointerWithin,
-  rectIntersection,
-  type CollisionDetection,
-} from "@dnd-kit/core";
+import { pointerWithin, rectIntersection, type CollisionDetection } from "@dnd-kit/core";
 import type { Section } from "@workspace/api-client-react";
 
 /**
@@ -72,9 +67,12 @@ export const builderCollisionDetection: CollisionDetection = (args) => {
     return items.length > 0 ? items : collisions;
   };
 
-  const within = pointerWithin(scoped);
-  if (within.length > 0) return specific(within);
-  const intersecting = rectIntersection(scoped);
-  if (intersecting.length > 0) return specific(intersecting);
-  return closestCorners(scoped);
+  // Pointer-based when a pointer exists: targets are exactly what the cursor
+  // is inside, and genuinely empty space yields over=null so an aborted drag
+  // rolls back ("pull it out → it goes back"). Rect overlap would defeat
+  // both — block cards are nearly full-width, so their translated rect still
+  // overlaps the canvas from the margin. Keyboard drags have no pointer and
+  // use rect overlap instead.
+  if (args.pointerCoordinates) return specific(pointerWithin(scoped));
+  return specific(rectIntersection(scoped));
 };

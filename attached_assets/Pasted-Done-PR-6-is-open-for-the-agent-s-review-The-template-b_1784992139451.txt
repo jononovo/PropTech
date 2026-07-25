@@ -1,0 +1,14 @@
+Done — PR #6 is open for the agent's review. The template builder went from unwired mockup to fully working, and everything you asked for was verified in the browser before the PR went up:
+
+What's in it:
+
+Click-to-add AND full drag-and-drop — palette drag-in, section reorder, subsection moves, block reorder, and cross-section block moves. Plus the internal reordering you specifically called out as missing.
+Advanced editor with every contract field — Requirement, Weight, Sourcing (never existed before), formats, docType (with the future-taxonomy guard), multi-page, real expiry editor (no clock / stale-after-N-days / hard), the alternatives picker, permission toggles that actually toggle, and a fields editor for field-group blocks.
+Architecture per the master plan (in the repo at internal_docs/_future/template-builder-master-plan.md, written for the agent): one pure reducer owns every mutation — buttons and drags dispatch identical actions; DnD is a thin adapter confined to one folder; 15 well-named files, all ≈≤250 lines; data-testid everywhere.
+The trap is structurally dead: IDs mint once at creation; moves cannot re-mint (12 unit-test groups prove it, including "reorder/move ⇒ ID set unchanged" — the exact test the agent asked for); deletes prune alternative groups so saves can't 400.
+Browser proof (no assumptions, per your instruction): built a template by clicking, set critical + 90-day staleness in the dropdowns, saved, hard-reloaded — persisted. Then dragged: palette→canvas, block reorder, saved-section insert, section reorder, and a cross-section block move — and confirmed in the saved JSON that the moved block kept its ID and its config. One honest note: dnd-kit needs real mouse movement, so my automated drags used stepped pointer events — worth the agent's tester (or your hand) re-confirming drag feel on Replit.
+
+Deliberately not built (documented with reasons): live preview pane, fancy drop-indicator styling, undo/redo. No scope surprises for the reviewer.
+
+Merge flow as agreed: agent reviews PR #6 → you merge → sync Replit. PR #5 (the spec draft) is still open alongside it.
+

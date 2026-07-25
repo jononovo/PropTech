@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ApplicationFieldValues } from './applicationFieldValues';
+import type { ApplicationMaterializationErrors } from './applicationMaterializationErrors';
 import type { ApplicationUploads } from './applicationUploads';
 import type { ApplicationVariants } from './applicationVariants';
 import type { ApplicationVerdicts } from './applicationVerdicts';
@@ -31,6 +32,8 @@ export interface Application {
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
+  /** blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned. */
+  materializationErrors?: ApplicationMaterializationErrors;
   /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
   variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */

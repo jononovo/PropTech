@@ -59,6 +59,8 @@ export interface CaseReq {
   coveredBy?: string;
   /** set blocks only — this application's variants with their tagged uploads */
   variants?: { variant: ApplicationVariant; uploads: UploadedFile[] }[];
+  /** approval materialization failed — verdict stands, retry available */
+  materializationError?: { message: string; at: string };
   /** effective dates — verdict-confirmed values win over analyzer suggestions */
   documentDate?: string;
   expiryDate?: string;
@@ -237,6 +239,8 @@ export function buildCaseModel(
           today,
           closing,
         });
+        const matError = app.materializationErrors?.[block.id];
+        if (matError) req.materializationError = matError;
         if (block.arity === 'set') {
           const uploads = app.uploads[block.id] ?? [];
           req.variants = (app.variants?.[block.id] ?? []).map((variant) => ({

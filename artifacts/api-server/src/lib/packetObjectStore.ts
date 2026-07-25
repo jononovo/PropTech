@@ -70,6 +70,10 @@ const pageThumbnailKey = (applicationId: string, page: number): string =>
   `packets/${applicationId}/thumbs/page-${page}.png`;
 const intakeUploadKey = (applicationId: string, blockId: string, filename: string): string =>
   `uploads/${applicationId}/${blockId}/${filename}`;
+// Approved registry bytes — flat per application, paired same-basename .pdf/.md
+// (set-blocks master plan, storage option B). Existing prefixes never move.
+const approvedKey = (applicationId: string, basename: string, ext: "pdf" | "md"): string =>
+  `approved/${applicationId}/${basename}.${ext}`;
 
 /** Upload the accepted packet PDF from its local staging path. Re-upload overwrites. */
 export async function putPacketPdf(applicationId: string, localPdfPath: string): Promise<void> {
@@ -134,6 +138,40 @@ export async function openPacketPdfStream(applicationId: string): Promise<Readab
 /** Readable stream of one page thumbnail, or undefined when no object exists. */
 export async function openPageThumbnailStream(applicationId: string, page: number): Promise<Readable | undefined> {
   return openStream(pageThumbnailKey(applicationId, page));
+}
+
+/** Readable stream of one intake upload, or undefined when no object exists. */
+export async function openIntakeUploadStream(
+  applicationId: string,
+  blockId: string,
+  filename: string,
+): Promise<Readable | undefined> {
+  return openStream(intakeUploadKey(applicationId, blockId, filename));
+}
+
+/** Write one approved-registry object (pdf bytes or md sidecar). Overwrite = retry semantics. */
+export async function putApprovedObject(
+  applicationId: string,
+  basename: string,
+  ext: "pdf" | "md",
+  bytes: Buffer,
+): Promise<void> {
+  const key = approvedKey(applicationId, basename, ext);
+  const contentType = ext === "pdf" ? "application/pdf" : "text/markdown";
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => writeFile(dest, bytes));
+    return;
+  }
+  await gcsFile(key).save(bytes, { contentType, resumable: false });
+}
+
+/** Readable stream of one approved-registry object, or undefined when missing. */
+export async function openApprovedObjectStream(
+  applicationId: string,
+  basename: string,
+  ext: "pdf" | "md",
+): Promise<Readable | undefined> {
+  return openStream(approvedKey(applicationId, basename, ext));
 }
 
 async function openStream(key: string): Promise<Readable | undefined> {

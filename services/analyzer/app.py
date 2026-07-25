@@ -80,6 +80,20 @@ def run_page_image(application_id: str, run_id: str, page: int, size: str = "ful
     return FileResponse(strip, media_type="image/png")
 
 
+@app.get("/store/{application_id}/{run_id}/md/{page}")
+def run_page_markdown(application_id: str, run_id: str, page: int) -> FileResponse:
+    """Per-page parse markdown for a landed run — fetched by the portal at
+    approval time to build the approved document's .md sidecar."""
+    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(run_id)):
+        raise HTTPException(status_code=400, detail="Invalid path segment")
+    if page < 1:
+        raise HTTPException(status_code=400, detail="Invalid page")
+    src = Path(config.STORE_DIR) / application_id / run_id / "md" / f"p{page}.md"
+    if not src.exists():
+        raise HTTPException(status_code=404, detail="Page markdown not found")
+    return FileResponse(src, media_type="text/markdown")
+
+
 @app.post("/runs", status_code=202)
 async def kick_run(req: RunRequest, background: BackgroundTasks) -> dict:
     async with _lock:

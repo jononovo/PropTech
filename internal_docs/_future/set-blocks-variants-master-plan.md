@@ -76,7 +76,9 @@ count them. Today's leak: `caseData.ts` counts `clean` (analyzer-filed, no flags
     per-variant upload button, delete (×) with loud error toast when refused.
   - `WorkfilePage.tsx` renders the panel for `arity:"set"` blocks.
 
-## Phase 3 — Approval materialization + approved store (option B)
+## Phase 3 — Approval materialization + approved store (option B) — SHIPPED Jul 25, 2026
+
+Shipped: `approved_documents` table (append-only, supersede-not-delete), `features/approved-docs/` (registry/frontmatter/materialize/router), ONE materialization seam (`materializeApproval`) called by single-block accept now and the future per-document flow later. Flat `approved/<appId>/<basename>.pdf+.md` in App Storage; extract mode (pdf-lib pages from packet + worker per-page md via new `/store/{app}/{run}/md/{page}`) and copy mode (direct PDF upload). Failures loud: `Application.materializationErrors[blockId]` + retry endpoint + red bar w/ Retry on accepted ReqCard. Set blocks 409 at block level (await per-document flow).
 - New api-server feature folder `features/approved-docs/`:
   - `approvedObjectStore.ts` — same storage backend, new prefix. Flat per app: `approved/<applicationId>/<basename>.pdf` + `.md`. Basename = `<blockSlug>_<variantSlug>_<date-or-period>[_<seq>]`, slugified descriptor values (user's example: `account_1234_j_d_smith_2024_04_24_B.pdf|.md`).
   - `extract.ts` — `extractPages(packetBytes, ranges): Buffer` via pdf-lib.

@@ -12,6 +12,7 @@ import {
   useRecordVerdict,
   useAddVariant,
   useDeleteVariant,
+  useMaterializeApprovedDoc,
   useUpdateApplication,
   useUpgradeTemplateVersion,
   useUploadDocument,
@@ -268,6 +269,30 @@ export function usePacketActions(applicationId: string) {
     );
 
   return { uploadPacket, decide, upload, gate };
+}
+
+/** Retry approval materialization after a loud failure (worker/storage). */
+export function useMaterializeRetry(applicationId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const mutation = useMaterializeApprovedDoc({
+    mutation: {
+      // invalidate on error too — the failure timestamp/message on the app changed
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: getGetApplicationQueryKey(applicationId) });
+      },
+      onError: (err: unknown) => toast({ description: `Materialization failed again — ${errText(err)}` }),
+    },
+  });
+
+  const retry = (blockId: string) =>
+    mutation.mutate(
+      { applicationId, blockId },
+      { onSuccess: () => toast({ description: 'Document materialized to the approved registry.' }) },
+    );
+
+  return { retry, isPending: mutation.isPending };
 }
 
 /**

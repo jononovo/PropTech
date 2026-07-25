@@ -7,8 +7,16 @@ User rulings (Jul 25, 2026):
 - Variants are GENERIC (accounts, persons, …) and declared PER-APPLICATION; the template only declares the shape (variant noun + descriptor field keys + docs-per-variant rules). Never bake accounts into templates.
 - Storage: option B — flat `approved/<appId>/` folder, paired same-basename `.pdf` + `.md` (YAML front matter with scores/desc/provenance). NO moving of existing storage.
 - Physical extraction at APPROVAL ONLY; pre-approval splits stay in the intake/run flow, never in the approved registry.
+- Phase 3 SHIPPED Jul 25 2026: append-only approved_documents registry, one materialization seam, flat approved/<appId>/ store, loud materializationErrors + retry; worker now serves per-page md over HTTP. Set blocks 409 at block-level accept until per-document flow exists.
 - Cost of satisfaction pass: user said don't worry; fold into existing gate anyway.
 - Docs-per-variant counts are GUIDANCE only ("typically N"), never a hard requirement — sequence means "one or more"; one doc never fails it. No recency field in variant rules — the block's existing expiry clock owns recency (a duplicate field was added and removed same day).
+
+Rulings (Jul 25, 2026, evening):
+- Approval unit = DOCUMENT (e.g. one 3-page statement inside a merged PDF), tagged to block+variant; page decisions are a pre-step, roll-up prompt confirms; partial approval allowed but marked incomplete. Full flow needs canvas mockups — see internal_docs/_future/document-approval-flow.md. Phase 3 machinery must expose ONE materialization function both block-accept (singles) and the future per-document flow call.
+- Re-acceptance: supersede old approved rows (keep + link), never delete/refuse.
+- Materialization failure: verdict stands, registry row missing, loud error with reason + retry.
+- Variant shapes should become savable/preset library later (internal_docs/_future/variant-shape-library.md); single-variant set blocks are legitimate (shape = naming convention).
+- Packet ≠ one PDF long-term: multi-file intake manifest with per-file X (internal_docs/_future/multi-file-intake.md); v1 deliberately minimal.
 
 **Why:** these override the other agent's addendum draft (which assumed v0.6.3 and auto-discovery-only identity).
 **How to apply:** follow the master plan phases; all contract changes additive; descriptor KEYS are mint-stable (rename labels, not keys).

@@ -29,8 +29,10 @@ import type {
   ApplicationSummary,
   ApplicationUpdate,
   ApplicationVariant,
+  ApprovedDocument,
   DocumentUpload,
   FieldValues,
+  GetApprovedDocFileParams,
   GetRunPageImageParams,
   HealthStatus,
   LoginInput,
@@ -1732,6 +1734,251 @@ export const useDeleteVariant = <TError = ErrorType<ApiMessage>,
       > => {
       return useMutation(getDeleteVariantMutationOptions(options));
     }
+
+export const getListApprovedDocsUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/approved-docs`
+}
+
+/**
+ * @summary The approved-document registry for an application (newest first, superseded rows included)
+ */
+export const listApprovedDocs = async (applicationId: string, options?: RequestInit): Promise<ApprovedDocument[]> => {
+
+  return customFetch<ApprovedDocument[]>(getListApprovedDocsUrl(applicationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListApprovedDocsQueryKey = (applicationId: string,) => {
+    return [
+    `/api/applications/${applicationId}/approved-docs`
+    ] as const;
+    }
+
+
+export const getListApprovedDocsQueryOptions = <TData = Awaited<ReturnType<typeof listApprovedDocs>>, TError = ErrorType<unknown>>(applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApprovedDocs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListApprovedDocsQueryKey(applicationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listApprovedDocs>>> = ({ signal }) => listApprovedDocs(applicationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listApprovedDocs>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListApprovedDocsQueryResult = NonNullable<Awaited<ReturnType<typeof listApprovedDocs>>>
+export type ListApprovedDocsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary The approved-document registry for an application (newest first, superseded rows included)
+ */
+
+export function useListApprovedDocs<TData = Awaited<ReturnType<typeof listApprovedDocs>>, TError = ErrorType<unknown>>(
+ applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApprovedDocs>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListApprovedDocsQueryOptions(applicationId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMaterializeApprovedDocUrl = (applicationId: string,
+    blockId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/approved-docs/${blockId}/materialize`
+}
+
+/**
+ * Runs the same materialization the accept verdict triggers. Requires an accepted verdict on the block. Success clears the block's materializationErrors entry; failure updates it — loudly, with the reason.
+ * @summary Retry approval materialization for an accepted block
+ */
+export const materializeApprovedDoc = async (applicationId: string,
+    blockId: string, options?: RequestInit): Promise<ApprovedDocument> => {
+
+  return customFetch<ApprovedDocument>(getMaterializeApprovedDocUrl(applicationId,blockId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMaterializeApprovedDocMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof materializeApprovedDoc>>, TError,{applicationId: string;blockId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof materializeApprovedDoc>>, TError,{applicationId: string;blockId: string}, TContext> => {
+
+const mutationKey = ['materializeApprovedDoc'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof materializeApprovedDoc>>, {applicationId: string;blockId: string}> = (props) => {
+          const {applicationId,blockId} = props ?? {};
+
+          return  materializeApprovedDoc(applicationId,blockId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MaterializeApprovedDocMutationResult = NonNullable<Awaited<ReturnType<typeof materializeApprovedDoc>>>
+
+    export type MaterializeApprovedDocMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Retry approval materialization for an accepted block
+ */
+export const useMaterializeApprovedDoc = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof materializeApprovedDoc>>, TError,{applicationId: string;blockId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof materializeApprovedDoc>>,
+        TError,
+        {applicationId: string;blockId: string},
+        TContext
+      > => {
+      return useMutation(getMaterializeApprovedDocMutationOptions(options));
+    }
+
+export const getGetApprovedDocFileUrl = (applicationId: string,
+    approvedDocId: string,
+    params?: GetApprovedDocFileParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/approved-docs/${approvedDocId}/file?${stringifiedParams}` : `/api/applications/${applicationId}/approved-docs/${approvedDocId}/file`
+}
+
+/**
+ * @summary Download an approved document's bytes (pdf) or provenance sidecar (md)
+ */
+export const getApprovedDocFile = async (applicationId: string,
+    approvedDocId: string,
+    params?: GetApprovedDocFileParams, options?: RequestInit): Promise<Blob | string> => {
+
+  return customFetch<Blob | string>(getGetApprovedDocFileUrl(applicationId,approvedDocId,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetApprovedDocFileQueryKey = (applicationId: string,
+    approvedDocId: string,
+    params?: GetApprovedDocFileParams,) => {
+    return [
+    `/api/applications/${applicationId}/approved-docs/${approvedDocId}/file`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetApprovedDocFileQueryOptions = <TData = Awaited<ReturnType<typeof getApprovedDocFile>>, TError = ErrorType<ApiMessage>>(applicationId: string,
+    approvedDocId: string,
+    params?: GetApprovedDocFileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getApprovedDocFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetApprovedDocFileQueryKey(applicationId,approvedDocId,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getApprovedDocFile>>> = ({ signal }) => getApprovedDocFile(applicationId,approvedDocId,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && approvedDocId !== null && approvedDocId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getApprovedDocFile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetApprovedDocFileQueryResult = NonNullable<Awaited<ReturnType<typeof getApprovedDocFile>>>
+export type GetApprovedDocFileQueryError = ErrorType<ApiMessage>
+
+
+/**
+ * @summary Download an approved document's bytes (pdf) or provenance sidecar (md)
+ */
+
+export function useGetApprovedDocFile<TData = Awaited<ReturnType<typeof getApprovedDocFile>>, TError = ErrorType<ApiMessage>>(
+ applicationId: string,
+    approvedDocId: string,
+    params?: GetApprovedDocFileParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getApprovedDocFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetApprovedDocFileQueryOptions(applicationId,approvedDocId,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListModelOptionsUrl = () => {
 

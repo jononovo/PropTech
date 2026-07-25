@@ -14,6 +14,7 @@ import { HttpError, isHttpError } from "../../lib/httpError";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
 import { appendRun, readSidecar } from "./store";
+import { materializeApproval } from "../approved-docs/materialize";
 
 const router: IRouter = Router();
 
@@ -119,7 +120,22 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
       res.status(404).json({ error: "Application not found" });
       return;
     }
-    res.json(RecordVerdictResponse.parse(app));
+    // Approval materialization (Phase 3): accepting a single-arity block
+    // materializes its document into the approved registry. The verdict
+    // stands either way — failure is recorded loudly on the application
+    // (materializationErrors[blockId]) with a retry endpoint, never silent.
+    let finalApp = app;
+    const acceptedBlock = findBlock(app, blockId);
+    if (parsed.data.verdict === "accepted" && acceptedBlock?.arity !== "set") {
+      try {
+        await materializeApproval(app, blockId);
+      } catch (err) {
+        console.error(`[approved-docs] materialization failed for ${id}/${blockId}:`, err instanceof Error ? err.message : err);
+      }
+      // re-read: materialization set or cleared materializationErrors
+      finalApp = (await readApplication(id)) ?? app;
+    }
+    res.json(RecordVerdictResponse.parse(finalApp));
   } catch (err) {
     if (isHttpError(err)) {
       res.status(err.status).json({ error: err.message });

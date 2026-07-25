@@ -704,6 +704,10 @@ export const CreateApplicationResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -856,6 +860,10 @@ export const GetApplicationResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1013,6 +1021,10 @@ export const UpdateApplicationResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1171,6 +1183,10 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1328,6 +1344,10 @@ export const SaveFieldValuesResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1412,6 +1432,84 @@ export const DeleteVariantParams = zod.object({
 })
 
 export const DeleteVariantResponse = zod.void()
+
+
+/**
+ * @summary The approved-document registry for an application (newest first, superseded rows included)
+ */
+export const ListApprovedDocsParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const listApprovedDocsResponsePagesMin = 2;
+export const listApprovedDocsResponsePagesMax = 2;
+
+
+
+export const ListApprovedDocsResponseItem = zod.object({
+  "id": zod.string(),
+  "applicationId": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document belongs to'),
+  "basename": zod.string().describe('shared basename of the .pdf\/.md pair in the approved store'),
+  "source": zod.enum(['extract', 'copy']).describe('extract = pages pulled from the packet PDF; copy = direct intake upload copied whole'),
+  "pages": zod.array(zod.number()).min(listApprovedDocsResponsePagesMin).max(listApprovedDocsResponsePagesMax).optional().describe('packet page range [first, last] (extract only)'),
+  "runId": zod.string().optional().describe('analyzer run the assignment came from (extract only)'),
+  "packetSha256": zod.string().optional(),
+  "sourceFilename": zod.string().optional().describe('original upload filename (copy only)'),
+  "approvedBy": zod.string(),
+  "approvedAt": zod.string(),
+  "supersededBy": zod.string().optional().describe('id of the newer row that replaced this one')
+}).describe('One approved, materialized document — the unit of the approved registry. Bytes live flat at approved\/<applicationId>\/<basename>.pdf + .md; this is the row that makes them findable. Append-only; re-acceptance supersedes (supersededBy), never deletes.\n')
+export const ListApprovedDocsResponse = zod.array(ListApprovedDocsResponseItem)
+
+
+/**
+ * Runs the same materialization the accept verdict triggers. Requires an accepted verdict on the block. Success clears the block's materializationErrors entry; failure updates it — loudly, with the reason.
+ * @summary Retry approval materialization for an accepted block
+ */
+export const MaterializeApprovedDocParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "blockId": zod.coerce.string()
+})
+
+export const materializeApprovedDocResponsePagesMin = 2;
+export const materializeApprovedDocResponsePagesMax = 2;
+
+
+
+export const MaterializeApprovedDocResponse = zod.object({
+  "id": zod.string(),
+  "applicationId": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document belongs to'),
+  "basename": zod.string().describe('shared basename of the .pdf\/.md pair in the approved store'),
+  "source": zod.enum(['extract', 'copy']).describe('extract = pages pulled from the packet PDF; copy = direct intake upload copied whole'),
+  "pages": zod.array(zod.number()).min(materializeApprovedDocResponsePagesMin).max(materializeApprovedDocResponsePagesMax).optional().describe('packet page range [first, last] (extract only)'),
+  "runId": zod.string().optional().describe('analyzer run the assignment came from (extract only)'),
+  "packetSha256": zod.string().optional(),
+  "sourceFilename": zod.string().optional().describe('original upload filename (copy only)'),
+  "approvedBy": zod.string(),
+  "approvedAt": zod.string(),
+  "supersededBy": zod.string().optional().describe('id of the newer row that replaced this one')
+}).describe('One approved, materialized document — the unit of the approved registry. Bytes live flat at approved\/<applicationId>\/<basename>.pdf + .md; this is the row that makes them findable. Append-only; re-acceptance supersedes (supersededBy), never deletes.\n')
+
+
+/**
+ * @summary Download an approved document's bytes (pdf) or provenance sidecar (md)
+ */
+export const GetApprovedDocFileParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "approvedDocId": zod.coerce.string()
+})
+
+export const getApprovedDocFileQueryKindDefault = `pdf`;
+
+export const GetApprovedDocFileQueryParams = zod.object({
+  "kind": zod.enum(['pdf', 'md']).default(getApprovedDocFileQueryKindDefault)
+})
+
+export const GetApprovedDocFileResponse = zod.unknown()
 
 
 /**
@@ -1787,6 +1885,10 @@ export const UploadPacketResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1951,6 +2053,10 @@ export const DecidePacketGateResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -2120,6 +2226,10 @@ export const ReportPacketRunFailureResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -2295,6 +2405,10 @@ export const RecordVerdictResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -2478,6 +2592,10 @@ export const RecordPlacementResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),

@@ -524,6 +524,86 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/approved-docs:
+    get:
+      operationId: listApprovedDocs
+      tags: [approved-docs]
+      summary: The approved-document registry for an application (newest first, superseded rows included)
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "200":
+          description: Registry rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApprovedDocument"
+  /applications/{applicationId}/approved-docs/{blockId}/materialize:
+    post:
+      operationId: materializeApprovedDoc
+      tags: [approved-docs]
+      summary: Retry approval materialization for an accepted block
+      description: >
+        Runs the same materialization the accept verdict triggers. Requires an
+        accepted verdict on the block. Success clears the block's
+        materializationErrors entry; failure updates it — loudly, with the reason.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/BlockId"
+      responses:
+        "201":
+          description: The materialized registry row
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovedDocument"
+        "409":
+          description: Block has no accepted verdict, or nothing is on file to materialize
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "502":
+          description: Materialization failed (worker or storage) — reason included, recorded on the application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/approved-docs/{approvedDocId}/file:
+    get:
+      operationId: getApprovedDocFile
+      tags: [approved-docs]
+      summary: Download an approved document's bytes (pdf) or provenance sidecar (md)
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: approvedDocId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: kind
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [pdf, md]
+            default: pdf
+      responses:
+        "200":
+          description: File stream
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            text/markdown:
+              schema: { type: string }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /models/options:
     get:
       operationId: listModelOptions
@@ -1281,6 +1361,36 @@ components:
             type: string
         label: { type: string, description: "server-built display label (descriptor values joined)" }
         createdAt: { type: string }
+    ApprovedDocument:
+      type: object
+      description: >
+        One approved, materialized document — the unit of the approved registry.
+        Bytes live flat at approved/<applicationId>/<basename>.pdf + .md; this is
+        the row that makes them findable. Append-only; re-acceptance supersedes
+        (supersededBy), never deletes.
+      required: [id, applicationId, blockId, basename, source, approvedBy, approvedAt]
+      properties:
+        id: { type: string }
+        applicationId: { type: string }
+        blockId: { type: string }
+        variantId: { type: string, description: "set blocks — which variant this document belongs to" }
+        basename: { type: string, description: "shared basename of the .pdf/.md pair in the approved store" }
+        source:
+          type: string
+          enum: [extract, copy]
+          description: extract = pages pulled from the packet PDF; copy = direct intake upload copied whole
+        pages:
+          type: array
+          description: packet page range [first, last] (extract only)
+          items: { type: integer }
+          minItems: 2
+          maxItems: 2
+        runId: { type: string, description: "analyzer run the assignment came from (extract only)" }
+        packetSha256: { type: string }
+        sourceFilename: { type: string, description: "original upload filename (copy only)" }
+        approvedBy: { type: string }
+        approvedAt: { type: string }
+        supersededBy: { type: string, description: "id of the newer row that replaced this one" }
     DocumentUpload:
       type: object
       required: [file]
@@ -1354,6 +1464,18 @@ components:
           description: Audit trail of template re-pins (who, when, vN→vN)
           items:
             $ref: "#/components/schemas/TemplateRepinEvent"
+        materializationErrors:
+          type: object
+          description: >
+            blockId -> last approval-materialization failure (loud, with reason).
+            The verdict stands; the approved registry row is missing until a
+            successful retry clears the entry. Portal-owned.
+          additionalProperties:
+            type: object
+            required: [message, at]
+            properties:
+              message: { type: string }
+              at: { type: string }
         variants:
           type: object
           description: >

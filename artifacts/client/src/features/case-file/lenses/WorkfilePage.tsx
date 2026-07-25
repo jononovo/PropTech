@@ -17,6 +17,7 @@ import { fmt, pageSpan, confidencePct, type CaseModel, type CaseReq, type CaseSe
 import { VerdictButtons } from '../components/VerdictButtons';
 import { MissingActions } from '../components/MissingActions';
 import { VariantPanel } from '../components/VariantPanel';
+import { useMaterializeRetry } from '../useCaseFile';
 import type { Lens } from '../CaseShell';
 
 function defaultSection(model: CaseModel): string {
@@ -200,18 +201,23 @@ function ReqCard({
 
   if (req.status === 'accepted') {
     return (
-      <div className="bg-white rounded border border-[var(--ops-border)] p-3 md:px-4 md:py-2.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0 hover:bg-[var(--ops-inset)] transition-colors">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 rounded-full bg-[var(--ops-ok-wash)] border border-[var(--ops-ok-border)] flex items-center justify-center shrink-0">
-            <Lock className="w-3 h-3 text-[var(--ops-ok-text)]" />
+      <div className="bg-white rounded border border-[var(--ops-border)] flex flex-col hover:bg-[var(--ops-inset)] transition-colors">
+        <div className="p-3 md:px-4 md:py-2.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-2 md:gap-0">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bg-[var(--ops-ok-wash)] border border-[var(--ops-ok-border)] flex items-center justify-center shrink-0">
+              <Lock className="w-3 h-3 text-[var(--ops-ok-text)]" />
+            </div>
+            <div className="text-[13px] font-medium text-[var(--ops-ink)]">{req.block.name}</div>
           </div>
-          <div className="text-[13px] font-medium text-[var(--ops-ink)]">{req.block.name}</div>
+          <div className="ops-mono text-[11px] md:text-[12px] text-[var(--ops-ok-text)] ml-8 md:ml-0">
+            accepted {req.verdict ? fmt(new Date(req.verdict.decidedAt)) : ''}
+            {req.clock?.kind === 'staleness' && ' — clock stopped'}
+            {req.clock?.kind === 'hard' && ' — hard expiry stays live'}
+          </div>
         </div>
-        <div className="ops-mono text-[11px] md:text-[12px] text-[var(--ops-ok-text)] ml-8 md:ml-0">
-          accepted {req.verdict ? fmt(new Date(req.verdict.decidedAt)) : ''}
-          {req.clock?.kind === 'staleness' && ' — clock stopped'}
-          {req.clock?.kind === 'hard' && ' — hard expiry stays live'}
-        </div>
+        {req.materializationError && (
+          <MaterializationErrorBar req={req} applicationId={applicationId} />
+        )}
       </div>
     );
   }
@@ -370,6 +376,29 @@ function ReqCard({
       {req.severity === 'slate' && req.flagNote && (
         <div className="text-[12px] text-[var(--ops-neutral-text)] pl-0 md:pl-8">{req.flagNote}</div>
       )}
+    </div>
+  );
+}
+
+/** Verdict stood, but the approved-registry copy failed — loud, with retry. */
+function MaterializationErrorBar({ req, applicationId }: { req: CaseReq; applicationId: string }) {
+  const { retry, isPending } = useMaterializeRetry(applicationId);
+  return (
+    <div className="bg-[var(--ops-critical-wash)] border-t border-[var(--ops-critical-border)] px-4 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 rounded-b">
+      <div className="flex items-start gap-2 min-w-0">
+        <AlertCircle className="w-3.5 h-3.5 text-[var(--ops-critical-text)] mt-[1px] shrink-0" />
+        <span className="text-[12px] text-[var(--ops-critical-text)] leading-snug">
+          Not saved to the approved registry — {req.materializationError?.message}
+        </span>
+      </div>
+      <button
+        onClick={() => retry(req.block.id)}
+        disabled={isPending}
+        className="btn-secondary shrink-0 self-start md:self-auto disabled:opacity-50"
+        data-testid={`button-retry-materialize-${req.block.id}`}
+      >
+        {isPending ? 'Retrying…' : 'Retry'}
+      </button>
     </div>
   );
 }

@@ -346,6 +346,47 @@ export interface ApplicationVariant {
   createdAt: string;
 }
 
+/**
+ * extract = pages pulled from the packet PDF; copy = direct intake upload copied whole
+ */
+export type ApprovedDocumentSource = typeof ApprovedDocumentSource[keyof typeof ApprovedDocumentSource];
+
+
+export const ApprovedDocumentSource = {
+  extract: 'extract',
+  copy: 'copy',
+} as const;
+
+/**
+ * One approved, materialized document — the unit of the approved registry. Bytes live flat at approved/<applicationId>/<basename>.pdf + .md; this is the row that makes them findable. Append-only; re-acceptance supersedes (supersededBy), never deletes.
+ */
+export interface ApprovedDocument {
+  id: string;
+  applicationId: string;
+  blockId: string;
+  /** set blocks — which variant this document belongs to */
+  variantId?: string;
+  /** shared basename of the .pdf/.md pair in the approved store */
+  basename: string;
+  /** extract = pages pulled from the packet PDF; copy = direct intake upload copied whole */
+  source: ApprovedDocumentSource;
+  /**
+     * packet page range [first, last] (extract only)
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages?: number[];
+  /** analyzer run the assignment came from (extract only) */
+  runId?: string;
+  packetSha256?: string;
+  /** original upload filename (copy only) */
+  sourceFilename?: string;
+  approvedBy: string;
+  approvedAt: string;
+  /** id of the newer row that replaced this one */
+  supersededBy?: string;
+}
+
 export interface DocumentUpload {
   file: Blob;
 }
@@ -419,6 +460,14 @@ export interface Verdict {
  * blockId -> latest human verdict
  */
 export type ApplicationVerdicts = {[key: string]: Verdict};
+
+/**
+ * blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.
+ */
+export type ApplicationMaterializationErrors = {[key: string]: {
+  message: string;
+  at: string;
+}};
 
 /**
  * blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts.
@@ -550,6 +599,8 @@ export interface Application {
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
+  /** blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned. */
+  materializationErrors?: ApplicationMaterializationErrors;
   /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
   variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */
@@ -823,6 +874,18 @@ export type AddVariantBodyDescriptor = {[key: string]: string};
 export type AddVariantBody = {
   descriptor: AddVariantBodyDescriptor;
 };
+
+export type GetApprovedDocFileParams = {
+kind?: GetApprovedDocFileKind;
+};
+
+export type GetApprovedDocFileKind = typeof GetApprovedDocFileKind[keyof typeof GetApprovedDocFileKind];
+
+
+export const GetApprovedDocFileKind = {
+  pdf: 'pdf',
+  md: 'md',
+} as const;
 
 export type GetRunPageImageParams = {
 size?: GetRunPageImageSize;

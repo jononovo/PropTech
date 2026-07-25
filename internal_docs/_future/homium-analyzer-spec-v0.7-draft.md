@@ -8,7 +8,7 @@
 
 1. **Engine v1 is built and validated end-to-end** — parse → split/classify → judge → scrutiny → naming → ingest, real runs on both synthetic test packets, honest failure path (`run-failed` → revert to gated) exercised. "One real packet end-to-end" from the v1 cut: **done**.
 2. **Per-run model plans replaced fixed config.** The worker owns a per-stage option registry (`GET /models`, proxied at `GET /api/models/options`); the gate card renders per-stage dropdowns; the chosen plan travels with gate approval, resolves at run start (**unknown/unavailable = loud failure, never substitution**), and freezes into the run's `config.json` + `pipelineVersion`. Env config is only the default plan.
-3. **Auto-proceed is suspended** (supersedes v0.6.3 §1.3's "<20 pages AND zero flags" auto rule): every packet gates so staff pick the model plan. Reinstatement condition = a blessed default plan + explicit product-owner say-so.
+3. **Auto-proceed: reinstate after burn-in** (owner-approved Jul 24, supersedes the interim every-packet-gates rule): once the default plan (Mistral parse) has ~10 consecutive clean runs, the v0.6.3 auto rule returns unchanged — <20 pages AND zero flags auto-proceeds **using the default plan**; everything else gates. The gate keeps plan-selection for every gated packet.
 4. **Parser reality check.** Paddle-1.6 @ Fireworks deployment is live and validated head-to-head (spec config stands), but the deployment **disarms itself repeatedly** (console re-arm required; account in good standing — see `models/parse.md`). Local-CPU Paddle is **ruled out** (spike: >6 min/page, OOM-margin on prod). **Mistral OCR 4 validated** as a strong alternative (10p in 104s, best table fidelity, ~$0.04/packet). Novita candidates blocked on account balance. The registry carries all of them; promotion = dated comparison + env flip.
 5. **The portal grew the human half of the loop:** page review room (filmstrip) over real page renders served from the analyzer store (`GET /applications/{id}/runs/{runId}/pages/{page}?size=full|strip`), and **manual placements** (`POST /applications/{id}/placements`) that file or archive unassigned ranges — placements flip blocks to `filed`, land in the audit trail, and shrink the open-unassigned list. AI never places; reassignment wins.
 6. **Chat/RAG gets a shape:** per-application searchable index over run artifacts + chat with citations — explicitly **after** analysis features are complete (`_future/llm-questions.md`). Still v2+.
@@ -25,7 +25,7 @@
 
 ## 2. Locked decisions (carried forward, amended where reality moved)
 
-1. **Parse is serverless-API only** (local-CPU ruled out by spike). Registry options: Paddle-1.6 @ Fireworks deployment (spec pick; scale-to-zero; client = `paddleocr[doc-parser]`, `vl_rec_backend="vllm-server"`, subprocess-per-packet, one batched call), Mistral OCR 4 (validated), all-Claude (escape hatch), Novita pair (blocked). **Open decision for spec author: keep Paddle as default despite disarm friction, or promote Mistral OCR 4 to default and keep Paddle as the quality benchmark.**
+1. **Parse is serverless-API only** (local-CPU ruled out by spike). Registry options: Mistral OCR 4 (**default — owner-approved Jul 24**; validated head-to-head, best table fidelity, native elements/bboxes, $4/1k pages), Paddle-1.6 @ Fireworks deployment (**quality benchmark**, not default — two self-disarms in one day disqualify it as the default path; re-arm for dated head-to-heads; client remains `paddleocr[doc-parser]`, `vl_rec_backend="vllm-server"`, subprocess-per-packet, one batched call), all-Claude (escape hatch), Novita pair (kept as options, honest `experimental` status; blocked on account credits — work with zero code change once topped up). Revisit the default if Paddle-1.6-per-token ever ships or a dated comparison shows Mistral losing on Real5-class degradations.
 2. **Single parse; multimodal judge as the independent check** (currently Claude Sonnet 4.6, user's own Anthropic key — key via app secrets, never chat).
 3. **Pre-flight is a human gate** (built): deterministic checks → report → staff decision **+ model plan selection** (see §0.2–0.3). Gate, don't retouch — no image enhancement ever.
 4. **Universal core fields from the judge** on every document: `document_date`, `expiry_date?`, `primary_party_name`, `issuing_party?`. Human eyes on every clock: dates shown at verdict time, editable, edits recorded. (Built.)
@@ -47,7 +47,13 @@ Intake → pre-flight → gate (+plan pick) → parse (per plan; save per docume
 ## 5. v1 / v2 cut (updated)
 
 **v1 (done):** sidecar+fixtures ✓ · pre-flight+gate ✓ · docType ✓ · closing-date field ✓ · parse via registry (Paddle/Mistral/Claude validated) ✓ · split/classify ✓ · judge ✓ · scrutiny ✓ · naming ✓ · real packets end-to-end ✓ · per-run plans ✓ · review room + placements ✓.
-**v1 loose ends (engine candidates, need spec-author sign-off):** span-gluing rule (exclude preflight-flagged blank/dup pages from spans before mapping — both parsers absorbed planted junk into a span; judge caught it); region crops on demand instead of pre-cropping every page.
+**v1.x approved, to build (owner + spec author + builder aligned, Jul 24–25):**
+- **Span-gluing rule:** exclude pages preflight flagged as blank or exact-duplicate from document spans before mapping. DETERMINISTIC preflight flags only — never model judgments; excluded pages stay visible as flagged junk, never silently dropped. Evidence: every engine tested glued planted blank+dup pages into the Grant Deed span, so the filed document carried wrong pages.
+- ~~Region crops on demand~~ — struck as a decision: crops stay empty until a consumer exists; nothing to build or spec.
+
+**v1.x built (Jul 24, validated on a real run — see `_future/judge-verdict-artifacts.md`):**
+- **Judge verdict receipts:** `judge/doc-<N>.json` per document — raw model output (2MB cap with truncation marker), tokens as the backend's `usage` reports (nullable), per-doc `latencyMs`, `promptVersion` (`judge-v1`, bump on any prompt change). Write-once before the run POST; referenced additively via `artifacts.judge`.
+- **Run telemetry:** per-stage `timings` (`renderMs/parseMs/splitClassifyMs/judgeMs/totalMs`) in `config.json`; additive `durationMs` + `artifactsProduced` on the run object and sidecar — artifact coverage recorded per run, never assumed per engine. First datapoint: split/classify (GLM) dominates wall-clock, not parsing — an optimization candidate, not a decision.
 **v2 (additive only):** LangExtract + schemas (+precedence) · amount-level fraud · md-offset→bbox region highlighting in the review room · per-application index + chat with citations (`_future/llm-questions.md`).
 
 ## 6. Standing answers (carried forward verbatim where still true)
@@ -58,9 +64,16 @@ Intake → pre-flight → gate (+plan pick) → parse (per plan; save per docume
 - **Closing date:** portal-owned top-level field (built, editable in the case panel); edits re-evaluate hard expiries when the expiry engine lands.
 - **Keys:** judge + parse credentials arrive via app secrets, never chat. (Standing ops note: org AI integrations are disabled; the Fireworks key covers serverless text models only — the Paddle deployment and any Anthropic/Novita usage ride the user's own accounts.)
 
-## 7. Open questions for the spec author (the delta that needs a ruling)
+## 7. Rulings record (all deltas resolved Jul 24–25; owner + spec author + builder)
 
-1. Default parse plan: re-arm-and-keep Paddle vs promote Mistral OCR 4 (§2.1).
-2. Auto-proceed: reinstate once a default plan is blessed, or keep every packet gated?
-3. Span-gluing + crops-on-demand (§5 loose ends): approve for v1.x?
-4. Anything in this draft that should NOT supersede v0.6.3 — say so and it reverts.
+1. Default parse plan: **Mistral OCR 4** (§2.1). Paddle stays as quality benchmark.
+2. Auto-proceed: **reinstate after ~10-clean-run burn-in on the default plan** (§0.3).
+3. Span-gluing: **approved** (deterministic flags only). Crops-on-demand: **struck** (§5).
+4. Judge receipts + run telemetry: **built as specced** (§5); as-built choices (2MB raw cap, nullable tokens, per-doc latency, sidecar `artifactsProduced`) ratified.
+
+**Remaining step:** owner blesses this file → it moves to `attached_assets/` as v0.7 FINAL and v0.6.3 is deleted (one spec authority at a time).
+
+## 8. Ops standing notes (new since 0.6.3)
+
+- **Off-Replit dev:** document bytes fall back to local disk (`DATA_DIR/object-store`) ONLY when both `PRIVATE_OBJECT_DIR` and `REPL_ID` are absent; on Replit with missing config every storage call fails loudly. Known non-blocking edge: PDF-write-succeeds/thumbnail-write-fails leaves the restored packet's sha pointing at replaced bytes — strictly better than the pre-fix stuck-forever state; fix opportunistically.
+- The Replit **workspace dev server** often runs ahead of both prod and GitHub; check it when "latest" matters.

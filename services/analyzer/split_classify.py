@@ -12,6 +12,24 @@ from taxonomy import FORM_ID_SIGNALS, TAXONOMY
 
 PAGE_ONE = re.compile(r"page\s*1\s*(of|/)\s*\d+", re.IGNORECASE)
 
+# Span-gluing rule (v0.7): pages the DETERMINISTIC pre-flight flagged as blank or
+# exact-duplicate never join a document span. Formats are owned by the portal's
+# preflight.ts — keep these in sync with its flag strings.
+PF_BLANK = re.compile(r"^p\.(\d+) appears blank$")
+PF_DUP = re.compile(r"^p\.(\d+) exact duplicate of p\.\d+$")
+
+
+def preflight_exclusions(pf_flags: list[str]) -> dict[int, str]:
+    """1-based page -> reason, for pages barred from any span. Deterministic
+    pre-flight flags ONLY (blank / exact-duplicate) — never model judgments;
+    contrast/DPI flags do not exclude. The duplicate's ORIGINAL page stays."""
+    out: dict[int, str] = {}
+    for f in pf_flags:
+        m = PF_BLANK.match(f) or PF_DUP.match(f)
+        if m:
+            out[int(m.group(1))] = f.split(" ", 1)[1]  # "appears blank" / "exact duplicate of p.3"
+    return out
+
 
 def signal_on_page(md: str) -> str | None:
     head = md[:1200]
@@ -64,13 +82,26 @@ async def llm_refine_boundaries(mds: list[str], starts: list[int], text: ModelCh
     return sorted(set(starts) | extra)
 
 
-def to_segments(starts: list[int], total: int) -> list[tuple[int, int]]:
-    """1-based inclusive [first, last] page ranges."""
-    out = []
-    for k, s in enumerate(starts):
-        e = (starts[k + 1] - 1) if k + 1 < len(starts) else total - 1
-        out.append((s + 1, e + 1))
-    return out
+def to_segments(starts: list[int], total: int,
+                excluded_pages: set[int] | frozenset[int] = frozenset()) -> list[tuple[int, int]]:
+    """1-based inclusive [first, last] page ranges over kept pages only.
+    excluded_pages (1-based) are hard breaks: junk never joins a span, and a
+    span interrupted by junk splits — [first, last] must never cover an
+    excluded page (the segment contract has no holes)."""
+    start_set = set(starts)
+    out: list[list[int]] = []
+    cur: list[int] | None = None
+    for i in range(total):
+        page = i + 1
+        if page in excluded_pages:
+            cur = None  # hard break — the next kept page starts a fresh span
+            continue
+        if cur is None or i in start_set:
+            cur = [page, page]
+            out.append(cur)
+        else:
+            cur[1] = page
+    return [(a, b) for a, b in out]
 
 
 async def classify_segment(seg_md: str, text: ModelChoice) -> tuple[str, str]:

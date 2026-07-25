@@ -18,7 +18,8 @@ from parse import parse_document
 from pdfs import render_pages
 from scrutiny import apply_substitution_scrutiny, block_index, deep_scan, needs_deep_scan
 from split_classify import (classify_segment, deterministic_boundaries,
-                            llm_refine_boundaries, map_to_block, to_segments)
+                            llm_refine_boundaries, map_to_block,
+                            preflight_exclusions, to_segments)
 from taxonomy import TAXONOMY
 
 
@@ -84,7 +85,11 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
 
     t = time.monotonic()
     starts = await llm_refine_boundaries(mds, deterministic_boundaries(mds), plan.text)
-    segments = to_segments(starts, len(mds))
+    # Span-gluing rule (v0.7, all-parties approved): pages the deterministic
+    # pre-flight called blank/exact-duplicate never join a span — they surface
+    # below as visible junk in unassigned, never silently dropped.
+    exclusions = preflight_exclusions(pf_flags)
+    segments = to_segments(starts, len(mds), excluded_pages=set(exclusions))
     timings["splitClassifyMs"] += int((time.monotonic() - t) * 1000)
 
     blocks_by_id = block_index(app["template"])
@@ -93,6 +98,10 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
     taken_names: set[str] = set()
     documents: list[dict] = []
     unassigned: list[dict] = []
+    for page in sorted(exclusions):  # junk stays VISIBLE — file or archive it, never a silent drop
+        unassigned.append({"pages": [page, page],
+                           "description": f"Pre-flight junk ({exclusions[page]}) — excluded from document "
+                                          f"spans; kept visible to file or archive."})
 
     doc_pad = max(2, len(str(len(segments))))  # doc-01.json… — lexicographic listing, same lesson as pageRenders
     for first, last in segments:
@@ -169,6 +178,9 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
     apply_substitution_scrutiny(documents, app["template"], blocks_by_id)
     whisper = [f"Split {len(mds)} pages into {len(documents)} documents; {len(unassigned)} unassigned; "
                f"{sum(1 for d in documents if d['flags'])} flagged."]
+    if exclusions:
+        whisper.append("Span-gluing: excluded from spans: "
+                       + ", ".join(f"p.{p} ({r})" for p, r in sorted(exclusions.items())) + ".")
     scan_reasons = needs_deep_scan(documents, blocks_by_id)
     if scan_reasons:
         findings = deep_scan(documents, app.get("applicantName", ""))

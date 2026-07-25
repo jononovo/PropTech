@@ -35,6 +35,7 @@ Document-ops platform for lending compliance: define document templates, collect
 
 ## User preferences
 
+- **API credit runs out → say so, never adapt (Jul 2026):** if Mistral, Fireworks, Anthropic, Novita, or any provider account is out of credit/quota, fail loudly and ask the user to top up. NEVER swap engines, degrade features, or re-architect the platform because a provider account ran dry.
 - Folder names must read as standard client/server architecture; frontend folder is `client` (renamed from `portal` at user's request, Jul 2026). Any new top-level piece needs an obvious architectural name.
 - Brand: app is "Sheaf" only — never put the client name (Homium) in titles, chrome, or logos.
 - Serious production mindset: no mockup shortcuts in app code; terse professional communication.

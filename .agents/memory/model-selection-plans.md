@@ -13,3 +13,9 @@ description: How per-run model selection works (worker registry, plan resolution
 - Paddle subprocess gets its VL endpoint/model/key/pipeline_version via env vars (`PADDLE_VL_URL/MODEL/KEY`, `PADDLE_PIPELINE_VERSION`) passed by the parent — the CLI has no other channel.
 - `llm.py chat()` backends: anthropic | fireworks | openai (generic OpenAI-compatible, needs base_url+api_key — Novita). Mistral OCR is NOT chat-shaped: separate document-API adapter (`mistral_ocr_parse.py`, one call per packet, 0-based page index in response).
 - **Why:** serverless pay-per-use pivot after local-CPU paddle was ruled out and the Fireworks GPU deployment kept disarming.
+
+## Jul 25 — v0.7 draft + two builds on main
+- PR #5 (docs-only) bakes ALL rulings into v0.7 draft; flow: merge → owner says "blessed" → local agent promotes to attached_assets as v0.7 FINAL + deletes v0.6.3 → replit.md spec pointer must be updated then.
+- Span-gluing GREEN-LIT + BUILT (Jul 25): deterministic preflight blank/exact-dup only; junk = hard span break + visible unassigned entry; regexes in split_classify.py must track preflight.ts flag strings.
+- Fraud toggle contract: RunPlan.fraudScoring (default true); OFF → fraud_signal ABSENT everywhere + promptVersion judge-v1-nofraud; absent = "not scored", never fake 0.
+- Both await one 9-pager --no-fraud validation run (~20¢, needs owner approval per standing order).

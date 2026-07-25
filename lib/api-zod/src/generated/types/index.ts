@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addVariantBody';
+export * from './addVariantBodyDescriptor';
 export * from './alternativeGroup';
 export * from './analysisArtifacts';
 export * from './analysisCoreFields';
@@ -28,6 +30,9 @@ export * from './applicationInput';
 export * from './applicationSummary';
 export * from './applicationUpdate';
 export * from './applicationUploads';
+export * from './applicationVariant';
+export * from './applicationVariantDescriptor';
+export * from './applicationVariants';
 export * from './applicationVerdicts';
 export * from './block';
 export * from './blockArity';
@@ -87,6 +92,7 @@ export * from './templateRef';
 export * from './templateRepinEvent';
 export * from './templateStatus';
 export * from './templateUpgradeInput';
+export * from './uploadDocumentParams';
 export * from './uploadedFile';
 export * from './user';
 export * from './userRole';

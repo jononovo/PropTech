@@ -3,6 +3,7 @@ import type {
   AnalysisRun,
   AnalysisSidecar,
   Application,
+  ApplicationVariant,
   Block,
   ManualPlacement,
   UploadedFile,
@@ -19,9 +20,12 @@ import type {
 // accepted  — human signed off; staleness clocks stop (hard expiries never do)
 // requested — human asked for a new version; waiting on the other side
 // flagged   — analyzer raised something a human must decide
-// clean     — analyzer filed it, checks passed, awaiting human review
+// clean     — analyzer filed it, checks passed, awaiting human review.
+//             SEPARATION RULE: still intake-side — it renders, but never counts
+//             toward cleared/done/quiet. Nothing is part of the application
+//             until a human accepts.
 // filed     — uploaded via intake but no analyzer run has seen it yet
-// covered   — not present itself, but an alternative satisfies the group
+// covered   — not present itself, but an ACCEPTED alternative satisfies the group
 // missing   — required and nowhere to be found
 export type ReqStatus = 'accepted' | 'requested' | 'flagged' | 'clean' | 'filed' | 'covered' | 'missing';
 export type Severity = 'clay' | 'amber' | 'slate';
@@ -53,6 +57,8 @@ export interface CaseReq {
   flagNote?: string;
   clock?: ReqClock;
   coveredBy?: string;
+  /** set blocks only — this application's variants with their tagged uploads */
+  variants?: { variant: ApplicationVariant; uploads: UploadedFile[] }[];
   /** effective dates — verdict-confirmed values win over analyzer suggestions */
   documentDate?: string;
   expiryDate?: string;
@@ -182,9 +188,13 @@ export function buildCaseModel(
     (u) => !placements.some((p) => overlaps(p.pages, u.pages)),
   );
 
-  // which alternative-group members are actually present
+  // which alternative-group members have anything on file (intake-side presence)
   const present = (blockId: string) =>
     docByBlock.has(blockId) || (app.uploads[blockId]?.length ?? 0) > 0;
+
+  // separation rule: only a human-ACCEPTED alternative can cover its group —
+  // analyzer-filed presence alone made cases "look done yesterday"
+  const accepted = (blockId: string) => app.verdicts?.[blockId]?.verdict === 'accepted';
 
   const coveredByName = new Map<string, string>(); // blockId -> covering block name
   const blockNames = new Map<string, string>();
@@ -196,7 +206,7 @@ export function buildCaseModel(
     const members = [group.primary, ...group.satisfiedBy];
     for (const member of members) {
       if (present(member)) continue;
-      const covering = members.find((m) => m !== member && present(m));
+      const covering = members.find((m) => m !== member && accepted(m));
       if (covering) coveredByName.set(member, blockNames.get(covering) ?? covering);
     }
   }
@@ -227,13 +237,21 @@ export function buildCaseModel(
           today,
           closing,
         });
+        if (block.arity === 'set') {
+          const uploads = app.uploads[block.id] ?? [];
+          req.variants = (app.variants?.[block.id] ?? []).map((variant) => ({
+            variant,
+            uploads: uploads.filter((f) => f.variantId === variant.id),
+          }));
+        }
         sectionReqs.push(req);
         reqs.push(req);
       }
     }
 
+    // separation rule: clean is intake-side, it never counts toward cleared/done
     const cleared = sectionReqs.filter((r) =>
-      r.status === 'accepted' || r.status === 'clean' || r.status === 'covered',
+      r.status === 'accepted' || r.status === 'covered',
     ).length;
 
     sections.push({
@@ -268,8 +286,9 @@ export function buildCaseModel(
   const stoppedClocks = reqs.filter((r) => r.clock?.stopped);
   const alarmCount = liveClocks.filter((r) => r.clock!.days <= 30).length;
 
+  // separation rule: quiet = human-settled only (accepted or covered-by-accepted)
   const quiet = reqs.filter(
-    (r) => r.status === 'accepted' || r.status === 'clean' || r.status === 'covered',
+    (r) => r.status === 'accepted' || r.status === 'covered',
   ).length;
 
   return {

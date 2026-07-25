@@ -325,6 +325,25 @@ export interface UploadedFile {
   filename: string;
   size: number;
   uploadedAt: string;
+  /** Set blocks only — which of the block's variants this file belongs to. Metadata only; object-store keys are unchanged. */
+  variantId?: string;
+}
+
+/**
+ * descriptorField key -> value, keys exactly as the template block declares
+ */
+export type ApplicationVariantDescriptor = {[key: string]: string};
+
+/**
+ * One real-world instance of a set block's requirement on THIS application ("Chase ····1234", "Jane Doe · 1990-04-24"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.
+ */
+export interface ApplicationVariant {
+  id: string;
+  /** descriptorField key -> value, keys exactly as the template block declares */
+  descriptor: ApplicationVariantDescriptor;
+  /** server-built display label (descriptor values joined) */
+  label: string;
+  createdAt: string;
 }
 
 export interface DocumentUpload {
@@ -400,6 +419,11 @@ export interface Verdict {
  * blockId -> latest human verdict
  */
 export type ApplicationVerdicts = {[key: string]: Verdict};
+
+/**
+ * blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts.
+ */
+export type ApplicationVariants = {[key: string]: ApplicationVariant[]};
 
 export type PacketStateState = typeof PacketStateState[keyof typeof PacketStateState];
 
@@ -526,6 +550,8 @@ export interface Application {
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
+  /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
+  variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */
   manualPlacements?: ManualPlacement[];
 }
@@ -784,6 +810,19 @@ export interface AnalysisSidecar {
   latestRunId: string | null;
   runs: AnalysisRun[];
 }
+
+export type UploadDocumentParams = {
+/**
+ * Set blocks — tag the upload to one of the block's variants (400 if unknown).
+ */
+variantId?: string;
+};
+
+export type AddVariantBodyDescriptor = {[key: string]: string};
+
+export type AddVariantBody = {
+  descriptor: AddVariantBodyDescriptor;
+};
 
 export type GetRunPageImageParams = {
 size?: GetRunPageImageSize;

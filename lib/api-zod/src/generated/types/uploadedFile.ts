@@ -10,4 +10,6 @@ export interface UploadedFile {
   filename: string;
   size: number;
   uploadedAt: string;
+  /** Set blocks only — which of the block's variants this file belongs to. Metadata only; object-store keys are unchanged. */
+  variantId?: string;
 }

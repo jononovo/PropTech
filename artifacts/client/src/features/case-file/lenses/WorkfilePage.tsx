@@ -16,6 +16,7 @@ import { Bell } from 'lucide-react';
 import { fmt, pageSpan, confidencePct, type CaseModel, type CaseReq, type CaseSection } from '../caseData';
 import { VerdictButtons } from '../components/VerdictButtons';
 import { MissingActions } from '../components/MissingActions';
+import { VariantPanel } from '../components/VariantPanel';
 import type { Lens } from '../CaseShell';
 
 function defaultSection(model: CaseModel): string {
@@ -147,7 +148,12 @@ export function WorkfilePage({
 
           <div className="flex flex-col gap-3">
             {section.reqs.map((req) => (
-              <ReqCard key={req.block.id} req={req} applicationId={applicationId} onLens={onLens} />
+              <div key={req.block.id} className="flex flex-col">
+                <ReqCard req={req} applicationId={applicationId} onLens={onLens} />
+                {req.block.arity === 'set' && req.status !== 'accepted' && (
+                  <VariantPanel req={req} applicationId={applicationId} />
+                )}
+              </div>
             ))}
           </div>
 

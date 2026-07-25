@@ -10,8 +10,11 @@ import {
   useGetApplication,
   useRecordPlacement,
   useRecordVerdict,
+  useAddVariant,
+  useDeleteVariant,
   useUpdateApplication,
   useUpgradeTemplateVersion,
+  useUploadDocument,
   useUploadPacket,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
@@ -265,4 +268,70 @@ export function usePacketActions(applicationId: string) {
     );
 
   return { uploadPacket, decide, upload, gate };
+}
+
+/**
+ * Set-block variants — declare the real-world instances ("Chase ····1234")
+ * this application needs, tag uploads to them. Intake-side data; nothing here
+ * counts toward completeness until a human accepts.
+ */
+export function useVariantActions(applicationId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetApplicationQueryKey(applicationId) });
+  };
+
+  const add = useAddVariant({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => toast({ description: `Variant not added — ${errText(err)}` }),
+    },
+  });
+
+  const remove = useDeleteVariant({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => toast({ description: `Variant not removed — ${errText(err)}` }),
+    },
+  });
+
+  const upload = useUploadDocument({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => toast({ description: `Upload failed — ${errText(err)}` }),
+    },
+  });
+
+  const addVariant = (blockId: string, descriptor: Record<string, string>, onDone?: () => void) =>
+    add.mutate(
+      { applicationId, blockId, data: { descriptor } },
+      {
+        onSuccess: (v) => {
+          toast({ description: `Added ${v.label}.` });
+          onDone?.();
+        },
+      },
+    );
+
+  const deleteVariant = (blockId: string, variantId: string, label: string) =>
+    remove.mutate(
+      { applicationId, blockId, variantId },
+      { onSuccess: () => toast({ description: `Removed ${label}.` }) },
+    );
+
+  const uploadToVariant = (blockId: string, variantId: string, file: File) =>
+    upload.mutate(
+      { applicationId, blockId, data: { file }, params: { variantId } },
+      { onSuccess: () => toast({ description: `${file.name} uploaded.` }) },
+    );
+
+  return {
+    addVariant,
+    deleteVariant,
+    uploadToVariant,
+    isAdding: add.isPending,
+    isUploading: upload.isPending,
+  };
 }

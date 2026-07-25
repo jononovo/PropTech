@@ -13,4 +13,4 @@ User rulings (Jul 25, 2026):
 **Why:** these override the other agent's addendum draft (which assumed v0.6.3 and auto-discovery-only identity).
 **How to apply:** follow the master plan phases; all contract changes additive; descriptor KEYS are mint-stable (rename labels, not keys).
 
-Status: Phase 1 shipped & e2e-verified (Block.arity/variantConfig/analysisNote in openapi + validate.ts invariants + VariantConfigEditor.tsx in builder). Phases 2–4 pending.
+Status: Phases 1 & 2 shipped & e2e-verified. Phase 1: Block.arity/variantConfig/analysisNote + builder editor. Phase 2 (Jul 25, 2026): separation rule in caseData (cleared/quiet/covered = accepted only; clean renders but never counts), ApplicationVariant CRUD (features/variants), upload tagging via `?variantId=` query param, VariantPanel in Workfile. Gotcha: generated-barrel name collisions (AddVariantBody etc.) resolved by explicit VALUE re-exports from generated/api in lib/api-zod/src/index.ts. Phases 3–4 pending.

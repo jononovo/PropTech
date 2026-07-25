@@ -7,7 +7,7 @@ import { deleteIntakeUpload, putIntakeUpload } from "../../lib/packetObjectStore
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { extensionAllowed, findBlock, isSafeSegment } from "../intake/blocks";
 
-type UploadedFileRecord = { filename: string; size: number; uploadedAt: string };
+type UploadedFileRecord = { filename: string; size: number; uploadedAt: string; variantId?: string };
 
 function sanitizeFilename(name: string): string {
   return path.basename(name).replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120) || "file";
@@ -83,10 +83,22 @@ router.post(
       res.status(500).json({ error: `Upload storage write failed: ${err instanceof Error ? err.message : String(err)}` });
       return;
     }
+    // Set blocks: an upload may be tagged to one of the block's variants.
+    // Metadata only — the object-store key is unchanged. Unknown variant = 400,
+    // BEFORE bytes land (no silently mis-filed uploads).
+    const variantId = typeof req.query.variantId === "string" && req.query.variantId ? req.query.variantId : undefined;
+    if (variantId) {
+      const variants = (ctx.app.variants?.[ctx.blockId] ?? []) as { id: string }[];
+      if (!variants.some((v) => v.id === variantId)) {
+        res.status(400).json({ error: "Unknown variant for this block" });
+        return;
+      }
+    }
     const record: UploadedFileRecord = {
       filename,
       size: req.file.size,
       uploadedAt: new Date().toISOString(),
+      ...(variantId ? { variantId } : {}),
     };
     // Atomic append — no clobbering of concurrent writes to other parts of the app.
     const app = await updateApplication(ctx.app.id, (app) => {

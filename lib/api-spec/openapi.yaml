@@ -418,6 +418,12 @@ paths:
       parameters:
         - $ref: "#/components/parameters/ApplicationId"
         - $ref: "#/components/parameters/BlockId"
+        - name: variantId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Set blocks — tag the upload to one of the block's variants (400 if unknown).
       requestBody:
         required: true
         content:
@@ -453,6 +459,71 @@ paths:
       responses:
         "204":
           description: Deleted
+  /applications/{applicationId}/blocks/{blockId}/variants:
+    post:
+      operationId: addVariant
+      tags: [variants]
+      summary: Add a variant to a set block on this application
+      description: >
+        Descriptor keys must match the template block's descriptorFields exactly;
+        values non-empty; duplicate descriptor value-sets rejected (409). Label is
+        built server-side; the id is minted once.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/BlockId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descriptor]
+              properties:
+                descriptor:
+                  type: object
+                  additionalProperties:
+                    type: string
+      responses:
+        "201":
+          description: The created variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApplicationVariant"
+        "400":
+          description: Block is not a set block, or descriptor keys/values invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: A variant with the same descriptor already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/blocks/{blockId}/variants/{variantId}:
+    delete:
+      operationId: deleteVariant
+      tags: [variants]
+      summary: Remove a variant (refused while uploads are tagged to it)
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - $ref: "#/components/parameters/BlockId"
+        - name: variantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "409":
+          description: Uploads still tagged to this variant — untag or delete them first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /models/options:
     get:
       operationId: listModelOptions
@@ -1188,6 +1259,28 @@ components:
         filename: { type: string }
         size: { type: integer }
         uploadedAt: { type: string }
+        variantId:
+          type: string
+          description: >
+            Set blocks only — which of the block's variants this file belongs to.
+            Metadata only; object-store keys are unchanged.
+    ApplicationVariant:
+      type: object
+      description: >
+        One real-world instance of a set block's requirement on THIS application
+        ("Chase ····1234", "Jane Doe · 1990-04-24"). The template declares the
+        descriptor shape; the application holds the actual variants. Id minted
+        once, never re-minted — uploads and (later) approvals key on it.
+      required: [id, descriptor, label, createdAt]
+      properties:
+        id: { type: string }
+        descriptor:
+          type: object
+          description: descriptorField key -> value, keys exactly as the template block declares
+          additionalProperties:
+            type: string
+        label: { type: string, description: "server-built display label (descriptor values joined)" }
+        createdAt: { type: string }
     DocumentUpload:
       type: object
       required: [file]
@@ -1261,6 +1354,16 @@ components:
           description: Audit trail of template re-pins (who, when, vN→vN)
           items:
             $ref: "#/components/schemas/TemplateRepinEvent"
+        variants:
+          type: object
+          description: >
+            blockId -> variants of that set block on this application. Intake-side
+            data — variants and their uploads are NOT part of the application's
+            satisfied requirements until a human accepts.
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/ApplicationVariant"
         manualPlacements:
           type: array
           description: Human filings of analyzer-unassigned page ranges (portal-owned)

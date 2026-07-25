@@ -7,6 +7,7 @@
  */
 import type { ApplicationFieldValues } from './applicationFieldValues';
 import type { ApplicationUploads } from './applicationUploads';
+import type { ApplicationVariants } from './applicationVariants';
 import type { ApplicationVerdicts } from './applicationVerdicts';
 import type { ManualPlacement } from './manualPlacement';
 import type { PacketState } from './packetState';
@@ -30,6 +31,8 @@ export interface Application {
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
+  /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
+  variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */
   manualPlacements?: ManualPlacement[];
 }

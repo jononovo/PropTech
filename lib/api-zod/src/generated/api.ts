@@ -592,7 +592,8 @@ export const CreateApplicationResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -703,6 +704,12 @@ export const CreateApplicationResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(createApplicationResponseManualPlacementsItemPagesMin).max(createApplicationResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -737,7 +744,8 @@ export const GetApplicationResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -848,6 +856,12 @@ export const GetApplicationResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(getApplicationResponseManualPlacementsItemPagesMin).max(getApplicationResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -887,7 +901,8 @@ export const UpdateApplicationResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -998,6 +1013,12 @@ export const UpdateApplicationResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(updateApplicationResponseManualPlacementsItemPagesMin).max(updateApplicationResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -1038,7 +1059,8 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1149,6 +1171,12 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(upgradeTemplateVersionResponseManualPlacementsItemPagesMin).max(upgradeTemplateVersionResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -1188,7 +1216,8 @@ export const SaveFieldValuesResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1299,6 +1328,12 @@ export const SaveFieldValuesResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(saveFieldValuesResponseManualPlacementsItemPagesMin).max(saveFieldValuesResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -1318,6 +1353,10 @@ export const UploadDocumentParams = zod.object({
   "blockId": zod.coerce.string()
 })
 
+export const UploadDocumentQueryParams = zod.object({
+  "variantId": zod.coerce.string().optional().describe('Set blocks — tag the upload to one of the block\'s variants (400 if unknown).')
+})
+
 export const UploadDocumentBody = zod.object({
   "file": zod.instanceof(File)
 })
@@ -1325,7 +1364,8 @@ export const UploadDocumentBody = zod.object({
 export const UploadDocumentResponse = zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 })
 
 
@@ -1339,6 +1379,39 @@ export const DeleteDocumentParams = zod.object({
 })
 
 export const DeleteDocumentResponse = zod.void()
+
+
+/**
+ * Descriptor keys must match the template block's descriptorFields exactly; values non-empty; duplicate descriptor value-sets rejected (409). Label is built server-side; the id is minted once.
+ * @summary Add a variant to a set block on this application
+ */
+export const AddVariantParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "blockId": zod.coerce.string()
+})
+
+export const AddVariantBody = zod.object({
+  "descriptor": zod.record(zod.string(), zod.string())
+})
+
+export const AddVariantResponse = zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n')
+
+
+/**
+ * @summary Remove a variant (refused while uploads are tagged to it)
+ */
+export const DeleteVariantParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "blockId": zod.coerce.string(),
+  "variantId": zod.coerce.string()
+})
+
+export const DeleteVariantResponse = zod.void()
 
 
 /**
@@ -1602,7 +1675,8 @@ export const UploadPacketResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1713,6 +1787,12 @@ export const UploadPacketResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(uploadPacketResponseManualPlacementsItemPagesMin).max(uploadPacketResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -1759,7 +1839,8 @@ export const DecidePacketGateResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1870,6 +1951,12 @@ export const DecidePacketGateResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(decidePacketGateResponseManualPlacementsItemPagesMin).max(decidePacketGateResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -1921,7 +2008,8 @@ export const ReportPacketRunFailureResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -2032,6 +2120,12 @@ export const ReportPacketRunFailureResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(reportPacketRunFailureResponseManualPlacementsItemPagesMin).max(reportPacketRunFailureResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -2089,7 +2183,8 @@ export const RecordVerdictResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -2200,6 +2295,12 @@ export const RecordVerdictResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(recordVerdictResponseManualPlacementsItemPagesMin).max(recordVerdictResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
@@ -2265,7 +2366,8 @@ export const RecordPlacementResponse = zod.object({
   "uploads": zod.record(zod.string(), zod.array(zod.object({
   "filename": zod.string(),
   "size": zod.number(),
-  "uploadedAt": zod.string()
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -2376,6 +2478,12 @@ export const RecordPlacementResponse = zod.object({
   "decidedBy": zod.string(),
   "decidedAt": zod.string()
 })).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(recordPlacementResponseManualPlacementsItemPagesMin).max(recordPlacementResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),

@@ -31,10 +31,50 @@ Files:
 - Client `features/template-editor/`: `BlockEditor.tsx` — "Accepts multiple variants" toggle → noun, descriptor-field rows (add/remove), docs-per-variant rules, analysis-note textarea. Mutations ride existing `UPDATE_BLOCK`/`BlockPatch` (extend patch type); NO new reducer actions. Block card shows a small "set" badge.
 - Reducer tests: set-block patch round-trip + invariant cases in `templateReducer.test.ts` sibling or validate tests server-side.
 
-## Phase 2 — Application variants + intake
-- `Application` jsonb gains `variants?: {[blockId]: Variant[]}`; `Variant = { id, descriptor: {[key]: string}, label, createdAt }`. Upload entries gain optional `variantId`. Object-store keys UNCHANGED (variant lives in metadata, not paths — no storage moves).
-- API (`features/case-file` or new `features/variants/` in api-server): `POST/DELETE /applications/{id}/blocks/{blockId}/variants` via the `updateApplication` tx helper. Validation: descriptor keys must match the template block's `descriptorFields`; duplicate descriptor value-sets rejected.
-- Client `features/case-file/`: set blocks render variant cards (label + per-variant upload list + completeness "2 of 3"); add-variant form generated from `descriptorFields`. Upload actions carry `variantId`.
+## Phase 2 — Application variants + intake separation — SHIPPED Jul 25, 2026
+Built as specified below; e2e-verified (API curl suite + browser tester "variant-panel-ui-test",
+verdict success: variant CRUD, dup 409, tagged upload, guarded delete, and rail/section counts
+unmoved by intake-side activity). One deviation: upload's `variantId` travels as a query param
+(`?variantId=`), not a multipart field — multer body ordering made the query param the safe spot.
+Codegen note: `AddVariantBody`/`UploadDocumentParams` collide across the two generated barrels;
+`lib/api-zod/src/index.ts` re-exports the zod VALUES from `generated/api` explicitly.
+
+### 2a. Separation rule — intake vs application (user ruling)
+A document is NOT part of the application until a human accepts it. Analyzed-but-unaccepted
+documents belong to the intake/triage/review workflow; the application's completeness must never
+count them. Today's leak: `caseData.ts` counts `clean` (analyzer-filed, no flags, no verdict) and
+`covered` (alternative merely *present*) as cleared — the "looked done yesterday, rejected today" bug.
+- `artifacts/client/src/features/case-file/caseData.ts`:
+  - `cleared` / `done` / `quiet` count `accepted` and `covered` ONLY; `clean` is pending, full stop.
+  - `covered` now requires the covering alternative to be **accepted**, not merely present
+    (`present()` → accepted-verdict check). Pre-acceptance substitution stays visible as the
+    informational `satisfied_by_alternative` flag on the substituting doc.
+- Status vocabulary unchanged — `clean` still renders ("analyzer filed, awaiting human review");
+  it just stops counting toward done.
+
+### 2b. Variants on the application
+- Contract (`lib/api-spec/openapi.yaml`, additive):
+  - `ApplicationVariant = { id, descriptor: {[key]: string}, label, createdAt }`;
+    `Application.variants?: {[blockId]: ApplicationVariant[]}`.
+  - `UploadedFile.variantId?: string` — variant lives in METADATA; object-store keys unchanged.
+  - Paths: `POST /applications/{id}/blocks/{blockId}/variants` (body: `{descriptor}`),
+    `DELETE /applications/{id}/blocks/{blockId}/variants/{variantId}`.
+- Server — new feature folder `artifacts/api-server/src/features/variants/router.ts`:
+  - Create: block must exist with `arity:"set"`; descriptor keys must equal the template's
+    `descriptorFields` keys exactly; values non-empty; duplicate value-sets rejected (409).
+    `label` built server-side (descriptor values joined " · "); id minted once (nanoid).
+  - Delete: refused (409) while uploads are tagged to the variant — untag/delete uploads first;
+    loud failure, no silent orphans. All writes via the `updateApplication` tx helper.
+- Server — `features/intake-uploads/router.ts`: upload accepts optional `variantId` (must exist on
+  that block, 400 otherwise); stored on the UploadedFile record; delete-upload untouched.
+- Client — `features/case-file/`:
+  - `caseData.ts`: `CaseReq.variants?: { variant, uploads }[]` (uploads grouped by `variantId`;
+    untagged uploads stay block-level).
+  - `useCaseFile.ts`: `addVariant`, `deleteVariant`, upload mutation gains `variantId`.
+  - `components/VariantPanel.tsx` (new): per set block — variant rows (label · upload count ·
+    "typically N" guidance chip, never a gate), add-variant form generated from `descriptorFields`,
+    per-variant upload button, delete (×) with loud error toast when refused.
+  - `WorkfilePage.tsx` renders the panel for `arity:"set"` blocks.
 
 ## Phase 3 — Approval materialization + approved store (option B)
 - New api-server feature folder `features/approved-docs/`:

@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AddVariantBody,
   AnalysisRun,
   AnalysisSidecar,
   ApiMessage,
@@ -27,6 +28,7 @@ import type {
   ApplicationInput,
   ApplicationSummary,
   ApplicationUpdate,
+  ApplicationVariant,
   DocumentUpload,
   FieldValues,
   GetRunPageImageParams,
@@ -45,6 +47,7 @@ import type {
   TemplateListing,
   TemplateRef,
   TemplateUpgradeInput,
+  UploadDocumentParams,
   UploadedFile,
   User,
   VerdictInput
@@ -1421,12 +1424,20 @@ export const useSaveFieldValues = <TError = ErrorType<unknown>,
     }
 
 export const getUploadDocumentUrl = (applicationId: string,
-    blockId: string,) => {
+    blockId: string,
+    params?: UploadDocumentParams,) => {
+  const normalizedParams = new URLSearchParams();
 
+  Object.entries(params || {}).forEach(([key, value]) => {
 
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
 
+  const stringifiedParams = normalizedParams.toString();
 
-  return `/api/applications/${applicationId}/uploads/${blockId}`
+  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/uploads/${blockId}?${stringifiedParams}` : `/api/applications/${applicationId}/uploads/${blockId}`
 }
 
 /**
@@ -1434,11 +1445,12 @@ export const getUploadDocumentUrl = (applicationId: string,
  */
 export const uploadDocument = async (applicationId: string,
     blockId: string,
-    documentUpload: DocumentUpload, options?: RequestInit): Promise<UploadedFile> => {
+    documentUpload: DocumentUpload,
+    params?: UploadDocumentParams, options?: RequestInit): Promise<UploadedFile> => {
     const formData = new FormData();
 formData.append(`file`, documentUpload.file);
 
-  return customFetch<UploadedFile>(getUploadDocumentUrl(applicationId,blockId),
+  return customFetch<UploadedFile>(getUploadDocumentUrl(applicationId,blockId,params),
   {
     ...options,
     method: 'POST'
@@ -1452,8 +1464,8 @@ formData.append(`file`, documentUpload.file);
 
 
 export const getUploadDocumentMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,{applicationId: string;blockId: string;data: BodyType<DocumentUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,{applicationId: string;blockId: string;data: BodyType<DocumentUpload>}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,{applicationId: string;blockId: string;data: BodyType<DocumentUpload>;params?: UploadDocumentParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,{applicationId: string;blockId: string;data: BodyType<DocumentUpload>;params?: UploadDocumentParams}, TContext> => {
 
 const mutationKey = ['uploadDocument'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1465,10 +1477,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadDocument>>, {applicationId: string;blockId: string;data: BodyType<DocumentUpload>}> = (props) => {
-          const {applicationId,blockId,data} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadDocument>>, {applicationId: string;blockId: string;data: BodyType<DocumentUpload>;params?: UploadDocumentParams}> = (props) => {
+          const {applicationId,blockId,data,params} = props ?? {};
 
-          return  uploadDocument(applicationId,blockId,data,requestOptions)
+          return  uploadDocument(applicationId,blockId,data,params,requestOptions)
         }
 
 
@@ -1486,11 +1498,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
  * @summary Upload a file against a document block
  */
 export const useUploadDocument = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,{applicationId: string;blockId: string;data: BodyType<DocumentUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDocument>>, TError,{applicationId: string;blockId: string;data: BodyType<DocumentUpload>;params?: UploadDocumentParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof uploadDocument>>,
         TError,
-        {applicationId: string;blockId: string;data: BodyType<DocumentUpload>},
+        {applicationId: string;blockId: string;data: BodyType<DocumentUpload>;params?: UploadDocumentParams},
         TContext
       > => {
       return useMutation(getUploadDocumentMutationOptions(options));
@@ -1569,6 +1581,156 @@ export const useDeleteDocument = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteDocumentMutationOptions(options));
+    }
+
+export const getAddVariantUrl = (applicationId: string,
+    blockId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/blocks/${blockId}/variants`
+}
+
+/**
+ * Descriptor keys must match the template block's descriptorFields exactly; values non-empty; duplicate descriptor value-sets rejected (409). Label is built server-side; the id is minted once.
+ * @summary Add a variant to a set block on this application
+ */
+export const addVariant = async (applicationId: string,
+    blockId: string,
+    addVariantBody: AddVariantBody, options?: RequestInit): Promise<ApplicationVariant> => {
+
+  return customFetch<ApplicationVariant>(getAddVariantUrl(applicationId,blockId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(addVariantBody)
+  }
+);}
+
+
+
+
+
+export const getAddVariantMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addVariant>>, TError,{applicationId: string;blockId: string;data: BodyType<AddVariantBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addVariant>>, TError,{applicationId: string;blockId: string;data: BodyType<AddVariantBody>}, TContext> => {
+
+const mutationKey = ['addVariant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addVariant>>, {applicationId: string;blockId: string;data: BodyType<AddVariantBody>}> = (props) => {
+          const {applicationId,blockId,data} = props ?? {};
+
+          return  addVariant(applicationId,blockId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddVariantMutationResult = NonNullable<Awaited<ReturnType<typeof addVariant>>>
+    export type AddVariantMutationBody = BodyType<AddVariantBody>
+    export type AddVariantMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Add a variant to a set block on this application
+ */
+export const useAddVariant = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addVariant>>, TError,{applicationId: string;blockId: string;data: BodyType<AddVariantBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addVariant>>,
+        TError,
+        {applicationId: string;blockId: string;data: BodyType<AddVariantBody>},
+        TContext
+      > => {
+      return useMutation(getAddVariantMutationOptions(options));
+    }
+
+export const getDeleteVariantUrl = (applicationId: string,
+    blockId: string,
+    variantId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/blocks/${blockId}/variants/${variantId}`
+}
+
+/**
+ * @summary Remove a variant (refused while uploads are tagged to it)
+ */
+export const deleteVariant = async (applicationId: string,
+    blockId: string,
+    variantId: string, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteVariantUrl(applicationId,blockId,variantId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteVariantMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVariant>>, TError,{applicationId: string;blockId: string;variantId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteVariant>>, TError,{applicationId: string;blockId: string;variantId: string}, TContext> => {
+
+const mutationKey = ['deleteVariant'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteVariant>>, {applicationId: string;blockId: string;variantId: string}> = (props) => {
+          const {applicationId,blockId,variantId} = props ?? {};
+
+          return  deleteVariant(applicationId,blockId,variantId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteVariantMutationResult = NonNullable<Awaited<ReturnType<typeof deleteVariant>>>
+
+    export type DeleteVariantMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Remove a variant (refused while uploads are tagged to it)
+ */
+export const useDeleteVariant = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteVariant>>, TError,{applicationId: string;blockId: string;variantId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteVariant>>,
+        TError,
+        {applicationId: string;blockId: string;variantId: string},
+        TContext
+      > => {
+      return useMutation(getDeleteVariantMutationOptions(options));
     }
 
 export const getListModelOptionsUrl = () => {

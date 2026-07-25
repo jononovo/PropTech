@@ -12,4 +12,6 @@ export interface UploadedFile {
   uploadedAt: string;
   /** Set blocks only — which of the block's variants this file belongs to. Metadata only; object-store keys are unchanged. */
   variantId?: string;
+  /** audit trail — client IP the upload arrived from */
+  uploaderIp?: string;
 }

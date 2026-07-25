@@ -17,6 +17,11 @@ export function buildSidecarMarkdown(opts: {
   flags?: { code: string; note?: string }[];
   coreFields?: Record<string, unknown>;
   variantLabel?: string;
+  /** document-flow provenance — outcome + the per-page pre-step decisions */
+  approval?: {
+    outcome: "approved" | "approved_incomplete";
+    pageDecisions?: { page: number; decision: string; note?: string }[];
+  };
   pageMarkdown: string[]; // one entry per page, in order (empty for copy)
 }): string {
   const { doc } = opts;
@@ -52,6 +57,17 @@ export function buildSidecarMarkdown(opts: {
   lines.push(`  operation: ${yamlStr(doc.source)}`);
   lines.push(`  actor: ${yamlStr(doc.approvedBy)}`);
   lines.push(`  timestamp: ${yamlStr(doc.approvedAt)}`);
+  if (opts.approval) {
+    lines.push(`approvalOutcome: ${yamlStr(opts.approval.outcome)}`);
+    if (opts.approval.pageDecisions && opts.approval.pageDecisions.length > 0) {
+      lines.push("pageDecisions:");
+      for (const d of opts.approval.pageDecisions) {
+        lines.push(`  - page: ${d.page}`);
+        lines.push(`    decision: ${yamlStr(d.decision)}`);
+        if (d.note) lines.push(`    note: ${yamlStr(d.note)}`);
+      }
+    }
+  }
   lines.push(`approvedBy: ${yamlStr(doc.approvedBy)}`);
   lines.push(`approvedAt: ${yamlStr(doc.approvedAt)}`);
   lines.push("---", "");

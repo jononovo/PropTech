@@ -30,6 +30,7 @@ import type {
   ApplicationUpdate,
   ApplicationVariant,
   ApprovedDocument,
+  DocumentApprovalInput,
   DocumentUpload,
   FieldValues,
   GetApprovedDocFileParams,
@@ -2034,6 +2035,79 @@ export const useMaterializeApprovedDoc = <TError = ErrorType<ApiMessage>,
         TContext
       > => {
       return useMutation(getMaterializeApprovedDocMutationOptions(options));
+    }
+
+export const getRecordDocumentApprovalUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/document-approvals`
+}
+
+/**
+ * The document-level confirmation of the page-by-page pre-step — the FILING decision (block + variant). approved / approved_incomplete run the same materialization seam as block accepts; approved_incomplete additionally marks a new version as requested. rejected records the decision only. Materialization failure keeps the approval (recorded on materializationErrors, retryable) — the decision stands.
+ * @summary Record a per-document approval from the filmstrip flow
+ */
+export const recordDocumentApproval = async (applicationId: string,
+    documentApprovalInput: DocumentApprovalInput, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getRecordDocumentApprovalUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(documentApprovalInput)
+  }
+);}
+
+
+
+
+
+export const getRecordDocumentApprovalMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordDocumentApproval>>, TError,{applicationId: string;data: BodyType<DocumentApprovalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordDocumentApproval>>, TError,{applicationId: string;data: BodyType<DocumentApprovalInput>}, TContext> => {
+
+const mutationKey = ['recordDocumentApproval'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordDocumentApproval>>, {applicationId: string;data: BodyType<DocumentApprovalInput>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  recordDocumentApproval(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordDocumentApprovalMutationResult = NonNullable<Awaited<ReturnType<typeof recordDocumentApproval>>>
+    export type RecordDocumentApprovalMutationBody = BodyType<DocumentApprovalInput>
+    export type RecordDocumentApprovalMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Record a per-document approval from the filmstrip flow
+ */
+export const useRecordDocumentApproval = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordDocumentApproval>>, TError,{applicationId: string;data: BodyType<DocumentApprovalInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordDocumentApproval>>,
+        TError,
+        {applicationId: string;data: BodyType<DocumentApprovalInput>},
+        TContext
+      > => {
+      return useMutation(getRecordDocumentApprovalMutationOptions(options));
     }
 
 export const getGetApprovedDocFileUrl = (applicationId: string,

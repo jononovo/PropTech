@@ -23,4 +23,6 @@ export interface PacketState {
   gate?: PacketGateDecision;
   /** Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest. */
   lastRunError?: string;
+  /** audit trail — client IP the packet upload arrived from */
+  uploaderIp?: string;
 }

@@ -1,6 +1,6 @@
 # Document-sequence approval flow (filmstrip sub-feature)
 
-Status: DISCUSSION — needs canvas mockups before build. Captured Jul 25, 2026 from user direction.
+Status: SHIPPED (3C) — server + client landed & e2e-verified Jul 25, 2026. Client layer: `artifacts/client/src/features/case-file/review/approval/`. Remaining polish candidates: unlink merged groups, per-page flag sourcing from analyzer callouts.
 
 ## The problem
 Everything is analyzed per page, but the unit a human actually approves is a DOCUMENT — e.g. a
@@ -42,6 +42,26 @@ too coarse (a set block holds many documents across many variants) and per-page 
   genuinely-new behavior (roll-up prompt, merge/link affordance, grouping logic), each small
   and separate, mounted conditionally. No new page, no forked near-duplicate components,
   no 1000-line page files — keep ReviewPage a thin composition.
+
+## Rulings (Jul 25 2026, late night — flow mechanics, user Q&A)
+- Page→document handoff: when the LAST page of a group gets a decision, the rail auto-switches to
+  document mode. The confirmation is a FILING decision ("saving as <block> → <variant> — correct?");
+  correcting the analyzer's guessed block/variant is a first-class action there, not an edge case.
+- Landing mode: DOCUMENT mode on the first unsettled document (not page mode).
+- Approved documents: leave the queue (backend) and gray out/collapse visually.
+- ↵ ACCEPT in document mode = approve whole document (for now; may disable later).
+- Merge/link lives in the filmstrip, A1-style, between adjacent groups; works across file boundaries.
+- Filmstrip = the whole application's working set (all files). Visual grammar: larger spacing +
+  file-name divider = arrived as separate files (fact); color bands + title chips = analyzer split
+  ONE file into multiple documents (claim needing review). Standalone one-doc PDFs get no color.
+- Strip population: OPEN items only by default + a "show all" toggle (approved/dismissed load on
+  demand; approved render as collapsed grayed stacked chips, e.g. "Chase Jan ✓ · 3 pp", expandable).
+- New arrivals go to the FRONT of the line.
+- Order by document type/requirement if easy; otherwise future feature.
+- FUTURE (noted, not built): batches — process one uploader's batch separately (Jessica's Friday 20
+  vs Joseph's Thursday 20) instead of one giant per-application queue. Queue is per-application.
+- Deliverable shape: ONE design, demonstrated in TWO scenarios (merged packet w/ color bands;
+  multi-file w/ spacing+dividers+cross-file link) — not two design variants.
 
 ## 3C build plan (audited Jul 25 2026, pre-build)
 This is an UPGRADE to the existing review feature (`features/case-file/review/`), not a new one.

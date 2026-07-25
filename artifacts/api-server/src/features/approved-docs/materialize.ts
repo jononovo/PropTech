@@ -160,3 +160,89 @@ export async function materializeApproval(app: Application, blockId: string): Pr
     throw err instanceof HttpError ? err : new HttpError(502, message);
   }
 }
+
+/**
+ * Materialize ONE document from the per-document approval flow — explicit
+ * source (runId + page range), no verdict lookup. Same registry + object
+ * store seam as block accepts; supersede is scoped to the SAME pages so
+ * sibling documents in a set-block variant stay live.
+ */
+export async function materializeDocumentApproval(
+  app: Application,
+  approval: {
+    id: string;
+    blockId: string;
+    variantId?: string;
+    runId: string;
+    pages: [number, number];
+    outcome: "approved" | "approved_incomplete";
+    pageDecisions?: { page: number; decision: string; note?: string }[];
+    decidedBy: string;
+    decidedAt: string;
+  },
+): Promise<ApprovedDoc> {
+  const { blockId } = approval;
+  const block = findBlock(app, blockId);
+  if (!block || block.kind !== "document") throw new HttpError(409, "Block is not a document block on this application's template");
+
+  try {
+    const sidecar = await readSidecar(app.id);
+    const run = sidecar.runs.find((r) => r.runId === approval.runId);
+    if (!run) throw new HttpError(502, `Run ${approval.runId} not found on this application`);
+    const [first, last] = approval.pages;
+    // the analyzer's document for these pages, if any — scores/flags provenance
+    const runDoc = run.documents.find(
+      (d) => d.segment.pages[0] === first && d.segment.pages[1] === last,
+    );
+
+    const taken = await liveBasenames(app.id);
+    const rawDate = runDoc?.coreFields?.["document_date"] as string | undefined;
+    const dateBit = rawDate && /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : approval.decidedAt.slice(0, 10);
+    let basename = `${slug(blockId)}_${slug(String(dateBit))}`;
+    for (let seq = 0; taken.has(basename); seq++) basename = `${slug(blockId)}_${slug(String(dateBit))}_${String.fromCharCode(98 + seq)}`;
+
+    const packetStream = await openPacketPdfStream(app.id);
+    if (!packetStream) throw new HttpError(502, "Packet PDF missing from storage — cannot extract");
+    const pdfBytes = await extractPages(await streamToBuffer(packetStream), first, last);
+    const pageMarkdown = await Promise.all(
+      Array.from({ length: last - first + 1 }, (_, i) => fetchPageMarkdown(app.id, run.runId, first + i)),
+    );
+
+    const doc: ApprovedDoc = {
+      id: `ad-${nanoid(10)}`,
+      applicationId: app.id, blockId, basename, source: "extract",
+      pages: [first, last], runId: run.runId,
+      ...(approval.variantId ? { variantId: approval.variantId } : {}),
+      ...(app.packet?.sha256 ? { packetSha256: app.packet.sha256 } : {}),
+      approvedBy: approval.decidedBy, approvedAt: approval.decidedAt,
+    };
+
+    const variantLabel = approval.variantId
+      ? (app.variants?.[blockId] ?? []).find((v) => v.id === approval.variantId)?.label
+      : undefined;
+    const md = buildSidecarMarkdown({
+      doc,
+      blockName: block.name,
+      suggestedName: runDoc?.suggestedName,
+      scores: runDoc?.scores as Record<string, unknown> | undefined,
+      flags: runDoc?.flags,
+      coreFields: runDoc?.coreFields as Record<string, unknown> | undefined,
+      ...(variantLabel ? { variantLabel } : {}),
+      approval: {
+        outcome: approval.outcome,
+        ...(approval.pageDecisions ? { pageDecisions: approval.pageDecisions } : {}),
+      },
+      pageMarkdown,
+    });
+
+    await putApprovedObject(app.id, basename, "pdf", pdfBytes);
+    await putApprovedObject(app.id, basename, "md", Buffer.from(md, "utf8"));
+    await insertApprovedDoc(doc, { matchPages: [first, last] });
+    await setMaterializationError(app.id, blockId, null);
+    return doc;
+  } catch (err) {
+    const message = err instanceof HttpError ? err.message : `Materialization failed: ${err instanceof Error ? err.message : String(err)}`;
+    await setMaterializationError(app.id, blockId, message).catch(() => undefined);
+    throw err instanceof HttpError ? err : new HttpError(502, message);
+  }
+}

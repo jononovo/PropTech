@@ -12,6 +12,7 @@ import {
   UploadPacketResponse,
 } from "@workspace/api-zod";
 import { HttpError, isHttpError } from "../../lib/httpError";
+import { clientIp } from "../../lib/clientIp";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
 import { readPdfInfo, runPreflight } from "./preflight";
@@ -180,6 +181,7 @@ router.post(
         sha256: createHash("sha256").update(readFileSync(tempPath)).digest("hex"),
         uploadedAt: new Date().toISOString(),
         state: "preflight_running",
+        ...(clientIp(req) ? { uploaderIp: clientIp(req) } : {}),
       };
       let claimed: Application | undefined;
       let previousPacket: PacketState | undefined;

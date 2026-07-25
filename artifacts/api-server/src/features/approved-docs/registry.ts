@@ -37,10 +37,19 @@ export async function liveBasenames(applicationId: string): Promise<Set<string>>
 }
 
 /**
- * Insert the new row and supersede any live rows for the same block(+variant)
- * in one transaction — one live approved document per requirement slot.
+ * Insert the new row and supersede prior live rows in one transaction.
+ *
+ * Default (block accept, single blocks): one live approved document per
+ * block(+variant) slot — all live rows for the slot are superseded.
+ *
+ * Document flow (`matchPages`): a variant legitimately holds MANY documents
+ * (Jan + Feb statements), so only a re-approval of the SAME pages supersedes;
+ * sibling documents in the slot stay live.
  */
-export async function insertApprovedDoc(doc: ApprovedDoc): Promise<void> {
+export async function insertApprovedDoc(
+  doc: ApprovedDoc,
+  opts?: { matchPages?: [number, number] },
+): Promise<void> {
   await db.transaction(async (tx) => {
     const conditions = [
       eq(approvedDocumentsTable.applicationId, doc.applicationId),
@@ -50,10 +59,31 @@ export async function insertApprovedDoc(doc: ApprovedDoc): Promise<void> {
         ? eq(approvedDocumentsTable.variantId, doc.variantId)
         : isNull(approvedDocumentsTable.variantId),
     ];
-    await tx
-      .update(approvedDocumentsTable)
-      .set({ supersededBy: doc.id })
-      .where(and(...conditions));
+    if (opts?.matchPages) {
+      // pages live inside the jsonb doc — pull the slot's live rows and match in JS
+      const live = await tx
+        .select({ id: approvedDocumentsTable.id, data: approvedDocumentsTable.data })
+        .from(approvedDocumentsTable)
+        .where(and(...conditions));
+      const [first, last] = opts.matchPages;
+      const ids = live
+        .filter((r) => {
+          const p = (r.data as ApprovedDoc).pages;
+          return Array.isArray(p) && p[0] === first && p[1] === last;
+        })
+        .map((r) => r.id);
+      for (const rowId of ids) {
+        await tx
+          .update(approvedDocumentsTable)
+          .set({ supersededBy: doc.id })
+          .where(and(eq(approvedDocumentsTable.applicationId, doc.applicationId), eq(approvedDocumentsTable.id, rowId)));
+      }
+    } else {
+      await tx
+        .update(approvedDocumentsTable)
+        .set({ supersededBy: doc.id })
+        .where(and(...conditions));
+    }
     await tx.insert(approvedDocumentsTable).values({
       id: doc.id,
       applicationId: doc.applicationId,

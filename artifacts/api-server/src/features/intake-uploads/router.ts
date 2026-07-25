@@ -4,10 +4,11 @@ import multer from "multer";
 import { UploadDocumentResponse } from "@workspace/api-zod";
 import { HttpError, isHttpError } from "../../lib/httpError";
 import { deleteIntakeUpload, putIntakeUpload } from "../../lib/packetObjectStore";
+import { clientIp } from "../../lib/clientIp";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { extensionAllowed, findBlock, isSafeSegment } from "../intake/blocks";
 
-type UploadedFileRecord = { filename: string; size: number; uploadedAt: string; variantId?: string };
+type UploadedFileRecord = { filename: string; size: number; uploadedAt: string; variantId?: string; uploaderIp?: string };
 
 function sanitizeFilename(name: string): string {
   return path.basename(name).replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120) || "file";
@@ -99,6 +100,7 @@ router.post(
       size: req.file.size,
       uploadedAt: new Date().toISOString(),
       ...(variantId ? { variantId } : {}),
+      ...(clientIp(req) ? { uploaderIp: clientIp(req) } : {}),
     };
     // Atomic append — no clobbering of concurrent writes to other parts of the app.
     const app = await updateApplication(ctx.app.id, (app) => {

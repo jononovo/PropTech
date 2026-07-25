@@ -608,6 +608,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/document-approvals:
+    post:
+      operationId: recordDocumentApproval
+      tags: [approved-docs]
+      summary: Record a per-document approval from the filmstrip flow
+      description: >
+        The document-level confirmation of the page-by-page pre-step — the
+        FILING decision (block + variant). approved / approved_incomplete run
+        the same materialization seam as block accepts; approved_incomplete
+        additionally marks a new version as requested. rejected records the
+        decision only. Materialization failure keeps the approval (recorded on
+        materializationErrors, retryable) — the decision stands.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentApprovalInput"
+      responses:
+        "200":
+          description: Updated application (documentApprovals prepended; materializationErrors reflects any failure)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Invalid body, unknown block, or pages outside the run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Variant required for a set block, or unknown variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /applications/{applicationId}/approved-docs/{approvedDocId}/file:
     get:
       operationId: getApprovedDocFile
@@ -1381,6 +1426,9 @@ components:
           description: >
             Set blocks only — which of the block's variants this file belongs to.
             Metadata only; object-store keys are unchanged.
+        uploaderIp:
+          type: string
+          description: audit trail — client IP the upload arrived from
     ApplicationVariant:
       type: object
       description: >
@@ -1456,6 +1504,76 @@ components:
         approvedBy: { type: string }
         approvedAt: { type: string }
         supersededBy: { type: string, description: "id of the newer row that replaced this one" }
+    PageDecision:
+      type: object
+      description: A per-page pre-step decision inside the document approval flow.
+      required: [page, decision]
+      properties:
+        page: { type: integer, description: "1-based packet page" }
+        decision:
+          type: string
+          enum: [good, bad, flag_accepted]
+          description: >
+            good = page fine as-is; bad = page rejected; flag_accepted = page
+            accepted despite flags/low scores — the flag stays on the record as
+            a low-level note.
+        note: { type: string }
+    DocumentApproval:
+      type: object
+      description: >
+        A per-DOCUMENT human approval (the filing decision) — the unit between
+        page decisions and block verdicts. Tagged to a block and, for set
+        blocks, a variant. approved/approved_incomplete materialize into the
+        approved registry through the same seam as block accepts;
+        approved_incomplete additionally requests a new version. Append-only on
+        the application; a re-approval of the same pages supersedes via the
+        registry, never deletes.
+      required: [id, blockId, runId, pages, outcome, decidedBy, decidedAt]
+      properties:
+        id: { type: string }
+        blockId: { type: string }
+        variantId: { type: string, description: "set blocks — which variant this document files into" }
+        runId: { type: string, description: "analyzer run whose grouping this approval is based on" }
+        pages:
+          type: array
+          description: inclusive 1-based packet page range [first, last]
+          items: { type: integer }
+          minItems: 2
+          maxItems: 2
+        pageDecisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PageDecision"
+        outcome:
+          type: string
+          enum: [approved, approved_incomplete, rejected]
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
+        decidedAt: { type: string }
+        approvedDocId: { type: string, description: "registry row created by materialization (approved outcomes only)" }
+    DocumentApprovalInput:
+      type: object
+      required: [blockId, runId, pages, outcome, decidedBy]
+      properties:
+        blockId: { type: string }
+        variantId: { type: string }
+        runId: { type: string }
+        pages:
+          type: array
+          items: { type: integer }
+          minItems: 2
+          maxItems: 2
+        pageDecisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/PageDecision"
+        outcome:
+          type: string
+          enum: [approved, approved_incomplete, rejected]
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
     DocumentUpload:
       type: object
       required: [file]
@@ -1541,6 +1659,14 @@ components:
             properties:
               message: { type: string }
               at: { type: string }
+        documentApprovals:
+          type: array
+          description: >
+            Per-document approvals from the filmstrip flow, append-only, newest
+            first. The registry (approved-docs) is the materialized truth; this
+            is the decision trail on the application. Portal-owned.
+          items:
+            $ref: "#/components/schemas/DocumentApproval"
         variants:
           type: object
           description: >
@@ -1809,6 +1935,9 @@ components:
           description: >
             Plain-language reason the last analyzer kick failed (packet reverted to gated).
             Cleared by the next successful upload, gate decision, or run ingest.
+        uploaderIp:
+          type: string
+          description: audit trail — client IP the packet upload arrived from
     AnalysisCoreFields:
       type: object
       description: >

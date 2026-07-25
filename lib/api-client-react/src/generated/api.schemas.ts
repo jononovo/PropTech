@@ -327,6 +327,8 @@ export interface UploadedFile {
   uploadedAt: string;
   /** Set blocks only — which of the block's variants this file belongs to. Metadata only; object-store keys are unchanged. */
   variantId?: string;
+  /** audit trail — client IP the upload arrived from */
+  uploaderIp?: string;
 }
 
 /**
@@ -403,6 +405,103 @@ export interface ApprovedDocument {
   approvedAt: string;
   /** id of the newer row that replaced this one */
   supersededBy?: string;
+}
+
+/**
+ * good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note.
+ */
+export type PageDecisionDecision = typeof PageDecisionDecision[keyof typeof PageDecisionDecision];
+
+
+export const PageDecisionDecision = {
+  good: 'good',
+  bad: 'bad',
+  flag_accepted: 'flag_accepted',
+} as const;
+
+/**
+ * A per-page pre-step decision inside the document approval flow.
+ */
+export interface PageDecision {
+  /** 1-based packet page */
+  page: number;
+  /** good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note. */
+  decision: PageDecisionDecision;
+  note?: string;
+}
+
+export type DocumentApprovalOutcome = typeof DocumentApprovalOutcome[keyof typeof DocumentApprovalOutcome];
+
+
+export const DocumentApprovalOutcome = {
+  approved: 'approved',
+  approved_incomplete: 'approved_incomplete',
+  rejected: 'rejected',
+} as const;
+
+export type DocumentApprovalDecidedBy = typeof DocumentApprovalDecidedBy[keyof typeof DocumentApprovalDecidedBy];
+
+
+export const DocumentApprovalDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+/**
+ * A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.
+ */
+export interface DocumentApproval {
+  id: string;
+  blockId: string;
+  /** set blocks — which variant this document files into */
+  variantId?: string;
+  /** analyzer run whose grouping this approval is based on */
+  runId: string;
+  /**
+     * inclusive 1-based packet page range [first, last]
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+  pageDecisions?: PageDecision[];
+  outcome: DocumentApprovalOutcome;
+  decidedBy: DocumentApprovalDecidedBy;
+  decidedAt: string;
+  /** registry row created by materialization (approved outcomes only) */
+  approvedDocId?: string;
+}
+
+export type DocumentApprovalInputOutcome = typeof DocumentApprovalInputOutcome[keyof typeof DocumentApprovalInputOutcome];
+
+
+export const DocumentApprovalInputOutcome = {
+  approved: 'approved',
+  approved_incomplete: 'approved_incomplete',
+  rejected: 'rejected',
+} as const;
+
+export type DocumentApprovalInputDecidedBy = typeof DocumentApprovalInputDecidedBy[keyof typeof DocumentApprovalInputDecidedBy];
+
+
+export const DocumentApprovalInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface DocumentApprovalInput {
+  blockId: string;
+  variantId?: string;
+  runId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+  pageDecisions?: PageDecision[];
+  outcome: DocumentApprovalInputOutcome;
+  decidedBy: DocumentApprovalInputDecidedBy;
 }
 
 export interface DocumentUpload {
@@ -564,6 +663,8 @@ export interface PacketState {
   gate?: PacketGateDecision;
   /** Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest. */
   lastRunError?: string;
+  /** audit trail — client IP the packet upload arrived from */
+  uploaderIp?: string;
 }
 
 export interface TemplateRepinEvent {
@@ -619,6 +720,8 @@ export interface Application {
   templateHistory?: TemplateRepinEvent[];
   /** blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned. */
   materializationErrors?: ApplicationMaterializationErrors;
+  /** Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned. */
+  documentApprovals?: DocumentApproval[];
   /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
   variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */

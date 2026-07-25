@@ -10,6 +10,7 @@ import type { ApplicationMaterializationErrors } from './applicationMaterializat
 import type { ApplicationUploads } from './applicationUploads';
 import type { ApplicationVariants } from './applicationVariants';
 import type { ApplicationVerdicts } from './applicationVerdicts';
+import type { DocumentApproval } from './documentApproval';
 import type { ManualPlacement } from './manualPlacement';
 import type { PacketState } from './packetState';
 import type { Template } from './template';
@@ -34,6 +35,8 @@ export interface Application {
   templateHistory?: TemplateRepinEvent[];
   /** blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned. */
   materializationErrors?: ApplicationMaterializationErrors;
+  /** Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned. */
+  documentApprovals?: DocumentApproval[];
   /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
   variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */

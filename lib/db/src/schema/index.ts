@@ -4,3 +4,4 @@ export * from "./templates";
 export * from "./saved-sections";
 export * from "./users";
 export * from "./approved-documents";
+export * from "./variant-shapes";

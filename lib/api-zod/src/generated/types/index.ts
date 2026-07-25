@@ -102,6 +102,8 @@ export * from './uploadedFile';
 export * from './user';
 export * from './userRole';
 export * from './variantConfig';
+export * from './variantShape';
+export * from './variantShapeInput';
 export * from './verdict';
 export * from './verdictDecidedBy';
 export * from './verdictInput';

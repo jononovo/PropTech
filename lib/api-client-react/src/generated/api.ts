@@ -52,6 +52,8 @@ import type {
   UploadDocumentParams,
   UploadedFile,
   User,
+  VariantShape,
+  VariantShapeInput,
   VerdictInput
 } from './api.schemas';
 
@@ -830,6 +832,154 @@ export const useCreateSavedSection = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateSavedSectionMutationOptions(options));
+    }
+
+export const getListVariantShapesUrl = () => {
+
+
+
+
+  return `/api/variant-shapes`
+}
+
+/**
+ * @summary Reusable variant shapes (descriptor conventions) for the builder — presets + saved
+ */
+export const listVariantShapes = async ( options?: RequestInit): Promise<VariantShape[]> => {
+
+  return customFetch<VariantShape[]>(getListVariantShapesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListVariantShapesQueryKey = () => {
+    return [
+    `/api/variant-shapes`
+    ] as const;
+    }
+
+
+export const getListVariantShapesQueryOptions = <TData = Awaited<ReturnType<typeof listVariantShapes>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listVariantShapes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListVariantShapesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listVariantShapes>>> = ({ signal }) => listVariantShapes({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listVariantShapes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListVariantShapesQueryResult = NonNullable<Awaited<ReturnType<typeof listVariantShapes>>>
+export type ListVariantShapesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Reusable variant shapes (descriptor conventions) for the builder — presets + saved
+ */
+
+export function useListVariantShapes<TData = Awaited<ReturnType<typeof listVariantShapes>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listVariantShapes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListVariantShapesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateVariantShapeUrl = () => {
+
+
+
+
+  return `/api/variant-shapes`
+}
+
+/**
+ * @summary Save the current variant config as a reusable shape (a copy, never a link)
+ */
+export const createVariantShape = async (variantShapeInput: VariantShapeInput, options?: RequestInit): Promise<VariantShape> => {
+
+  return customFetch<VariantShape>(getCreateVariantShapeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(variantShapeInput)
+  }
+);}
+
+
+
+
+
+export const getCreateVariantShapeMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVariantShape>>, TError,{data: BodyType<VariantShapeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createVariantShape>>, TError,{data: BodyType<VariantShapeInput>}, TContext> => {
+
+const mutationKey = ['createVariantShape'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createVariantShape>>, {data: BodyType<VariantShapeInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createVariantShape(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateVariantShapeMutationResult = NonNullable<Awaited<ReturnType<typeof createVariantShape>>>
+    export type CreateVariantShapeMutationBody = BodyType<VariantShapeInput>
+    export type CreateVariantShapeMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Save the current variant config as a reusable shape (a copy, never a link)
+ */
+export const useCreateVariantShape = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createVariantShape>>, TError,{data: BodyType<VariantShapeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createVariantShape>>,
+        TError,
+        {data: BodyType<VariantShapeInput>},
+        TContext
+      > => {
+      return useMutation(getCreateVariantShapeMutationOptions(options));
     }
 
 export const getListUsersUrl = () => {

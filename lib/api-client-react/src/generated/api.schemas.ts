@@ -347,6 +347,24 @@ export interface ApplicationVariant {
 }
 
 /**
+ * A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.
+ */
+export interface VariantShapeInput {
+  /** library display name, unique */
+  name: string;
+  variantNoun: string;
+  /** @minItems 1 */
+  descriptorFields: DescriptorField[];
+  docsPerVariant?: DocsPerVariant;
+}
+
+export type VariantShape = VariantShapeInput & {
+  id: string;
+  /** seeded built-in (top document types) — shown first in the picker */
+  preset?: boolean;
+};
+
+/**
  * extract = pages pulled from the packet PDF; copy = direct intake upload copied whole
  */
 export type ApprovedDocumentSource = typeof ApprovedDocumentSource[keyof typeof ApprovedDocumentSource];

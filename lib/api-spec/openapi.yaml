@@ -226,6 +226,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SavedSection"
+  /variant-shapes:
+    get:
+      operationId: listVariantShapes
+      tags: [variant-shapes]
+      summary: Reusable variant shapes (descriptor conventions) for the builder — presets + saved
+      responses:
+        "200":
+          description: Shapes, presets first then saved, each alphabetical
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VariantShape"
+    post:
+      operationId: createVariantShape
+      tags: [variant-shapes]
+      summary: Save the current variant config as a reusable shape (a copy, never a link)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VariantShapeInput"
+      responses:
+        "201":
+          description: Saved shape
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VariantShape"
+        "409":
+          description: A shape with this name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /users:
     get:
       operationId: listUsers
@@ -1361,6 +1398,34 @@ components:
             type: string
         label: { type: string, description: "server-built display label (descriptor values joined)" }
         createdAt: { type: string }
+    VariantShapeInput:
+      type: object
+      description: >
+        A saved descriptor convention: what one variant of a set block looks like
+        (noun + identity fields + docs-per-variant default). Copy-on-use — templates
+        get their own copy of the fields, never a reference, so editing a shape
+        later cannot reach into existing templates.
+      required: [name, variantNoun, descriptorFields]
+      properties:
+        name: { type: string, description: "library display name, unique" }
+        variantNoun: { type: string }
+        descriptorFields:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/DescriptorField"
+        docsPerVariant:
+          $ref: "#/components/schemas/DocsPerVariant"
+    VariantShape:
+      allOf:
+        - $ref: "#/components/schemas/VariantShapeInput"
+        - type: object
+          required: [id]
+          properties:
+            id: { type: string }
+            preset:
+              type: boolean
+              description: seeded built-in (top document types) — shown first in the picker
     ApprovedDocument:
       type: object
       description: >

@@ -511,6 +511,75 @@ export const CreateSavedSectionResponse = zod.object({
 
 
 /**
+ * @summary Reusable variant shapes (descriptor conventions) for the builder — presets + saved
+ */
+
+
+
+
+export const ListVariantShapesResponseItem = zod.object({
+  "name": zod.string().describe('library display name, unique'),
+  "variantNoun": zod.string(),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).min(1),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+}).optional()
+}).describe('A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.\n').and(zod.object({
+  "id": zod.string(),
+  "preset": zod.boolean().optional().describe('seeded built-in (top document types) — shown first in the picker')
+}))
+export const ListVariantShapesResponse = zod.array(ListVariantShapesResponseItem)
+
+
+/**
+ * @summary Save the current variant config as a reusable shape (a copy, never a link)
+ */
+
+
+
+
+export const CreateVariantShapeBody = zod.object({
+  "name": zod.string().describe('library display name, unique'),
+  "variantNoun": zod.string(),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).min(1),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+}).optional()
+}).describe('A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.\n')
+
+
+
+
+
+export const CreateVariantShapeResponse = zod.object({
+  "name": zod.string().describe('library display name, unique'),
+  "variantNoun": zod.string(),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).min(1),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+}).optional()
+}).describe('A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.\n').and(zod.object({
+  "id": zod.string(),
+  "preset": zod.boolean().optional().describe('seeded built-in (top document types) — shown first in the picker')
+}))
+
+
+/**
  * @summary Seeded demo users for the sign-in page
  */
 export const ListUsersResponseItem = zod.object({

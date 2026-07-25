@@ -87,6 +87,31 @@ Shipped: `approved_documents` table (append-only, supersede-not-delete), `featur
 - New table `approved_documents` (`lib/db/src/schema/approved-documents.ts`): `{ id, applicationId, blockId, variantId?, basename, data jsonb, approvedBy, approvedAt }`. Append-only; this is the registry — pre-approval splits/assignments stay in run data + intake flow and are never in it.
 - Trigger: accept verdict on a block/variant. Never automatic during analysis.
 
+## Phase 3B — Variant shape library (conventions library)
+Goal: descriptor keys stay identical across templates. Mirror saved-sections exactly (copy-on-use, never linked).
+- Contract: `VariantShape { id, name, variantNoun, descriptorFields, docsPerVariant?, preset?: boolean }`; `GET /variant-shapes`, `POST /variant-shapes` (save from builder). Additive only.
+- DB: `variant_shapes` table, same jsonb-row pattern as saved_sections; presets seeded with `preset: true`, id `vs-preset-<slug>` (idempotent upsert on boot or seed script).
+- Presets (~20): bank statement, pay stub, W-2, 1099, tax return, government ID, passport, pension/SSA award, employment verification letter, mortgage statement, HOA statement, insurance policy, utility bill, retirement/brokerage statement, gift letter, lease agreement, title deed, credit report, business license, K-1.
+- Builder UX in `VariantConfigEditor`: when a block flips to arity:set, a shape picker (preset / saved / custom) pre-fills noun+fields; "Save as shape…" writes the current config to the library. Picking = one UPDATE_BLOCK patch copying the shape's fields — no reference kept.
+- Guard: saving requires non-empty noun + ≥1 field with key; duplicate names 409.
+
+## Phase 3C — Document-sequence approval flow (per-document approval; unlocks set blocks end-to-end)
+The unit a human approves is a DOCUMENT (see internal_docs/_future/document-approval-flow.md — decisions already ruled).
+- Contract: `DocumentApproval { id, runId, blockId, variantId?, pages [first,last], pageDecisions {page: good|bad}, outcome approved|approved_incomplete|rejected, decidedBy, decidedAt }`; stored on the application (`documentApprovals?: DocumentApproval[]`, additive). Endpoints: `POST /applications/{id}/document-approvals` (validates run doc exists, variant exists for set blocks, all pages decided) + list via Application.
+- Materialization: the POST calls the SAME `materializeApproval` seam, extended with an explicit-source overload `{runId, pages, blockId, variantId}` (skips block-level source resolution). `approved_incomplete` writes the registry row with an `incomplete: true` + `newVersionRequested: true` marker in `data` and the .md front matter — loudly visible everywhere the doc is listed.
+- Supersede scope for set blocks: per (blockId, variantId, pages-overlap) — a re-approved statement supersedes the prior row for the same variant+period, other documents in the variant untouched.
+- UI (ReviewPage/filmstrip): page-group highlight for the current run document, per-page good/not-good, roll-up prompt when all pages decided (approve / approve-incomplete / reject), variant picker on the roll-up for set blocks. Canvas mockups first unless user waives.
+- Block-level settle: a set block reads as covered when every declared variant has ≥1 live approved (non-rejected) document and docsPerVariant guidance is met or waived; client caseData derives this — no engine change.
+
+## Phase 3D — Approved-registry surface in the case file
+Small, read-only: an "Approved documents" strip/tab in the case file listing live registry rows (basename, block, variant, incomplete badge, superseded history collapsed), download pdf/md via existing endpoints. No new server work.
+
+## Phase 5 — Multi-file intake (manifest v1)
+Per internal_docs/_future/multi-file-intake.md: packet = manifest of files with per-file X-remove only; no defer queue, no Drive ingestion. Ships after Phase 4 — analyzer consumes a concatenated packet exactly as today, so this is intake/preflight + raster plumbing, additive contract (`packet.files[]`).
+
+## Sequencing
+3B (no dependencies) → 3C (needs 3B only for nicer labels, hard-depends on Phase 3 seam — done) → 3D (needs 3C's incomplete marker) → 4 (independent of 3C UI; consumes run + variants) → 5 last (touches packet ingestion, riskiest blast radius).
+
 ## Phase 4 — Satisfaction pass (analyzer)
 Per set block with ≥1 assigned doc: text-LLM over structured inputs only (rules + analysisNote + per-doc coreFields/scores/flags/pages). Write-once `satisfaction/block-<id>.json` + additive run-payload field; per-variant groups + gaps + one-paragraph summary; superseded (re-run per block) after human reassignment. Cost folded into existing run gate. Spec'd in detail when Phase 3 lands.
 

@@ -1,7 +1,104 @@
+import { useState } from "react";
 import type { Block, DescriptorField, DocsPerVariant, VariantConfig } from "@workspace/api-client-react";
+import {
+  getListVariantShapesQueryKey,
+  useCreateVariantShape,
+  useListVariantShapes,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { BlockPatch } from "../state/templateActions";
 
 const mono = "border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px";
+
+/**
+ * Shape library picker — descriptor CONVENTIONS shared across templates so
+ * keys stay identical (what keeps cross-template tooling coherent). Strictly
+ * copy-on-use: picking copies the shape's fields into this block's
+ * variantConfig; no reference is kept. "Save as shape" contributes the current
+ * config back to the library.
+ */
+function ShapePicker({ vc, setVc }: { vc: VariantConfig; setVc: (next: Partial<VariantConfig>) => void }) {
+  const { data: shapes } = useListVariantShapes();
+  const queryClient = useQueryClient();
+  const save = useCreateVariantShape({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListVariantShapesQueryKey() }),
+      onError: (err: unknown) => {
+        const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+        setSaveError(msg ?? "Saving failed");
+      },
+    },
+  });
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const apply = (id: string) => {
+    const shape = shapes?.find((s) => s.id === id);
+    if (!shape) return;
+    // copy, never link — deep-copy the fields so later edits stay local
+    setVc({
+      variantNoun: shape.variantNoun,
+      descriptorFields: shape.descriptorFields.map((f) => ({ ...f })),
+      docsPerVariant: shape.docsPerVariant ? { ...shape.docsPerVariant } : { mode: "single" },
+    });
+  };
+
+  const saveCurrent = () => {
+    const name = window.prompt("Save this variant shape to the library as:", vc.variantNoun);
+    if (!name?.trim()) return;
+    setSaveError(null);
+    save.mutate({
+      data: {
+        name: name.trim(),
+        variantNoun: vc.variantNoun,
+        descriptorFields: vc.descriptorFields.filter((f) => f.key.trim() !== ""),
+        docsPerVariant: vc.docsPerVariant,
+      },
+    });
+  };
+
+  const presets = shapes?.filter((s) => s.preset) ?? [];
+  const saved = shapes?.filter((s) => !s.preset) ?? [];
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <label className="flex items-center gap-1.5">
+        <span className="text-[#64748B]">Shape:</span>
+        <select
+          value=""
+          onChange={(e) => e.target.value && apply(e.target.value)}
+          data-testid="block-editor-shape-picker"
+          className={`${mono} cursor-pointer max-w-48`}
+        >
+          <option value="">custom / pick a convention…</option>
+          {presets.length > 0 && (
+            <optgroup label="Presets">
+              {presets.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
+          )}
+          {saved.length > 0 && (
+            <optgroup label="Saved shapes">
+              {saved.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
+          )}
+        </select>
+      </label>
+      <button
+        onClick={saveCurrent}
+        disabled={save.isPending}
+        title="Save this noun + descriptor fields to the shared library (a copy — later library edits never touch this template)"
+        data-testid="block-editor-shape-save"
+        className="text-[#1D4ED8] disabled:opacity-50"
+      >
+        {save.isPending ? "saving…" : "save as shape"}
+      </button>
+      {saveError && <span className="text-[#B91C1C]">{saveError}</span>}
+    </div>
+  );
+}
 
 /** Fresh default when the author flips a block to arity:"set". */
 const DEFAULT_CONFIG: VariantConfig = {
@@ -51,6 +148,7 @@ export function VariantConfigEditor({ block, patch }: { block: Block; patch: (p:
 
       {isSet && (
         <div className="mt-2 ml-5 flex flex-col gap-2 font-mono text-[11px]" data-testid="block-editor-variant-config">
+          <ShapePicker vc={vc} setVc={setVc} />
           <label className="flex items-center gap-1.5">
             <span className="text-[#64748B]">One variant is a:</span>
             <input

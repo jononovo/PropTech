@@ -5,12 +5,14 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { BlockArity } from './blockArity';
 import type { BlockCriticality } from './blockCriticality';
 import type { BlockKind } from './blockKind';
 import type { BlockRequirement } from './blockRequirement';
 import type { BlockSourcing } from './blockSourcing';
 import type { ExpiryRule } from './expiryRule';
 import type { Field } from './field';
+import type { VariantConfig } from './variantConfig';
 
 /**
  * kind=document uses document fields; kind=fields uses the fields array.
@@ -27,5 +29,10 @@ export interface Block {
   sourcing?: BlockSourcing;
   multiPage?: boolean;
   expiry?: ExpiryRule | null;
+  /** "set" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = "single" (today's behavior). */
+  arity?: BlockArity;
+  variantConfig?: VariantConfig;
+  /** Author-written expert guidance for the analyzer's satisfaction pass (e.g. "statements must be consecutive; balance carryover should match"). Never applicant-facing. */
+  analysisNote?: string;
   fields?: Field[];
 }

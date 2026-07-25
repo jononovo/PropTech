@@ -85,6 +85,73 @@ export const BlockSourcing = {
 } as const;
 
 /**
+ * "set" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = "single" (today's behavior).
+ */
+export type BlockArity = typeof BlockArity[keyof typeof BlockArity];
+
+
+export const BlockArity = {
+  single: 'single',
+  set: 'set',
+} as const;
+
+export interface DescriptorField {
+  /** stable snake_case key (institution, account_last4, name, dob) */
+  key: string;
+  /** UI label ("Institution", "Account (last 4)") */
+  label: string;
+}
+
+/**
+ * single = one document per variant (birth certificate); sequence = N documents (statements).
+ */
+export type DocsPerVariantMode = typeof DocsPerVariantMode[keyof typeof DocsPerVariantMode];
+
+
+export const DocsPerVariantMode = {
+  single: 'single',
+  sequence: 'sequence',
+} as const;
+
+/**
+ * optional — the sequence must cover consecutive periods with no gaps.
+ */
+export type DocsPerVariantCoverage = typeof DocsPerVariantCoverage[keyof typeof DocsPerVariantCoverage];
+
+
+export const DocsPerVariantCoverage = {
+  consecutive_months: 'consecutive_months',
+} as const;
+
+export interface DocsPerVariant {
+  /** single = one document per variant (birth certificate); sequence = N documents (statements). */
+  mode: DocsPerVariantMode;
+  /**
+     * sequence only — how many documents each variant needs.
+     * @minimum 1
+     */
+  requiredCount?: number;
+  /**
+     * optional — newest document must fall within this window.
+     * @minimum 1
+     */
+  recencyWindowDays?: number;
+  /** optional — the sequence must cover consecutive periods with no gaps. */
+  coverage?: DocsPerVariantCoverage;
+}
+
+/**
+ * Shape of a set block's variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).
+ */
+export interface VariantConfig {
+  /** What one variant is called in the UI ("Bank account", "Person"). */
+  variantNoun: string;
+  /** Identity fields a variant must fill, as specific as possible. */
+  descriptorFields: DescriptorField[];
+  docsPerVariant: DocsPerVariant;
+}
+
+/**
  * kind=document uses document fields; kind=fields uses the fields array.
  */
 export interface Block {
@@ -99,6 +166,11 @@ export interface Block {
   sourcing?: BlockSourcing;
   multiPage?: boolean;
   expiry?: ExpiryRule | null;
+  /** "set" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = "single" (today's behavior). */
+  arity?: BlockArity;
+  variantConfig?: VariantConfig;
+  /** Author-written expert guidance for the analyzer's satisfaction pass (e.g. "statements must be consecutive; balance carryover should match"). Never applicant-facing. */
+  analysisNote?: string;
   fields?: Field[];
 }
 

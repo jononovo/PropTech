@@ -60,6 +60,10 @@ export const GetTemplateParams = zod.object({
   "version": zod.coerce.number()
 })
 
+
+
+
+
 export const GetTemplateResponse = zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -97,6 +101,21 @@ export const GetTemplateResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -117,6 +136,10 @@ export const SaveTemplateParams = zod.object({
   "family": zod.coerce.string(),
   "version": zod.coerce.number()
 })
+
+
+
+
 
 export const SaveTemplateBody = zod.object({
   "template": zod.string(),
@@ -155,6 +178,21 @@ export const SaveTemplateBody = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -166,6 +204,10 @@ export const SaveTemplateBody = zod.object({
 }))
 }))
 })
+
+
+
+
 
 export const SaveTemplateResponse = zod.object({
   "template": zod.string(),
@@ -204,6 +246,21 @@ export const SaveTemplateResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -276,6 +333,10 @@ export const ActivateTemplateResponse = zod.object({
 /**
  * @summary Reusable section fragments for the builder palette
  */
+
+
+
+
 export const ListSavedSectionsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -306,6 +367,21 @@ export const ListSavedSectionsResponseItem = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -323,6 +399,8 @@ export const ListSavedSectionsResponse = zod.array(ListSavedSectionsResponseItem
 /**
  * @summary Save a section as a reusable fragment (a copy, never a link)
  */
+
+
 
 
 
@@ -355,6 +433,21 @@ export const CreateSavedSectionBody = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -366,6 +459,10 @@ export const CreateSavedSectionBody = zod.object({
 }))
 })
 })
+
+
+
+
 
 export const CreateSavedSectionResponse = zod.object({
   "id": zod.string(),
@@ -397,6 +494,21 @@ export const CreateSavedSectionResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -475,6 +587,8 @@ export const CreateApplicationBody = zod.object({
   "applicantName": zod.string().min(1),
   "projectedClosingDate": zod.string().optional()
 })
+
+
 
 export const createApplicationResponseManualPlacementsItemPagesMin = 2;
 export const createApplicationResponseManualPlacementsItemPagesMax = 2;
@@ -571,6 +685,21 @@ export const CreateApplicationResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -605,6 +734,8 @@ export const CreateApplicationResponse = zod.object({
 export const GetApplicationParams = zod.object({
   "applicationId": zod.coerce.string()
 })
+
+
 
 export const getApplicationResponseManualPlacementsItemPagesMin = 2;
 export const getApplicationResponseManualPlacementsItemPagesMax = 2;
@@ -701,6 +832,21 @@ export const GetApplicationResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -740,6 +886,8 @@ export const UpdateApplicationParams = zod.object({
 export const UpdateApplicationBody = zod.object({
   "projectedClosingDate": zod.union([zod.string(),zod.null()]).optional()
 })
+
+
 
 export const updateApplicationResponseManualPlacementsItemPagesMin = 2;
 export const updateApplicationResponseManualPlacementsItemPagesMax = 2;
@@ -836,6 +984,21 @@ export const UpdateApplicationResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -876,6 +1039,8 @@ export const UpgradeTemplateVersionBody = zod.object({
   "targetVersion": zod.number(),
   "decidedBy": zod.string()
 })
+
+
 
 export const upgradeTemplateVersionResponseManualPlacementsItemPagesMin = 2;
 export const upgradeTemplateVersionResponseManualPlacementsItemPagesMax = 2;
@@ -972,6 +1137,21 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -1011,6 +1191,8 @@ export const SaveFieldValuesParams = zod.object({
 export const SaveFieldValuesBody = zod.object({
   "values": zod.record(zod.string(), zod.string())
 }).describe('Map of field id to entered value for one field-group block.')
+
+
 
 export const saveFieldValuesResponseManualPlacementsItemPagesMin = 2;
 export const saveFieldValuesResponseManualPlacementsItemPagesMax = 2;
@@ -1107,6 +1289,21 @@ export const SaveFieldValuesResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -1411,6 +1608,8 @@ export const UploadPacketBody = zod.object({
   "file": zod.instanceof(File)
 })
 
+
+
 export const uploadPacketResponseManualPlacementsItemPagesMin = 2;
 export const uploadPacketResponseManualPlacementsItemPagesMax = 2;
 
@@ -1506,6 +1705,21 @@ export const UploadPacketResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -1552,6 +1766,8 @@ export const DecidePacketGateBody = zod.object({
   "fraudScoring": zod.boolean().optional().describe('Per-run addon toggle (default true): score every judged document for visual fraud indicators. Off = fraud_signal is ABSENT from this run\'s scores and the UI renders \"not scored this run\" — never a fake 0. Frozen into the run\'s config artifact like the engine ids.\n')
 }).optional().describe('Per-stage model option ids (from GET \/models\/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown\/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run\'s config artifact (pipelineVersion honesty).\n')
 })
+
+
 
 export const decidePacketGateResponseManualPlacementsItemPagesMin = 2;
 export const decidePacketGateResponseManualPlacementsItemPagesMax = 2;
@@ -1648,6 +1864,21 @@ export const DecidePacketGateResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -1699,6 +1930,8 @@ export const ReportPacketRunFailureBody = zod.object({
   "reason": zod.string(),
   "packetSha256": zod.string()
 })
+
+
 
 export const reportPacketRunFailureResponseManualPlacementsItemPagesMin = 2;
 export const reportPacketRunFailureResponseManualPlacementsItemPagesMax = 2;
@@ -1795,6 +2028,21 @@ export const ReportPacketRunFailureResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -1852,6 +2100,8 @@ export const RecordVerdictBody = zod.object({
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "runId": zod.string().optional()
 })
+
+
 
 export const recordVerdictResponseManualPlacementsItemPagesMin = 2;
 export const recordVerdictResponseManualPlacementsItemPagesMax = 2;
@@ -1948,6 +2198,21 @@ export const RecordVerdictResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
@@ -2013,6 +2278,8 @@ export const RecordPlacementBody = zod.object({
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "runId": zod.string().optional()
 })
+
+
 
 export const recordPlacementResponseManualPlacementsItemPagesMin = 2;
 export const recordPlacementResponseManualPlacementsItemPagesMax = 2;
@@ -2109,6 +2376,21 @@ export const RecordPlacementResponse = zod.object({
   "kind": zod.enum(['staleness', 'hard']),
   "days": zod.number().optional()
 }).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
+  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
+  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
   "fields": zod.array(zod.object({
   "id": zod.string(),
   "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),

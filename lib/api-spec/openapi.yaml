@@ -975,10 +975,68 @@ components:
           oneOf:
             - $ref: "#/components/schemas/ExpiryRule"
             - type: "null"
+        arity:
+          type: string
+          enum: [single, set]
+          description: >
+            "set" = the requirement is satisfied by N variants (bank accounts, persons, …),
+            each with its own documents. Absent = "single" (today's behavior).
+        variantConfig:
+          $ref: "#/components/schemas/VariantConfig"
+        analysisNote:
+          type: string
+          description: >
+            Author-written expert guidance for the analyzer's satisfaction pass
+            (e.g. "statements must be consecutive; balance carryover should match").
+            Never applicant-facing.
         fields:
           type: array
           items:
             $ref: "#/components/schemas/Field"
+    VariantConfig:
+      type: object
+      description: >
+        Shape of a set block's variants. The template declares WHAT identifies a variant
+        (descriptor field keys); the application supplies the actual variants per deal.
+        Rules are data, never code (no conditional logic in v1).
+      required: [variantNoun, descriptorFields, docsPerVariant]
+      properties:
+        variantNoun:
+          type: string
+          description: What one variant is called in the UI ("Bank account", "Person").
+        descriptorFields:
+          type: array
+          description: Identity fields a variant must fill, as specific as possible.
+          items:
+            $ref: "#/components/schemas/DescriptorField"
+        docsPerVariant:
+          $ref: "#/components/schemas/DocsPerVariant"
+    DescriptorField:
+      type: object
+      required: [key, label]
+      properties:
+        key: { type: string, description: "stable snake_case key (institution, account_last4, name, dob)" }
+        label: { type: string, description: "UI label (\"Institution\", \"Account (last 4)\")" }
+    DocsPerVariant:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [single, sequence]
+          description: single = one document per variant (birth certificate); sequence = N documents (statements).
+        requiredCount:
+          type: integer
+          minimum: 1
+          description: sequence only — how many documents each variant needs.
+        recencyWindowDays:
+          type: integer
+          minimum: 1
+          description: optional — newest document must fall within this window.
+        coverage:
+          type: string
+          enum: [consecutive_months]
+          description: optional — the sequence must cover consecutive periods with no gaps.
     Subsection:
       type: object
       required: [id, name, blocks]

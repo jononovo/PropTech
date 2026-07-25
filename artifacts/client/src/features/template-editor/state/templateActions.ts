@@ -19,6 +19,9 @@ export type BlockPatch = Partial<
     | "sourcing"
     | "multiPage"
     | "expiry"
+    | "arity"
+    | "variantConfig"
+    | "analysisNote"
   >
 >;
 

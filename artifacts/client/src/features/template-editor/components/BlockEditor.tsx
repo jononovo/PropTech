@@ -4,6 +4,7 @@ import type { BlockPatch, FieldType, TemplateAction } from "../state/templateAct
 import { DOC_TYPES } from "../state/docTypes";
 import { AlternativePicker } from "./AlternativePicker";
 import { FieldListEditor } from "./FieldListEditor";
+import { VariantConfigEditor } from "./VariantConfigEditor";
 
 const mono = "border-b border-[#CBD5E1] outline-none text-[#0F172A] bg-transparent focus:border-[#1D4ED8] pb-px cursor-pointer";
 
@@ -161,6 +162,8 @@ export function BlockEditor({
           </label>
         </div>
       )}
+
+      {block.kind === "document" && <VariantConfigEditor block={block} patch={patch} />}
 
       {block.kind === "document" && block.requirement === "required_alt" && (
         <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#E2E8F0] ml-1 flex-wrap">

@@ -55,7 +55,18 @@ export function BlockCard({
         </span>
       )}
       <div className="flex-1 min-w-0">
-        <div className="text-[12.5px] font-medium text-[#0F172A]">{block.name}</div>
+        <div className="text-[12.5px] font-medium text-[#0F172A] flex items-center gap-1.5">
+          {block.name}
+          {block.arity === "set" && (
+            <span
+              title={`Set block — multiple ${block.variantConfig?.variantNoun ?? "variant"}s per application, each with its own documents`}
+              data-testid={`block-${block.id}-set-badge`}
+              className="font-mono text-[9.5px] font-normal uppercase tracking-wider text-[#1D4ED8] bg-[#EFF6FF] border border-[#BFDBFE] rounded-[2px] px-1 py-px"
+            >
+              set · {block.variantConfig?.variantNoun ?? "variant"}
+            </span>
+          )}
+        </div>
         {block.kind === "document" ? (
           <div className="font-mono text-[10.5px] mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
             <span className="text-[#64748B]">{(block.formats || []).join(", ")}</span>

@@ -20,7 +20,10 @@ template. Deep field extraction is deliberately v2.
 
 1. **Replit workspace** — primary build + runtime. A Replit agent builds the app there;
    all workflows (API Server, web, Analyzer Worker) and all secrets live there. Prod
-   deploys from Replit (invite-only).
+   deploys from Replit (invite-only). The **workspace dev server**
+   (https://5c5c5d45-be54-4997-b8bc-818eaad36a15-00-ibpr96xgx796.janeway.replit.dev/)
+   shows the most recent work — often ahead of prod AND of GitHub; check it when
+   "latest" matters.
 2. **GitHub** `jononovo/PropTech` — the sync point. Replit syncs to GitHub, but the agent
    sometimes commits without pushing, so **GitHub may be behind Replit. Never assume
    GitHub is current, and don't police pushing** (standing user instruction).

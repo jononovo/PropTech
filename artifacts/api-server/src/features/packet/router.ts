@@ -182,11 +182,13 @@ router.post(
         state: "preflight_running",
       };
       let claimed: Application | undefined;
+      let previousPacket: PacketState | undefined;
       try {
         claimed = await updateApplication(ctx.app.id, (app) => {
           if (app.packet?.state === "processing") {
             throw new HttpError(409, "Analyzer is running for this packet — wait for the run to land, then re-upload");
           }
+          previousPacket = app.packet;
           app.packet = base;
           return app;
         });
@@ -211,11 +213,27 @@ router.post(
         os.tmpdir(),
         `packet-thumbs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       );
+      // A failed upload must never strand the claim in preflight_running:
+      // restore whatever packet state existed before this upload (guarded —
+      // only if our claim is still the one in the row).
+      const releaseClaim = async () => {
+        try {
+          await updateApplication(ctx.app.id, (a) => {
+            if (a.packet?.state === "preflight_running" && a.packet.sha256 === base.sha256) {
+              a.packet = previousPacket;
+            }
+            return a;
+          });
+        } catch {
+          // Releasing is best-effort; the original error is what the client sees.
+        }
+      };
       try {
         packet.preflight = await runPreflight(tempPath, info, thumbsStagingDir);
       } catch (err) {
         rmSync(thumbsStagingDir, { recursive: true, force: true });
         unlinkSync(tempPath);
+        await releaseClaim();
         res.status(500).json({ error: `Pre-flight failed: ${err instanceof Error ? err.message : String(err)}` });
         return;
       }
@@ -227,6 +245,7 @@ router.post(
           await putPageThumbnail(ctx.app.id, t.page, path.join(thumbsStagingDir, `page-${t.page}.png`));
         }
       } catch (err) {
+        await releaseClaim();
         res.status(500).json({ error: `Packet storage write failed: ${err instanceof Error ? err.message : String(err)}` });
         return;
       } finally {

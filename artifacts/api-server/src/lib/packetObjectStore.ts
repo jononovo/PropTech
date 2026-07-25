@@ -1,17 +1,50 @@
+import { createReadStream, existsSync } from "node:fs";
+import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { Readable } from "node:stream";
+import { DATA_DIR } from "./jsonStore";
 import { objectStorageClient } from "./objectStorage";
 
 /**
- * Domain layout for document bytes in App Storage (GCS). This is the ONLY
- * module that knows where bytes live:
+ * Domain layout for document bytes. This is the ONLY module that knows where
+ * bytes live:
  *
- *   <PRIVATE_OBJECT_DIR>/packets/<applicationId>/packet.pdf
- *   <PRIVATE_OBJECT_DIR>/packets/<applicationId>/thumbs/page-<n>.png
- *   <PRIVATE_OBJECT_DIR>/uploads/<applicationId>/<blockId>/<filename>
+ *   <root>/packets/<applicationId>/packet.pdf
+ *   <root>/packets/<applicationId>/thumbs/page-<n>.png
+ *   <root>/uploads/<applicationId>/<blockId>/<filename>
+ *
+ * Two roots, resolved once at boot:
+ *   - App Storage (GCS) when PRIVATE_OBJECT_DIR is set — the Replit path,
+ *     unchanged. That env var only exists where App Storage is provisioned.
+ *   - Local disk under DATA_DIR/object-store ONLY off-Replit (no REPL_ID),
+ *     where the GCS credential sidecar (127.0.0.1:1106) cannot exist. Same
+ *     key layout, so nothing above this module can tell the difference.
+ *   - On Replit WITHOUT PRIVATE_OBJECT_DIR (misconfiguration): no fallback —
+ *     every call fails loudly, exactly as before this module had a disk mode.
+ *     Prod must never silently write document bytes to an ephemeral disk.
  *
  * Callers hand in ids/filenames and get streams back — no GCS types leak out
  * of this module except Readable.
  */
+
+const DISK_ROOT = path.join(DATA_DIR, "object-store");
+const ON_REPLIT = Boolean(process.env["REPL_ID"]);
+const USE_DISK = !process.env["PRIVATE_OBJECT_DIR"] && !ON_REPLIT;
+console.log(
+  USE_DISK
+    ? `[packetObjectStore] off-Replit, PRIVATE_OBJECT_DIR not set — document bytes on local disk at ${DISK_ROOT}`
+    : process.env["PRIVATE_OBJECT_DIR"]
+      ? "[packetObjectStore] document bytes in App Storage (GCS)"
+      : "[packetObjectStore] MISCONFIGURED: on Replit without PRIVATE_OBJECT_DIR — storage calls will fail loudly",
+);
+
+const diskPath = (key: string): string => path.join(DISK_ROOT, key);
+
+async function diskWrite(key: string, write: (dest: string) => Promise<void>): Promise<void> {
+  const dest = diskPath(key);
+  await mkdir(path.dirname(dest), { recursive: true });
+  await write(dest);
+}
 
 type ObjectLocation = { bucketName: string; objectName: string };
 
@@ -40,7 +73,12 @@ const intakeUploadKey = (applicationId: string, blockId: string, filename: strin
 
 /** Upload the accepted packet PDF from its local staging path. Re-upload overwrites. */
 export async function putPacketPdf(applicationId: string, localPdfPath: string): Promise<void> {
-  const { bucketName, objectName } = locateInPrivateDir(packetPdfKey(applicationId));
+  const key = packetPdfKey(applicationId);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => copyFile(localPdfPath, dest));
+    return;
+  }
+  const { bucketName, objectName } = locateInPrivateDir(key);
   await objectStorageClient
     .bucket(bucketName)
     .upload(localPdfPath, { destination: objectName, contentType: "application/pdf" });
@@ -48,7 +86,12 @@ export async function putPacketPdf(applicationId: string, localPdfPath: string):
 
 /** Upload one pre-flight page thumbnail from its local staging path. */
 export async function putPageThumbnail(applicationId: string, page: number, localPngPath: string): Promise<void> {
-  const { bucketName, objectName } = locateInPrivateDir(pageThumbnailKey(applicationId, page));
+  const key = pageThumbnailKey(applicationId, page);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => copyFile(localPngPath, dest));
+    return;
+  }
+  const { bucketName, objectName } = locateInPrivateDir(key);
   await objectStorageClient
     .bucket(bucketName)
     .upload(localPngPath, { destination: objectName, contentType: "image/png" });
@@ -62,7 +105,12 @@ export async function putIntakeUpload(
   bytes: Buffer,
   contentType: string,
 ): Promise<void> {
-  await gcsFile(intakeUploadKey(applicationId, blockId, filename)).save(bytes, {
+  const key = intakeUploadKey(applicationId, blockId, filename);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => writeFile(dest, bytes));
+    return;
+  }
+  await gcsFile(key).save(bytes, {
     contentType,
     resumable: false,
   });
@@ -70,7 +118,12 @@ export async function putIntakeUpload(
 
 /** Remove one intake document upload. A missing object is not an error. */
 export async function deleteIntakeUpload(applicationId: string, blockId: string, filename: string): Promise<void> {
-  await gcsFile(intakeUploadKey(applicationId, blockId, filename)).delete({ ignoreNotFound: true });
+  const key = intakeUploadKey(applicationId, blockId, filename);
+  if (USE_DISK) {
+    await rm(diskPath(key), { force: true });
+    return;
+  }
+  await gcsFile(key).delete({ ignoreNotFound: true });
 }
 
 /** Readable stream of the packet PDF, or undefined when no object exists. */
@@ -84,6 +137,10 @@ export async function openPageThumbnailStream(applicationId: string, page: numbe
 }
 
 async function openStream(key: string): Promise<Readable | undefined> {
+  if (USE_DISK) {
+    const src = diskPath(key);
+    return existsSync(src) ? createReadStream(src) : undefined;
+  }
   const file = gcsFile(key);
   const [exists] = await file.exists();
   if (!exists) return undefined;

@@ -53,3 +53,4 @@ Thumbs.db
 services/analyzer/store/
 artifacts/api-server/data/packets/
 artifacts/api-server/data/uploads/
+artifacts/api-server/data/object-store/

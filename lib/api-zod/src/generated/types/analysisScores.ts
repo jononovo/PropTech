@@ -10,6 +10,7 @@ import type { AnalysisScoresScrutinyTier } from './analysisScoresScrutinyTier';
 export interface AnalysisScores {
   quality: number;
   formatting: number;
-  fraud_signal: number;
+  /** Absent when the run's plan disabled fraud scoring (RunPlan.fraudScoring = false) — render "not scored this run", never assume 0. */
+  fraud_signal?: number;
   scrutinyTier: AnalysisScoresScrutinyTier;
 }

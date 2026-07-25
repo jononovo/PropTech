@@ -386,7 +386,11 @@ function RegisterRow({
                       <span className="text-[var(--ops-strong-border)]">·</span>
                       <span>Format {Math.round(req.doc.scores.formatting * 100)}</span>
                       <span className="text-[var(--ops-strong-border)]">·</span>
-                      <span>Fraud {Math.round(req.doc.scores.fraud_signal * 100)}%</span>
+                      <span>
+                        {req.doc.scores.fraud_signal != null
+                          ? `Fraud ${Math.round(req.doc.scores.fraud_signal * 100)}%`
+                          : 'Fraud — not scored this run'}
+                      </span>
                       <span className="text-[var(--ops-strong-border)]">·</span>
                       <span>scrutiny {req.doc.scores.scrutinyTier}</span>
                     </div>

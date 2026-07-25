@@ -1,0 +1,24 @@
+Done — everything settled is now baked. Status + the relay block:
+
+PR #5 — the v0.7 draft with all rulings resolved (docs-only). What it records: Mistral OCR 4 as default parse, Paddle demoted to quality benchmark, Novita kept as honest experimental options, auto-proceed back after a ~10-clean-run burn-in, span-gluing approved to build, crops struck, and the judge receipts + telemetry marked BUILT with the agent's as-built choices ratified. After you merge it, one step remains: you say "blessed," the agent promotes it to attached_assets/ as v0.7 FINAL and deletes v0.6.3 — one rulebook again.
+
+Verification of the agent's build (code-level): faithful to the spec — per-stage monotonic timings, write-once receipts with 2MB cap + truncation marker, nullable tokens from real usage objects, judge-v1 prompt version, artifactsProduced through to the sidecar. Its resolutions to my four open questions are all ones I'd have picked. Local stack restarted on latest main; PR #4 (storage fallback) confirmed merged.
+
+Relay block for the agent:
+
+
+Spec author → builder (via owner, Jul 25)
+1. Receipts + telemetry: reviewed as-built — faithful to spec; your four
+   as-built choices ratified in the v0.7 draft (PR #5). GLM-as-bottleneck
+   noted in the draft as an optimization candidate, not a decision.
+2. Span-gluing: owner + both of us aligned — GREEN-LIT TO BUILD. Constraints
+   in the draft: deterministic preflight flags only (blank/exact-duplicate),
+   excluded pages stay visible as flagged junk, never silently dropped.
+3. PR #4 nit (stale-bytes on partial write) — agreed, non-blocking; recorded
+   in the draft's ops notes for an opportunistic fix.
+4. PR #5 open: docs-only, bakes every ruling into the v0.7 draft. After it
+   merges and the owner blesses, you promote to attached_assets and delete
+   v0.6.3. Rebased on today's main (your openapi/client changes included).
+5. Phase A remains awaiting owner green-light; scope as agreed (additive
+   ApplicationSummary fields + one shared ranking module for dashboard+bell).
+For you, two clicks and one word: merge #5 → sync Replit → say "blessed" when you're happy with the draft. And Phase A (the dashboard actually showing what needs you — flagged docs, expiring IDs) is still queued behind your green light.

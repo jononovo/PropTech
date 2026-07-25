@@ -31,6 +31,7 @@ class RunPlan:
     parse: ModelChoice
     text: ModelChoice
     judge: ModelChoice
+    fraud_scoring: bool = True  # per-run addon toggle — False = fraud_signal ABSENT from the run (never fake-0)
     ids: dict = field(default_factory=dict)  # the option ids that were chosen (audit)
 
     def pipeline_version(self) -> str:
@@ -171,4 +172,6 @@ def resolve_plan(plan_ids: dict | None) -> RunPlan:
             raise RuntimeError(f"{stage} option '{oid}' unavailable — missing: {', '.join(missing)}")
         ids[stage] = oid
         choices[stage] = entry["choice"]()
-    return RunPlan(parse=choices["parse"], text=choices["text"], judge=choices["judge"], ids=ids)
+    raw = (plan_ids or {}).get("fraudScoring")
+    return RunPlan(parse=choices["parse"], text=choices["text"], judge=choices["judge"],
+                   fraud_scoring=True if raw is None else bool(raw), ids=ids)

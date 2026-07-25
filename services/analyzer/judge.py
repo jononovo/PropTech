@@ -28,8 +28,7 @@ Answer ONLY JSON:
 {{
   "quality": 0.0-1.0,            // legibility/scan quality of the document itself
   "formatting": 0.0-1.0,         // is it complete & well-formed for its type (all pages, signatures, fields)
-  "fraud_signal": 0.0-1.0,       // visual anomalies only: inconsistent fonts, misaligned edits, pasted regions. 0 = nothing suspicious
-  "description": "one factual line about this document",
+{fraud_line}  "description": "one factual line about this document",
   "flags": [{{"code": "snake_case_code", "detail": "plain-language finding"}}],
   "core_fields": {{
     "document_date": "YYYY-MM-DD or unknown",   // the date the document speaks from (statement end, issue date)
@@ -41,18 +40,31 @@ Answer ONLY JSON:
 Only report what you can actually see. Do not invent dates or names."""
 
 
+FRAUD_LINE = '  "fraud_signal": 0.0-1.0,       // visual anomalies only: inconsistent fonts, misaligned edits, pasted regions. 0 = nothing suspicious\n'
+
+
+def prompt_version(fraud_scoring: bool = True) -> str:
+    """Exact prompt variant, derivable from the recorded string: '-nofraud' means
+    the fraud_signal line was omitted — the score is ABSENT, never a fake 0."""
+    return PROMPT_VERSION if fraud_scoring else f"{PROMPT_VERSION}-nofraud"
+
+
 async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[str],
-                         pf_flags: list[str], judge: ModelChoice) -> tuple[dict, dict]:
+                         pf_flags: list[str], judge: ModelChoice,
+                         fraud_scoring: bool = True) -> tuple[dict, dict]:
     """Returns (verdict, meta). verdict = the mapped subset the sidecar carries;
     meta = audit fields (raw_response/model/tokens/latencyMs/promptVersion) for
-    the write-once judge artifact."""
-    prompt = PROMPT_TMPL.format(tax_display=tax_display, pf_flags="; ".join(pf_flags) or "none", md=md_excerpt[:4000])
+    the write-once judge artifact. fraud_scoring=False (per-run plan toggle)
+    drops fraud_signal from the prompt AND the verdict — absent, never fake-0."""
+    prompt = PROMPT_TMPL.format(tax_display=tax_display, pf_flags="; ".join(pf_flags) or "none",
+                                md=md_excerpt[:4000], fraud_line=FRAUD_LINE if fraud_scoring else "")
     t0 = time.monotonic()
 
     async def ask() -> tuple[dict, str, dict | None]:
         text, tokens = await chat_with_meta(judge.backend, judge.model, prompt, image_paths, max_tokens=1200,
                                             base_url=judge.base_url, api_key=judge.api_key)
-        return extract_json(text, required_keys=("quality", "formatting", "fraud_signal")), text, tokens
+        keys = ("quality", "formatting", "fraud_signal") if fraud_scoring else ("quality", "formatting")
+        return extract_json(text, required_keys=keys), text, tokens
 
     try:
         out, raw, tokens = await ask()
@@ -83,7 +95,8 @@ async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[st
     verdict = {
         "quality": clamp(out.get("quality")),
         "formatting": clamp(out.get("formatting")),
-        "fraud_signal": clamp(out.get("fraud_signal"), d=0.0),
+        # fraud off => key absent everywhere downstream ("not scored"), never 0.0
+        **({"fraud_signal": clamp(out.get("fraud_signal"), d=0.0)} if fraud_scoring else {}),
         "description": str(out.get("description", ""))[:300],
         "flags": flags,
         "core_fields": core,
@@ -93,7 +106,8 @@ async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[st
         "truncated": len(raw) > RAW_RESPONSE_CAP,
         "model": judge.model,
         "backend": judge.backend,
-        "promptVersion": PROMPT_VERSION,
+        "promptVersion": prompt_version(fraud_scoring),
+        "fraudScoring": fraud_scoring,
         "tokens": tokens,  # exactly what the API reported — never estimated; None when unreported
         "latencyMs": latency_ms,
     }

@@ -13,4 +13,6 @@ export interface RunPlan {
   parse?: string;
   text?: string;
   judge?: string;
+  /** Per-run addon toggle (default true): score every judged document for visual fraud indicators. Off = fraud_signal is ABSENT from this run's scores and the UI renders "not scored this run" — never a fake 0. Frozen into the run's config artifact like the engine ids. */
+  fraudScoring?: boolean;
 }

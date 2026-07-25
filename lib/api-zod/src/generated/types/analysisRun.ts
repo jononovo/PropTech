@@ -18,6 +18,8 @@ export interface AnalysisRun {
   durationMs?: number;
   /** Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle/Mistral also emit elements). UI reads this instead of assuming capabilities. */
   artifactsProduced?: AnalysisRunArtifactsProduced;
+  /** Echo of the resolved plan's fraud toggle. false = fraud_signal is absent on every document of THIS run ("not scored this run"). Absent on older runs = scored. */
+  fraudScoring?: boolean;
   preflight: AnalysisPreflight;
   documents: AnalysisDocument[];
   unassigned: AnalysisUnassigned[];

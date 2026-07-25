@@ -323,7 +323,12 @@ function buildReq(block: Block, ctx: ReqContext): CaseReq {
   let status: ReqStatus;
   if (verdict?.verdict === 'accepted') status = 'accepted';
   else if (verdict?.verdict === 'new_version_requested') status = 'requested';
-  else if (doc && (actionableFlags(doc).length > 0 || doc.scores.fraud_signal >= 0.3)) status = 'flagged';
+  else if (
+    doc &&
+    (actionableFlags(doc).length > 0 ||
+      (doc.scores.fraud_signal != null && doc.scores.fraud_signal >= 0.3))
+  )
+    status = 'flagged';
   else if (doc) status = 'clean';
   else if (uploads.length > 0 || ctx.placements.some((p) => p.target === block.id)) status = 'filed';
   else if (coveredBy) status = 'covered';
@@ -345,7 +350,7 @@ function buildReq(block: Block, ctx: ReqContext): CaseReq {
       flagTitle = flagLabel(worst.code);
       flagNote = flags.map((f) => f.detail).join(' ');
     }
-    if (doc.scores.fraud_signal >= 0.3) {
+    if (doc.scores.fraud_signal != null && doc.scores.fraud_signal >= 0.3) {
       severity = 'clay';
       if (!flagTitle) {
         flagTitle = 'Fraud signal';
@@ -558,8 +563,11 @@ export const pageSpan = (doc: AnalysisDocument) => {
 
 export const confidencePct = (doc: AnalysisDocument) => Math.round(doc.confidence * 100);
 
-/** Checks summary from analyzer scores: quality / formatting / fraud. */
+/** Checks summary from analyzer scores: quality / formatting / fraud. When the
+ * run didn't score fraud (plan toggle off), the fraud check honestly isn't
+ * counted — 2 checks, not a free pass on 3. */
 export function checksSummary(doc: AnalysisDocument): { passed: number; total: number } {
-  const passes = [doc.scores.quality >= 0.7, doc.scores.formatting >= 0.7, doc.scores.fraud_signal <= 0.25];
+  const passes = [doc.scores.quality >= 0.7, doc.scores.formatting >= 0.7];
+  if (doc.scores.fraud_signal != null) passes.push(doc.scores.fraud_signal <= 0.25);
   return { passed: passes.filter(Boolean).length, total: passes.length };
 }

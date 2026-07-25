@@ -67,7 +67,8 @@ export function buildReviewModel(model: CaseModel): ReviewModel | null {
     const doc = req.doc;
     if (!doc) continue;
     const flags = actionableFlags(doc);
-    const fraudHigh = doc.scores.fraud_signal >= 0.3;
+    const fs = doc.scores.fraud_signal; // undefined = not scored this run (plan toggle off)
+    const fraudHigh = fs != null && fs >= 0.3;
     if (flags.length === 0 && !fraudHigh) continue;
 
     const callouts: StopCallout[] = flags.map((f) => ({
@@ -78,7 +79,7 @@ export function buildReviewModel(model: CaseModel): ReviewModel | null {
     if (fraudHigh && !doc.flags.some((f) => f.code.includes('fraud'))) {
       callouts.push({
         label: 'Fraud signal',
-        detail: `Model fraud signal at ${Math.round(doc.scores.fraud_signal * 100)}% — review before accepting.`,
+        detail: `Model fraud signal at ${Math.round(fs * 100)}% — review before accepting.`,
         severity: 'clay',
       });
     }

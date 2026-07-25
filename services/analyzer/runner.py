@@ -12,7 +12,7 @@ from pathlib import Path
 import config
 import portal
 from models import resolve_plan
-from judge import PROMPT_VERSION as JUDGE_PROMPT_VERSION, judge_document
+from judge import judge_document, prompt_version as judge_prompt_version
 from naming import derive_name
 from parse import parse_document
 from pdfs import render_pages
@@ -61,7 +61,8 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
         "parse": {"backend": plan.parse.backend, "model": plan.parse.model},
         "judge": {"backend": plan.judge.backend, "model": plan.judge.model},
         "text": {"backend": plan.text.backend, "model": plan.text.model},
-        "judgePromptVersion": JUDGE_PROMPT_VERSION,
+        "judgePromptVersion": judge_prompt_version(plan.fraud_scoring),
+        "fraudScoring": plan.fraud_scoring,
         "renderDpi": config.RENDER_DPI,
         "gate": gate,
         "packetSha256": packet_sha256,
@@ -110,7 +111,7 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
         seg_flags = [f for f in pf_flags if _flag_touches(f, first, last)]
         t = time.monotonic()
         verdict, judge_meta = await judge_document(TAXONOMY[tax_id]["display"], seg_md, seg_pngs, seg_flags,
-                                                   plan.judge)
+                                                   plan.judge, fraud_scoring=plan.fraud_scoring)
         timings["judgeMs"] += int((time.monotonic() - t) * 1000)
 
         doc_index = len(documents) + 1
@@ -126,7 +127,8 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
                 "pages": [first, last],
                 "taxonomyId": tax_id,
                 "scores": {"quality": verdict["quality"], "formatting": verdict["formatting"],
-                           "fraud_signal": verdict["fraud_signal"], "confidence": confidence},
+                           **({"fraud_signal": verdict["fraud_signal"]} if "fraud_signal" in verdict else {}),
+                           "confidence": confidence},
                 "coreFields": verdict["core_fields"],
                 "flags": verdict["flags"],
                 "description": verdict["description"],
@@ -147,7 +149,9 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
             "scores": {
                 "quality": verdict["quality"],
                 "formatting": verdict["formatting"],
-                "fraud_signal": verdict["fraud_signal"],
+                # absent when the plan turned fraud scoring off — the sidecar
+                # carries "not scored", never a fabricated 0
+                **({"fraud_signal": verdict["fraud_signal"]} if "fraud_signal" in verdict else {}),
                 "scrutinyTier": block.get("criticality") or "standard",
             },
             "flags": verdict["flags"],
@@ -189,6 +193,7 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
         "runId": run_id,
         "startedAt": now.isoformat().replace("+00:00", "Z"),
         "pipelineVersion": plan.pipeline_version(),
+        "fraudScoring": plan.fraud_scoring,
         "durationMs": timings["totalMs"],
         "artifactsProduced": artifacts_produced,
         "preflight": {"pages": len(mds), "flags": pf_flags, "gate": gate},

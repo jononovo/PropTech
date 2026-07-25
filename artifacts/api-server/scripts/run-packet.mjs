@@ -2,10 +2,11 @@
 // and print the resulting analysis. Replaces the throwaway /tmp e2e script —
 // lives in the repo so it survives container recycles.
 //
-//   node artifacts/api-server/scripts/run-packet.mjs <applicationId> <pdfPath> [--auto] [--parse=<id>] [--text=<id>] [--judge=<id>]
+//   node artifacts/api-server/scripts/run-packet.mjs <applicationId> <pdfPath> [--auto] [--parse=<id>] [--text=<id>] [--judge=<id>] [--no-fraud]
 //
 // --parse/--text/--judge pick run-plan option ids (see GET /api/models/options);
-// omitted stages use the worker defaults.
+// omitted stages use the worker defaults. --no-fraud turns fraud scoring off for
+// the run (fraud_signal absent from scores — "not scored", never a fake 0).
 //
 // Uploads the packet, decides the gate (bypassed by default — the sample packet
 // carries preflight flags; --auto for clean packets), then polls until the run
@@ -20,6 +21,7 @@ for (const a of args) {
   const m = a.match(/^--(parse|text|judge)=(.+)$/);
   if (m) plan[m[1]] = m[2];
 }
+if (args.includes("--no-fraud")) plan.fraudScoring = false;
 const positional = args.filter((a) => !a.startsWith("--"));
 const [appId, pdfPath] = positional;
 const flag = args.includes("--auto") ? "--auto" : undefined;
@@ -79,8 +81,10 @@ for (;;) {
 const analysis = await (await fetch(`${API}/applications/${appId}/analysis`)).json();
 const run = analysis.runs[analysis.runs.length - 1];
 console.log(`run=${run.runId}\npipeline=${run.pipelineVersion}`);
+if (run.fraudScoring === false) console.log("fraud: NOT SCORED this run (plan toggle off)");
 for (const d of run.documents) {
-  console.log(`  DOC p.${d.segment.pages[0]}-${d.segment.pages[1]} -> ${d.suggestedBlockId} (conf ${d.confidence}) ${d.suggestedName}`);
+  const frd = d.scores.fraud_signal != null ? `fraud ${d.scores.fraud_signal}` : "fraud not scored";
+  console.log(`  DOC p.${d.segment.pages[0]}-${d.segment.pages[1]} -> ${d.suggestedBlockId} (conf ${d.confidence}, ${frd}) ${d.suggestedName}`);
   for (const f of d.flags ?? []) console.log(`      flag ${f.code}`);
 }
 for (const u of run.unassigned ?? []) {

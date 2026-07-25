@@ -1216,6 +1216,7 @@ export const GetAnalysisResponse = zod.object({
   "elements": zod.boolean(),
   "crops": zod.boolean()
 }).optional().describe('Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle\/Mistral also emit elements). UI reads this instead of assuming capabilities.\n'),
+  "fraudScoring": zod.boolean().optional().describe('Echo of the resolved plan\'s fraud toggle. false = fraud_signal is absent on every document of THIS run (\"not scored this run\"). Absent on older runs = scored.\n'),
   "preflight": zod.object({
   "pages": zod.number(),
   "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
@@ -1237,7 +1238,7 @@ export const GetAnalysisResponse = zod.object({
   "scores": zod.object({
   "quality": zod.number(),
   "formatting": zod.number(),
-  "fraud_signal": zod.number(),
+  "fraud_signal": zod.number().optional().describe('Absent when the run\'s plan disabled fraud scoring (RunPlan.fraudScoring = false) — render \"not scored this run\", never assume 0.\n'),
   "scrutinyTier": zod.enum(['critical', 'standard', 'supporting'])
 }),
   "flags": zod.array(zod.object({
@@ -1287,6 +1288,7 @@ export const IngestAnalysisRunBody = zod.object({
   "elements": zod.boolean(),
   "crops": zod.boolean()
 }).optional().describe('Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle\/Mistral also emit elements). UI reads this instead of assuming capabilities.\n'),
+  "fraudScoring": zod.boolean().optional().describe('Echo of the resolved plan\'s fraud toggle. false = fraud_signal is absent on every document of THIS run (\"not scored this run\"). Absent on older runs = scored.\n'),
   "preflight": zod.object({
   "pages": zod.number(),
   "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
@@ -1308,7 +1310,7 @@ export const IngestAnalysisRunBody = zod.object({
   "scores": zod.object({
   "quality": zod.number(),
   "formatting": zod.number(),
-  "fraud_signal": zod.number(),
+  "fraud_signal": zod.number().optional().describe('Absent when the run\'s plan disabled fraud scoring (RunPlan.fraudScoring = false) — render \"not scored this run\", never assume 0.\n'),
   "scrutinyTier": zod.enum(['critical', 'standard', 'supporting'])
 }),
   "flags": zod.array(zod.object({
@@ -1351,6 +1353,7 @@ export const IngestAnalysisRunResponse = zod.object({
   "elements": zod.boolean(),
   "crops": zod.boolean()
 }).optional().describe('Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle\/Mistral also emit elements). UI reads this instead of assuming capabilities.\n'),
+  "fraudScoring": zod.boolean().optional().describe('Echo of the resolved plan\'s fraud toggle. false = fraud_signal is absent on every document of THIS run (\"not scored this run\"). Absent on older runs = scored.\n'),
   "preflight": zod.object({
   "pages": zod.number(),
   "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
@@ -1372,7 +1375,7 @@ export const IngestAnalysisRunResponse = zod.object({
   "scores": zod.object({
   "quality": zod.number(),
   "formatting": zod.number(),
-  "fraud_signal": zod.number(),
+  "fraud_signal": zod.number().optional().describe('Absent when the run\'s plan disabled fraud scoring (RunPlan.fraudScoring = false) — render \"not scored this run\", never assume 0.\n'),
   "scrutinyTier": zod.enum(['critical', 'standard', 'supporting'])
 }),
   "flags": zod.array(zod.object({
@@ -1545,7 +1548,8 @@ export const DecidePacketGateBody = zod.object({
   "plan": zod.object({
   "parse": zod.string().optional(),
   "text": zod.string().optional(),
-  "judge": zod.string().optional()
+  "judge": zod.string().optional(),
+  "fraudScoring": zod.boolean().optional().describe('Per-run addon toggle (default true): score every judged document for visual fraud indicators. Off = fraud_signal is ABSENT from this run\'s scores and the UI renders \"not scored this run\" — never a fake 0. Frozen into the run\'s config artifact like the engine ids.\n')
 }).optional().describe('Per-stage model option ids (from GET \/models\/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown\/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run\'s config artifact (pipelineVersion honesty).\n')
 })
 

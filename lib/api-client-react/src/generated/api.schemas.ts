@@ -537,6 +537,8 @@ export interface RunPlan {
   parse?: string;
   text?: string;
   judge?: string;
+  /** Per-run addon toggle (default true): score every judged document for visual fraud indicators. Off = fraud_signal is ABSENT from this run's scores and the UI renders "not scored this run" — never a fake 0. Frozen into the run's config artifact like the engine ids. */
+  fraudScoring?: boolean;
 }
 
 export interface PacketGateInput {
@@ -619,7 +621,8 @@ export const AnalysisScoresScrutinyTier = {
 export interface AnalysisScores {
   quality: number;
   formatting: number;
-  fraud_signal: number;
+  /** Absent when the run's plan disabled fraud scoring (RunPlan.fraudScoring = false) — render "not scored this run", never assume 0. */
+  fraud_signal?: number;
   scrutinyTier: AnalysisScoresScrutinyTier;
 }
 
@@ -698,6 +701,8 @@ export interface AnalysisRun {
   durationMs?: number;
   /** Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle/Mistral also emit elements). UI reads this instead of assuming capabilities. */
   artifactsProduced?: AnalysisRunArtifactsProduced;
+  /** Echo of the resolved plan's fraud toggle. false = fraud_signal is absent on every document of THIS run ("not scored this run"). Absent on older runs = scored. */
+  fraudScoring?: boolean;
   preflight: AnalysisPreflight;
   documents: AnalysisDocument[];
   unassigned: AnalysisUnassigned[];

@@ -69,7 +69,7 @@ async function kickAnalyzer(
   applicationId: string,
   packetSha256: string,
   gate: "auto" | "confirmed" | "bypassed",
-  plan?: { parse?: string; text?: string; judge?: string },
+  plan?: { parse?: string; text?: string; judge?: string; fraudScoring?: boolean },
 ): Promise<void> {
   const base = process.env["ANALYZER_URL"];
   if (!base) throw new Error("ANALYZER_URL is not configured — analyzer worker unreachable");

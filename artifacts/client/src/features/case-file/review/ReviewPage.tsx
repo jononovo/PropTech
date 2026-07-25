@@ -333,7 +333,19 @@ function ModeButton({
   );
 }
 
-function ScoreChip({ label, value, invert = false }: { label: string; value: number; invert?: boolean }) {
+function ScoreChip({ label, value, invert = false }: { label: string; value?: number; invert?: boolean }) {
+  if (value == null) {
+    // honest absence — this run's plan skipped the score; never render a fake 0
+    return (
+      <div
+        className="flex items-center gap-1.5 px-2 py-1 rounded-[2px] bg-[var(--ops-inset)] border border-[var(--ops-border)]"
+        title="not scored this run"
+      >
+        <span className="micro-label text-[9px]">{label}</span>
+        <span className="ops-mono text-[11.5px] font-medium text-[var(--ops-faint)]">—</span>
+      </div>
+    );
+  }
   const pct = Math.round(value * 100);
   const color = invert
     ? pct >= 30

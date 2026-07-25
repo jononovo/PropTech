@@ -151,10 +151,14 @@ function RunPlanPicker({
   stages,
   plan,
   setPlan,
+  fraudScoring,
+  setFraudScoring,
 }: {
   stages: ModelStageOptions[];
   plan: Record<string, string>;
   setPlan: (stage: string, id: string) => void;
+  fraudScoring: boolean;
+  setFraudScoring: (v: boolean) => void;
 }) {
   return (
     <div className="bg-[var(--ops-inset)] border border-[var(--ops-inner-rule)] rounded p-3 flex flex-col gap-2.5">
@@ -195,6 +199,24 @@ function RunPlanPicker({
           );
         })}
       </div>
+      <label className="flex items-start gap-2 cursor-pointer select-none border-t border-[var(--ops-inner-rule)] pt-2.5">
+        <input
+          type="checkbox"
+          checked={fraudScoring}
+          onChange={(e) => setFraudScoring(e.target.checked)}
+          data-testid="toggle-fraud-scoring"
+          className="mt-0.5 accent-[var(--ops-accent)]"
+        />
+        <span className="text-[11.5px] leading-snug text-[var(--ops-ink)]">
+          Fraud scoring
+          <span className="text-[var(--ops-faint)]"> · visual-anomaly signal on every judged document</span>
+          {!fraudScoring && (
+            <span className="block text-[10.5px] text-[var(--ops-warning-text)] mt-0.5">
+              Off for this run — documents will read “fraud: not scored this run”. Recorded with the run, like the engines.
+            </span>
+          )}
+        </span>
+      </label>
     </div>
   );
 }
@@ -217,13 +239,14 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
     return d;
   }, [stages]);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [fraudScoring, setFraudScoring] = useState(true);
   const plan = { ...defaults, ...overrides };
 
   if (!packet || !pf) return null;
   const flags = pf.flags;
   const planReady = optionsQ.isSuccess && ['parse', 'text', 'judge'].every((s) => plan[s]);
   const start = (decision: 'confirmed' | 'bypassed') =>
-    decide(decision, { parse: plan['parse'], text: plan['text'], judge: plan['judge'] });
+    decide(decision, { parse: plan['parse'], text: plan['text'], judge: plan['judge'], fraudScoring });
 
   const copyLink = async () => {
     const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -321,6 +344,8 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
             stages={stages}
             plan={plan}
             setPlan={(stage, id) => setOverrides((p) => ({ ...p, [stage]: id }))}
+            fraudScoring={fraudScoring}
+            setFraudScoring={setFraudScoring}
           />
         )}
 

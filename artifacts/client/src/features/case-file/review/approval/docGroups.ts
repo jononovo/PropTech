@@ -26,6 +26,8 @@ export interface DocGroup {
   settled?: DocumentApproval;
   /** true when this group is a human merge of adjacent analyzer groups */
   merged?: boolean;
+  /** id of another open group the analyzer filed under the SAME requirement — a recommended merge */
+  mergeWith?: string;
 }
 
 const rangeList = (first: number, last: number) =>
@@ -114,6 +116,24 @@ export function buildDocGroups(model: CaseModel, links: Array<[string, string]> 
     g.settled = approvals.find(
       (a) => a.runId === run.runId && a.pages[0] === g.pages[0] && a.pages[1] === g.pages[1],
     );
+  }
+
+  // merge recommendations: two OPEN groups filed under the same requirement are
+  // probably one document. Adjacent pairs get a link button between them;
+  // non-adjacent pairs get hop-over icons (reordering a PDF is unrealistic —
+  // the point is to double-check, not to rearrange).
+  const byBlock = new Map<string, DocGroup[]>();
+  for (const g of groups) {
+    if (g.kind !== 'document' || g.settled || !g.blockId) continue;
+    const list = byBlock.get(g.blockId) ?? [];
+    list.push(g);
+    byBlock.set(g.blockId, list);
+  }
+  for (const list of byBlock.values()) {
+    for (let i = 0; i < list.length - 1; i++) {
+      list[i].mergeWith = list[i + 1].id;
+      list[i + 1].mergeWith = list[i].id;
+    }
   }
 
   return groups;

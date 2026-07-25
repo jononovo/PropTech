@@ -95,14 +95,22 @@ export function DocGroupsStrip({
         const palette = g.colorSlot >= 0 ? PALETTE[g.colorSlot % PALETTE.length] : NEUTRAL;
         const selected = g.id === selectedGroupId;
         const next = visible[i + 1];
-        const linkable = !isSettled && next && !next.settled && g.pages[1] + 1 === next.pages[0];
+        // merge affordances ONLY where the analyzer actually recommends one:
+        // adjacent partner → link button between the groups; non-adjacent
+        // partner → hop-over icon on the facing edge of each group.
+        const partner = g.mergeWith ? groups.find((x) => x.id === g.mergeWith) : undefined;
+        const partnerAdjacent =
+          !!partner && (g.pages[1] + 1 === partner.pages[0] || partner.pages[1] + 1 === g.pages[0]);
+        const linkable = !isSettled && next && partnerAdjacent && partner.id === next.id;
         return (
           <div key={g.id} className="flex items-end gap-3 shrink-0" ref={selected ? activeRef : undefined}>
             <div
-              className={`flex gap-1.5 p-1.5 rounded-[4px] relative border transition-all ${palette.bg} ${
+              onClick={() => onGroupSelect(g.id)}
+              data-testid={`group-container-${g.pages[0]}`}
+              className={`flex gap-1.5 p-1.5 rounded-[4px] relative border transition-all cursor-pointer ${palette.bg} ${
                 selected
                   ? 'border-[var(--ops-accent)] shadow-[0_0_0_1px_rgba(59,130,246,0.25)]'
-                  : `${palette.border}`
+                  : `${palette.border} hover:shadow-[0_0_0_1px_rgba(148,163,184,0.4)]`
               } ${isSettled ? 'opacity-60 grayscale hover:opacity-100 hover:grayscale-0' : ''}`}
             >
               <button
@@ -115,15 +123,24 @@ export function DocGroupsStrip({
                   {g.title}
                 </span>
                 {g.merged && <LinkIcon className="w-3 h-3 shrink-0 text-[var(--ops-muted)]" />}
-                {g.band && !isSettled && (
-                  <span
-                    className={`shrink-0 w-1.5 h-1.5 rounded-full ${
-                      g.band === 'hold' ? 'bg-[var(--ops-critical-solid)]' : 'bg-[var(--ops-warning-solid)]'
-                    }`}
-                  />
-                )}
                 {isSettled && <Check className="w-3.5 h-3.5 text-[var(--ops-ok-text)] stroke-[3] shrink-0" />}
               </button>
+              {/* non-adjacent recommended merge: hop-over icon on the edge facing the partner */}
+              {partner && !partnerAdjacent && !isSettled && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGroupSelect(partner.id);
+                  }}
+                  data-testid={`button-merge-hop-${g.pages[0]}`}
+                  title={`Recommended merge — same requirement as pp. ${partner.pages[0]}–${partner.pages[1]}. Click to jump.`}
+                  className={`absolute top-1/2 -translate-y-1/2 z-30 w-6 h-6 rounded-full bg-white border border-dashed border-[var(--ops-accent)] flex items-center justify-center text-[var(--ops-accent)] hover:bg-[var(--ops-accent)] hover:text-white shadow-sm transition-colors ${
+                    partner.pages[0] > g.pages[0] ? '-right-3' : '-left-3'
+                  }`}
+                >
+                  <LinkIcon className="w-3 h-3" />
+                </button>
+              )}
               {g.pageList.map((p) => (
                 <StripThumb
                   key={p}
@@ -142,8 +159,8 @@ export function DocGroupsStrip({
               <button
                 onClick={() => onLink(g.id, next.id)}
                 data-testid={`button-link-${g.pages[1]}`}
-                className="self-center shrink-0 w-7 h-7 -mx-1.5 rounded-full bg-white border border-[var(--ops-border)] flex items-center justify-center text-[var(--ops-faint)] hover:text-[var(--ops-accent)] hover:border-[var(--ops-accent)] transition-colors"
-                title="Link as one document"
+                className="self-center shrink-0 w-7 h-7 -mx-1.5 rounded-full bg-white border border-dashed border-[var(--ops-accent)] flex items-center justify-center text-[var(--ops-accent)] hover:bg-[var(--ops-accent)] hover:text-white shadow-sm transition-colors"
+                title="Recommended merge — link as one document"
               >
                 <LinkIcon className="w-3.5 h-3.5" />
               </button>
@@ -183,7 +200,10 @@ function StripThumb({
           ? 'border-[var(--ops-accent)] ring-1 ring-[var(--ops-accent)]'
           : 'border-[var(--ops-border)] hover:border-[var(--ops-strong-border)]'
       }`}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
       data-testid={`strip-thumb-${page}`}
     >
       {broken ? (
@@ -197,8 +217,8 @@ function StripThumb({
           alt=""
           loading="lazy"
           onError={() => setBroken(true)}
-          className={`absolute inset-0 w-full h-full object-cover object-top transition-all ${
-            !settled ? 'group-hover/thumb:blur-[1px] group-hover/thumb:opacity-40' : ''
+          className={`absolute inset-0 w-full h-full object-cover object-top transition-all duration-150 delay-0 ${
+            !settled ? 'group-hover/thumb:blur-[1px] group-hover/thumb:opacity-40 group-hover/thumb:delay-[400ms]' : ''
           }`}
         />
       )}
@@ -231,7 +251,7 @@ function StripThumb({
       )}
       {/* hover ✓/✕/⚑ cluster — centered floating pill (A1), the page pre-step, no popups */}
       {!settled && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 hidden group-hover/thumb:flex items-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] rounded-full border border-[var(--ops-border)] p-0.5 z-20">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] rounded-full border border-[var(--ops-border)] p-0.5 z-20 opacity-0 pointer-events-none transition-opacity duration-150 delay-0 group-hover/thumb:opacity-100 group-hover/thumb:pointer-events-auto group-hover/thumb:delay-[400ms]">
           <button
             onClick={(e) => {
               e.stopPropagation();

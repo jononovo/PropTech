@@ -1,0 +1,168 @@
+
+1. Below is a conversation and results I had with another agent about how things are currently being saved.
+2. And attached is a document another agent gave me with some recommendations about some of the features that we may need, etc..
+
+What do you think about all this?
+----
+
+The one-sentence answer
+The original packet PDF is never physically split — it stays one file; the "split" is purely logical (page ranges in a JSON run object), and the markdown lives in a per-run artifact folder owned by the analyzer, separate from where the original PDF is stored.
+
+Step by step
+1. Upload — original PDF. When an originator uploads a packet, the API server stores it through packetObjectStore.ts — the only module that knows where bytes live:
+
+On Replit/prod: GCS App Storage, key packets/<applicationId>/packet.pdf (+ thumbs/page-<n>.png from pre-flight)
+Locally: same key layout on disk under artifacts/api-server/data/object-store/ (the data/packets/BI1nb5Itk- folder you'd also see is the older pre-object-store layout; the newer app MDWu392Q81 is under object-store/)
+2. Run — the analyzer makes its own copy. When a run starts, runner.py:52-77 creates services/analyzer/store/<applicationId>/<runId>/, downloads the packet from the portal API, and writes everything there:
+
+
+store/MDWu392Q81/run-20260725-001839-5cea/
+├── packet.pdf          ← the analyzer's own copy of the whole packet
+├── config.json         ← models used, timings, gate, packet sha
+├── pages/p-01.png …    ← every page rendered to PNG
+├── md/p1.md …          ← ★ one markdown file PER PAGE (the parse output)
+├── elements/p1.json …  ← Paddle layout elements per page
+└── judge/doc-01.json … ← raw judge output per detected document (write-once)
+So the markdown's relation to the original PDF is: per page, not per document — md/p7.md is the parse of page 7 of that run's packet.pdf copy.
+
+3. Split — logical only. runner.py:107-176 groups pages into segments and builds a documents array where each document is just { segment: { pages: [first, last] }, suggestedBlockId, suggestedName, coreFields, scores, flags, artifacts }. The suggestedName ending in .pdf (naming.py) is only a proposed filename — no per-document PDF bytes are ever written, anywhere. The artifacts field carries store://<appId>/<runId>/... URIs pointing back at the per-page md/PNG/judge files.
+
+4. Results — one POST, into Postgres. The whole run object goes to POST /api/applications/{id}/analysis (the analyzer's single integration surface). analysis/store.ts appends it as one jsonb row in the analysis_runs table — append-only, duplicate runIds rejected, latest ingested run wins. The API server never copies the artifacts — when the client needs a page image, analysis/router.ts:157 proxies the request to the analyzer worker's /store/... endpoint, which serves from that run folder.
+
+So, three homes for data
+What	Where	Owner
+Original packet PDF + pre-flight thumbs	Object store (packets/<appId>/) — GCS on Replit, local disk in dev	API server
+Run artifacts: page markdown, page PNGs, elements, judge JSON, packet copy	services/analyzer/store/<appId>/<runId>/	Analyzer worker
+Run results (the logical split, names, scores, flags)	Postgres analysis_runs, one jsonb row per run	API server
+Worth noting: physical splitting into separate per-document PDFs isn't in future.md either — as designed today, documents exist as page-range views over the intact packet, and the derived .pdf names would only materialize if/when an export/download feature is built.
+
+1. Is there a place where the judge like adds the scores for like source ability and maybe the fraud score or whatever
+Or any other notes about the document or does that not really happen?
+
+Don't change anything yet
+
+
+2. And also shouldn't we kind of have all the documents relating to a specific page and a specific document united in one place or if it's not too convoluted or long then it would all be within one marked down file?
+
+What are your thoughts?
+
+3. Are we storing any images sort of extracted and outside of the PDFs or are we just storing like the range of pixels that would have been analyzed within a PDF and saying hey the stamp or the signature on this location on this page looks weird or something?
+
+Can you keep your answers, short and succinct and point form?
+Bash Check judge score fields and a real judge output
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && grep -n "quality\|formatting\|fraud\|flags\|description\|score" services/analyzer/judge.py | head -25; echo ---; sed -n 1,10p services/analyzer/store/MDWu392Q81/run-20260725-001839-5cea/judge/doc-01.json
+
+OUT
+2:parsed md + pre-flight flags -> quality/formatting/fraud-signal scores,
+3:description, and the universal core fields (§1.4) that make the portal's clocks
+9:(judge-verdict-artifacts spec) — every score a human sees stays traceable."""
+22:Pre-flight flags touching these pages: {pf_flags}
+29:  "quality": 0.0-1.0,            // legibility/scan quality of the document itself
+30:  "formatting": 0.0-1.0,         // is it complete & well-formed for its type (all pages, signatures, fields)
+31:{fraud_line}  "description": "one factual line about this document",
+32:  "flags": [{{"code": "snake_case_code", "detail": "plain-language finding"}}],
+43:FRAUD_LINE = '  "fraud_signal": 0.0-1.0,       // visual anomalies only: inconsistent fonts, misaligned edits, pasted regions. 0 = nothing suspicious\n'
+46:def prompt_version(fraud_scoring: bool = True) -> str:
+47:    """Exact prompt variant, derivable from the recorded string: '-nofraud' means
+48:    the fraud_signal line was omitted — the score is ABSENT, never a fake 0."""
+49:    return PROMPT_VERSION if fraud_scoring else f"{PROMPT_VERSION}-nofraud"
+53:                         pf_flags: list[str], judge: ModelChoice,
+54:                         fraud_scoring: bool = True) -> tuple[dict, dict]:
+57:    the write-once judge artifact. fraud_scoring=False (per-run plan toggle)
+58:    drops fraud_signal from the prompt AND the verdict — absent, never fake-0."""
+59:    prompt = PROMPT_TMPL.format(tax_display=tax_display, pf_flags="; ".join(pf_flags) or "none",
+60:                                md=md_excerpt[:4000], fraud_line=FRAUD_LINE if fraud_scoring else "")
+66:        keys = ("quality", "formatting", "fraud_signal") if fraud_scoring else ("quality", "formatting")
+91:    flags = [
+93:        for f in out.get("flags", []) if isinstance(f, dict) and f.get("detail")
+96:        "quality": clamp(out.get("quality")),
+97:        "formatting": clamp(out.get("formatting")),
+98:        # fraud off => key absent everywhere downstream ("not scored"), never 0.0
+---
+{
+  "docIndex": 1,
+  "pages": [
+    1,
+    1
+  ],
+  "taxonomyId": "application_form",
+  "scores": {
+    "quality": 0.93,
+    "formatting": 0.72,
+1. Judge scores/notes — yes, that happens. Per document, the judge emits:
+
+quality (0–1, scan legibility), formatting (0–1, complete & well-formed for its type), fraud_signal (0–1, visual anomalies — absent if fraud scoring is toggled off, never a fake 0)
+flags — its "notes": {code, detail} plain-language findings
+description — one factual line about the doc
+Saved twice: raw write-once audit copy in judge/doc-NN.json, and in the run row in Postgres (documents[].scores/flags), plus confidence and scrutinyTier (from the block's criticality). "Sourcing" itself is a template block property (portal-owned), not something the judge scores.
+2. Unifying per-document — my thoughts:
+
+It's already united logically: each document in the run JSON carries pointers to its md pages, page renders, and judge file. The UI assembles from that.
+Physically merging into one md file per document would bake in what is only a suggestion — humans can re-split/reassign, and merged files would go stale or need rewriting (violates write-once artifacts).
+Storage is per-page because parsing happens before splitting.
+If you want it: the right shape is a read-time "document bundle" view (API endpoint or export that concatenates md + judge + renders on demand). Cheap, nothing stored twice, never stale. Happy to spec it — not changing anything now.
+3. Images — currently:
+
+Stored outside the PDF: full-page PNG renders (pages/), pre-flight thumbs, that's it.
+Not stored: cropped regions (stamps, signatures). The slot exists (artifacts.crops: [], artifactsProduced.crops: false — "reserved, v1 doesn't pre-crop"); saving region crops is part of the approved Paddle 1.6 task in future.md.
+Coordinates: elements/pN.json (Paddle layout) has bounding boxes per element, so region locations are known.
+Judge anomaly findings today are textual flags only ("misaligned edits", "pasted regions") — not pinned to pixel coordinates. Region highlighting on page images is explicitly parked in future.md as v2.
+OK, but we're using mistral 4 OCR -does that model also have like the ability to Drais pixels and highlights specific images sort of like what paddle does ?
+
+And does paddle 1.6 actually do that or is that just an assumption?
+
+Keep your responses, extremely succinct and in point form
+Bash Check which parser made local run, its elements JSON, and Mistral parse code
+IN
+cd "/Users/happy/Documents/2026 Codex Tryout/proptech" && grep -n "backend\|model" services/analyzer/store/MDWu392Q81/run-20260725-001839-5cea/config.json; echo ---; head -c 600 services/analyzer/store/MDWu392Q81/run-20260725-001839-5cea/elements/p1.json; echo; echo ---; grep -n "bbox\|image\|coordinate\|top_left\|base64" services/analyzer/mistral_ocr_parse.py | head
+
+OUT
+10:    "backend": "mistral",
+11:    "model": "mistral-ocr-latest"
+14:    "backend": "anthropic",
+15:    "model": "claude-sonnet-4-6"
+18:    "backend": "fireworks",
+19:    "model": "accounts/fireworks/models/glm-5p2"
+---
+{
+  "source": "mistral-ocr",
+  "blocks": [
+    {
+      "top_left_x": 48,
+      "top_left_y": 42,
+      "bottom_right_x": 465,
+      "bottom_right_y": 57,
+      "content": "Uniform Residential Loan Application - Fannie Mae Form 1003",
+      "confidence_scores": null,
+      "type": "header"
+    },
+    {
+      "top_left_x": 483,
+      "top_left_y": 42,
+      "bottom_right_x": 690,
+      "bottom_right_y": 56,
+      "content": "SAMPLE - NOT A REAL DOCUMENT",
+      "confidence_scores": null,
+      "type": "header"
+    },
+    {
+      "top_left_x": 48,
+      "top_left_y": 76,
+      "bottom_right_x": 3
+---
+3:ONE API call per packet: the whole PDF goes up base64-encoded, per-page
+12:import base64
+28:    pdf_b64 = base64.b64encode(Path(pdf_path).read_bytes()).decode()
+38:                    "document_url": f"data:application/pdf;base64,{pdf_b64}",
+Mistral OCR (what your local runs actually use — just verified run config):
+
+Yes — it returns per-block pixel bounding boxes. The real elements/p1.json from yesterday's run has top_left_x/y, bottom_right_x/y + content + type (header, etc.) per block, source mistral-ocr.
+It can also return cropped images of figures (include_image_base64 option) — we don't request/save those today.
+It does NOT draw/highlight anything — nobody does; highlighting would be our UI drawing boxes using these coordinates (parked as v2 in future.md).
+Paddle 1.6 — real capability, not assumption:
+
+PP-DocLayoutV3 (runs locally in the worker) is a layout-detection model: outputs bounding box + class per element, including classes like seal/stamp, figure, table, signature-ish regions — documented PaddleOCR behavior.
+The doc-parser pipeline can also save actual region crops (cropped PNGs) — that's the "elements JSON, region crops" requirement in the spec/future.md Paddle task.
+Caveat: we haven't exercised Paddle in this repo's local runs yet (all local runs = Mistral), so its output quality here is untested — the spec's before/after comparison on the sample packet is exactly the planned verification.
+Net: both give coordinates; Paddle additionally classifies stamp/seal-type regions and pre-crops them; Mistral crops only figures on request. Today we store coordinates only, no crops, no highlights.

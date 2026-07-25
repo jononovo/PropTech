@@ -113,3 +113,17 @@ template-editor/
 - `SectionCard.tsx` Duplicate = `INSERT_SAVED_SECTION` with itself (same deep-clone path as library
   inserts — one code path for all copies).
 - Deleted: nothing. Old editor fully replaced in place; helpers/DocDimensions untouched.
+
+## 7. Post-merge fixes on main (Jul 25, 2026)
+
+- **Drop-zone geometry** ("drag sometimes doesn't work"): `blocklist:`/`sectionarea:` droppables
+  were inner-div-only, so subsection/section HEADERS were dead space under `pointerWithin` — drops
+  there silently voided (over=null), and collapsed sections unmounted their drop area entirely.
+  Fix: container droppable refs moved to the WHOLE card (shared with the sortable ref) in
+  `SubsectionGroup.tsx` / `SectionCard.tsx`; collapsed sections got an isOver cue. Collision
+  precedence (items beat containers) unchanged ⇒ precise sorting unaffected. e2e-verified:
+  header drops, empty-card drops, grip-based precision reorder, save 200, persisted order checked.
+- **Sibling fix, library-side** (same day, PR #7): New-template creation auto-picks the first free
+  "New Template N" and toasts on error — was a silent 409 on the fixed default name.
+- Reminder encoded in code comments: block/section/subsection drags start on their GRIP handles;
+  block-card body click opens the editor.

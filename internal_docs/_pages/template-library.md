@@ -16,7 +16,7 @@
 **Done.** Full family/version lifecycle above; grouping; draft-vs-active affordances.
 
 **Open.**
-- *Stand-in:* new families are created as literal `"New Template"` / program `"General"` — no create form yet (*Open — feature*, small).
+- *Stand-in:* new families still skip a create form — auto-named `"New Template N"` (first free slug) / program `"General"`, and creation failures toast the server's reason (fixed Jul 25, 2026 — was a silent 409 on the fixed default name). Proper name/program form remains *Open — feature*, small.
 - *Stand-in:* **Export JSON** just fires a browser `alert()` (*Open — feature*).
 - *Open — decision:* **Retire version** button is permanently disabled — retirement semantics (what happens to cases pinned to it?) were never ruled on.
 - *Open — feature:* version management screen (diff/rollback) — parked, `_future.md`.

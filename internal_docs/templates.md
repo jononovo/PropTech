@@ -13,7 +13,7 @@ A template defines the document checklist for a loan program. One schema definit
 
 ## Builder (template editor)
 
-- Single column: sections → blocks. Block kinds: **document** and **fields** only. Palette drag to insert; sections collapse and reorder.
+- Single column: sections → subsections → blocks. Block kinds: **document** and **fields** only. Palette drag (or click-to-add) inserts; sections/subsections/blocks reorder by grip-drag incl. cross-container moves; sections collapse. Every mutation — button or drag — flows through one pure reducer; ids mint once and never change (applications pin them). Details: `_pages/template-editor.md`.
 - **Saved sections**: reusable section snippets in the palette; inserting one creates a **copy, never a link** (v1 doctrine). `GET/POST /saved-sections`.
 - Document blocks carry optional `docType` (classification target for the analyzer) and the dimensions below.
 

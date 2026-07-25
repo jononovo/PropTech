@@ -1024,15 +1024,18 @@ components:
         mode:
           type: string
           enum: [single, sequence]
-          description: single = one document per variant (birth certificate); sequence = N documents (statements).
-        requiredCount:
+          description: >
+            single = exactly one document per variant (birth certificate);
+            sequence = one or more documents (statements). One document never
+            fails a sequence — counts are guidance, not gates.
+        expectedCount:
           type: integer
           minimum: 1
-          description: sequence only — how many documents each variant needs.
-        recencyWindowDays:
-          type: integer
-          minimum: 1
-          description: optional — newest document must fall within this window.
+          description: >
+            Recommended number of documents per variant — guidance for review
+            and the satisfaction pass, NEVER a hard limit or requirement.
+            Document recency is governed by the block's existing expiry clock,
+            not duplicated here.
         coverage:
           type: string
           enum: [consecutive_months]

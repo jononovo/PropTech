@@ -7,8 +7,9 @@ import type { Template } from "../template-library/store";
  * - a block may be primary of at most one group
  * - satisfiedBy lists are non-empty and don't contain the primary
  * - set blocks (arity:"set") are document-kind, carry a variantConfig with >=1
- *   descriptor field, unique descriptor keys, and sequence mode has requiredCount;
- *   variantConfig without arity:"set" is rejected (half-configured blocks confuse intake)
+ *   descriptor field and unique descriptor keys; variantConfig without
+ *   arity:"set" is rejected (half-configured blocks confuse intake).
+ *   expectedCount is deliberately NOT required — counts are guidance, never gates.
  */
 export function validateTemplateInvariants(tpl: Template): string | undefined {
   const blockIds = new Set<string>();
@@ -56,9 +57,6 @@ function validateSetBlock(b: AnyBlock): string | undefined {
     if (!f.key.trim() || !f.label.trim()) return `Set block "${b.name}" has a descriptor field with an empty key or label`;
     if (keys.has(f.key)) return `Set block "${b.name}" repeats descriptor key "${f.key}"`;
     keys.add(f.key);
-  }
-  if (vc.docsPerVariant.mode === "sequence" && !(vc.docsPerVariant.requiredCount && vc.docsPerVariant.requiredCount >= 1)) {
-    return `Set block "${b.name}" uses sequence mode without a requiredCount`;
   }
   return undefined;
 }

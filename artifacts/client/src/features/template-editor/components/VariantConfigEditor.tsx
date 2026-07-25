@@ -45,7 +45,7 @@ export function VariantConfigEditor({ block, patch }: { block: Block; patch: (p:
           className="accent-[#1D4ED8]"
         />
         <span className="text-[#64748B]">
-          multiple variants <span className="normal-case">— N instances (accounts, persons…), each with its own documents, added per application</span>
+          multiple variants <span className="normal-case">— N instances (accounts, persons…), each with its own document/s, added per application</span>
         </span>
       </label>
 
@@ -112,44 +112,36 @@ export function VariantConfigEditor({ block, patch }: { block: Block; patch: (p:
                 value={vc.docsPerVariant.mode}
                 onChange={(e) =>
                   e.target.value === "sequence"
-                    ? setDocs({ mode: "sequence", requiredCount: vc.docsPerVariant.requiredCount ?? 3 })
+                    ? setDocs({ mode: "sequence" })
                     : setVc({ docsPerVariant: { mode: "single" } })
                 }
                 data-testid="block-editor-docs-mode"
                 className={`${mono} cursor-pointer`}
               >
-                <option value="single">one document</option>
-                <option value="sequence">a sequence</option>
+                <option value="single">exactly one</option>
+                <option value="sequence">one or more</option>
               </select>
             </label>
             {vc.docsPerVariant.mode === "sequence" && (
               <>
+                {/* Guidance, never a gate: one document never fails a sequence.
+                    Recency is the block's existing expiry clock — not duplicated here. */}
                 <label className="flex items-center gap-1.5">
-                  <span className="text-[#64748B]">count:</span>
+                  <span className="text-[#64748B]">typically:</span>
                   <input
                     type="number"
                     min={1}
-                    value={vc.docsPerVariant.requiredCount ?? 3}
-                    onChange={(e) => setDocs({ requiredCount: Math.max(1, Number(e.target.value) || 1) })}
+                    value={vc.docsPerVariant.expectedCount ?? ""}
+                    onChange={(e) => {
+                      const n = Number(e.target.value);
+                      setDocs({ expectedCount: n >= 1 ? n : undefined });
+                    }}
+                    placeholder="—"
+                    title="Recommended amount — guidance for review, never a hard limit or requirement"
                     data-testid="block-editor-docs-count"
                     className={`${mono} w-10`}
                   />
-                </label>
-                <label className="flex items-center gap-1.5">
-                  <span className="text-[#64748B]">newest within:</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={vc.docsPerVariant.recencyWindowDays ?? ""}
-                    onChange={(e) => {
-                      const n = Number(e.target.value);
-                      setDocs({ recencyWindowDays: n >= 1 ? n : undefined });
-                    }}
-                    placeholder="—"
-                    data-testid="block-editor-docs-recency"
-                    className={`${mono} w-12`}
-                  />
-                  <span className="text-[#64748B]">days</span>
+                  <span className="text-[#64748B]">docs (recommended, not enforced)</span>
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
                   <input

@@ -8,6 +8,7 @@ User rulings (Jul 25, 2026):
 - Storage: option B — flat `approved/<appId>/` folder, paired same-basename `.pdf` + `.md` (YAML front matter with scores/desc/provenance). NO moving of existing storage.
 - Physical extraction at APPROVAL ONLY; pre-approval splits stay in the intake/run flow, never in the approved registry.
 - Cost of satisfaction pass: user said don't worry; fold into existing gate anyway.
+- Docs-per-variant counts are GUIDANCE only ("typically N"), never a hard requirement — sequence means "one or more"; one doc never fails it. No recency field in variant rules — the block's existing expiry clock owns recency (a duplicate field was added and removed same day).
 
 **Why:** these override the other agent's addendum draft (which assumed v0.6.3 and auto-discovery-only identity).
 **How to apply:** follow the master plan phases; all contract changes additive; descriptor KEYS are mint-stable (rename labels, not keys).

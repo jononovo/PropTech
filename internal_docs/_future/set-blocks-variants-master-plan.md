@@ -20,7 +20,9 @@ Extends spec v0.7 FINAL. All changes additive; existing templates/applications u
 ## Phase 1 — Contract + builder (BUILD FIRST)
 Template `Block` (document kind) gains three optional fields — absent = today's behavior:
 - `arity?: "single" | "set"`
-- `variantConfig?: { variantNoun: string; descriptorFields: {key, label}[]; docsPerVariant: { mode: "single"|"sequence"; requiredCount?; recencyWindowDays?; coverage?: "consecutive_months" } }`
+- `variantConfig?: { variantNoun: string; descriptorFields: {key, label}[]; docsPerVariant: { mode: "single"|"sequence"; expectedCount?; coverage?: "consecutive_months" } }`
+  — sequence = "one or more"; `expectedCount` is a recommended amount, NEVER a gate (one document never fails a sequence);
+  recency is governed by the block's existing expiry clock, deliberately not duplicated in variant rules (user ruling, Jul 25, 2026).
 - `analysisNote?: string` — author-written expert guidance, later fed to the satisfaction pass.
 
 Files:

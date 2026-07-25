@@ -7,7 +7,7 @@
  */
 
 /**
- * single = one document per variant (birth certificate); sequence = N documents (statements).
+ * single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.
  */
 export type DocsPerVariantMode = typeof DocsPerVariantMode[keyof typeof DocsPerVariantMode];
 

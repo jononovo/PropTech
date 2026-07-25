@@ -63,7 +63,6 @@ export const GetTemplateParams = zod.object({
 
 
 
-
 export const GetTemplateResponse = zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -109,9 +108,8 @@ export const GetTemplateResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -136,7 +134,6 @@ export const SaveTemplateParams = zod.object({
   "family": zod.coerce.string(),
   "version": zod.coerce.number()
 })
-
 
 
 
@@ -186,9 +183,8 @@ export const SaveTemplateBody = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -204,7 +200,6 @@ export const SaveTemplateBody = zod.object({
 }))
 }))
 })
-
 
 
 
@@ -254,9 +249,8 @@ export const SaveTemplateResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -336,7 +330,6 @@ export const ActivateTemplateResponse = zod.object({
 
 
 
-
 export const ListSavedSectionsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -375,9 +368,8 @@ export const ListSavedSectionsResponseItem = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -399,7 +391,6 @@ export const ListSavedSectionsResponse = zod.array(ListSavedSectionsResponseItem
 /**
  * @summary Save a section as a reusable fragment (a copy, never a link)
  */
-
 
 
 
@@ -441,9 +432,8 @@ export const CreateSavedSectionBody = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -459,7 +449,6 @@ export const CreateSavedSectionBody = zod.object({
 }))
 })
 })
-
 
 
 
@@ -502,9 +491,8 @@ export const CreateSavedSectionResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -587,7 +575,6 @@ export const CreateApplicationBody = zod.object({
   "applicantName": zod.string().min(1),
   "projectedClosingDate": zod.string().optional()
 })
-
 
 
 export const createApplicationResponseManualPlacementsItemPagesMin = 2;
@@ -693,9 +680,8 @@ export const CreateApplicationResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -734,7 +720,6 @@ export const CreateApplicationResponse = zod.object({
 export const GetApplicationParams = zod.object({
   "applicationId": zod.coerce.string()
 })
-
 
 
 export const getApplicationResponseManualPlacementsItemPagesMin = 2;
@@ -840,9 +825,8 @@ export const GetApplicationResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -886,7 +870,6 @@ export const UpdateApplicationParams = zod.object({
 export const UpdateApplicationBody = zod.object({
   "projectedClosingDate": zod.union([zod.string(),zod.null()]).optional()
 })
-
 
 
 export const updateApplicationResponseManualPlacementsItemPagesMin = 2;
@@ -992,9 +975,8 @@ export const UpdateApplicationResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -1039,7 +1021,6 @@ export const UpgradeTemplateVersionBody = zod.object({
   "targetVersion": zod.number(),
   "decidedBy": zod.string()
 })
-
 
 
 export const upgradeTemplateVersionResponseManualPlacementsItemPagesMin = 2;
@@ -1145,9 +1126,8 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -1191,7 +1171,6 @@ export const SaveFieldValuesParams = zod.object({
 export const SaveFieldValuesBody = zod.object({
   "values": zod.record(zod.string(), zod.string())
 }).describe('Map of field id to entered value for one field-group block.')
-
 
 
 export const saveFieldValuesResponseManualPlacementsItemPagesMin = 2;
@@ -1297,9 +1276,8 @@ export const SaveFieldValuesResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -1609,7 +1587,6 @@ export const UploadPacketBody = zod.object({
 })
 
 
-
 export const uploadPacketResponseManualPlacementsItemPagesMin = 2;
 export const uploadPacketResponseManualPlacementsItemPagesMax = 2;
 
@@ -1713,9 +1690,8 @@ export const UploadPacketResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -1766,7 +1742,6 @@ export const DecidePacketGateBody = zod.object({
   "fraudScoring": zod.boolean().optional().describe('Per-run addon toggle (default true): score every judged document for visual fraud indicators. Off = fraud_signal is ABSENT from this run\'s scores and the UI renders \"not scored this run\" — never a fake 0. Frozen into the run\'s config artifact like the engine ids.\n')
 }).optional().describe('Per-stage model option ids (from GET \/models\/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown\/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run\'s config artifact (pipelineVersion honesty).\n')
 })
-
 
 
 export const decidePacketGateResponseManualPlacementsItemPagesMin = 2;
@@ -1872,9 +1847,8 @@ export const DecidePacketGateResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -1930,7 +1904,6 @@ export const ReportPacketRunFailureBody = zod.object({
   "reason": zod.string(),
   "packetSha256": zod.string()
 })
-
 
 
 export const reportPacketRunFailureResponseManualPlacementsItemPagesMin = 2;
@@ -2036,9 +2009,8 @@ export const ReportPacketRunFailureResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -2100,7 +2072,6 @@ export const RecordVerdictBody = zod.object({
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "runId": zod.string().optional()
 })
-
 
 
 export const recordVerdictResponseManualPlacementsItemPagesMin = 2;
@@ -2206,9 +2177,8 @@ export const RecordVerdictResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
@@ -2278,7 +2248,6 @@ export const RecordPlacementBody = zod.object({
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "runId": zod.string().optional()
 })
-
 
 
 export const recordPlacementResponseManualPlacementsItemPagesMin = 2;
@@ -2384,9 +2353,8 @@ export const RecordPlacementResponse = zod.object({
   "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
 })).describe('Identity fields a variant must fill, as specific as possible.'),
   "docsPerVariant": zod.object({
-  "mode": zod.enum(['single', 'sequence']).describe('single = one document per variant (birth certificate); sequence = N documents (statements).'),
-  "requiredCount": zod.number().min(1).optional().describe('sequence only — how many documents each variant needs.'),
-  "recencyWindowDays": zod.number().min(1).optional().describe('optional — newest document must fall within this window.'),
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
   "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
 })
 }).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),

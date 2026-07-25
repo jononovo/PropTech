@@ -103,7 +103,7 @@ export interface DescriptorField {
 }
 
 /**
- * single = one document per variant (birth certificate); sequence = N documents (statements).
+ * single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.
  */
 export type DocsPerVariantMode = typeof DocsPerVariantMode[keyof typeof DocsPerVariantMode];
 
@@ -124,18 +124,13 @@ export const DocsPerVariantCoverage = {
 } as const;
 
 export interface DocsPerVariant {
-  /** single = one document per variant (birth certificate); sequence = N documents (statements). */
+  /** single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates. */
   mode: DocsPerVariantMode;
   /**
-     * sequence only — how many documents each variant needs.
+     * Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block's existing expiry clock, not duplicated here.
      * @minimum 1
      */
-  requiredCount?: number;
-  /**
-     * optional — newest document must fall within this window.
-     * @minimum 1
-     */
-  recencyWindowDays?: number;
+  expectedCount?: number;
   /** optional — the sequence must cover consecutive periods with no gaps. */
   coverage?: DocsPerVariantCoverage;
 }

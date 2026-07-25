@@ -75,14 +75,6 @@ router.post(
       res.status(400).json({ error: `Format not accepted. Allowed: ${formats || "any"}` });
       return;
     }
-    // Bytes land in App Storage FIRST, the record second — an orphaned object
-    // is harmless, a dangling record is not.
-    try {
-      await putIntakeUpload(ctx.app.id, ctx.blockId, filename, req.file.buffer, req.file.mimetype || "application/octet-stream");
-    } catch (err) {
-      res.status(500).json({ error: `Upload storage write failed: ${err instanceof Error ? err.message : String(err)}` });
-      return;
-    }
     // Set blocks: an upload may be tagged to one of the block's variants.
     // Metadata only — the object-store key is unchanged. Unknown variant = 400,
     // BEFORE bytes land (no silently mis-filed uploads).
@@ -93,6 +85,14 @@ router.post(
         res.status(400).json({ error: "Unknown variant for this block" });
         return;
       }
+    }
+    // Bytes land in App Storage FIRST, the record second — an orphaned object
+    // is harmless, a dangling record is not.
+    try {
+      await putIntakeUpload(ctx.app.id, ctx.blockId, filename, req.file.buffer, req.file.mimetype || "application/octet-stream");
+    } catch (err) {
+      res.status(500).json({ error: `Upload storage write failed: ${err instanceof Error ? err.message : String(err)}` });
+      return;
     }
     const record: UploadedFileRecord = {
       filename,

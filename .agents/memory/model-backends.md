@@ -1,6 +1,6 @@
 ---
 name: Model backends for the Sheaf analyzer
-description: Fireworks key scope, Paddle 1.6 deployment path, judge requirements — updated for spec v0.6.3 (Jul 24, 2026)
+description: Fireworks key scope, Paddle 1.6 deployment path, judge requirements — facts verified Jul 24, 2026 under spec v0.6.3 (superseded by v0.7 FINAL; § numbers shifted)
 ---
 
 # Model backend facts (spec v0.6.3, verified Jul 24, 2026)

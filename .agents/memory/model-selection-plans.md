@@ -15,7 +15,7 @@ description: How per-run model selection works (worker registry, plan resolution
 - **Why:** serverless pay-per-use pivot after local-CPU paddle was ruled out and the Fireworks GPU deployment kept disarming.
 
 ## Jul 25 — v0.7 draft + two builds on main
-- PR #5 (docs-only) bakes ALL rulings into v0.7 draft; flow: merge → owner says "blessed" → local agent promotes to attached_assets as v0.7 FINAL + deletes v0.6.3 → replit.md spec pointer must be updated then.
+- v0.7 blessed Jul 25 2026: spec author promoted draft → attached_assets/homium-analyzer-spec-v0.7-FINAL.md, deleted v0.6.3, updated replit.md pointer (merged to main). Blessing flow CLOSED — nothing pending locally.
 - Span-gluing GREEN-LIT + BUILT (Jul 25): deterministic preflight blank/exact-dup only; junk = hard span break + visible unassigned entry; regexes in split_classify.py must track preflight.ts flag strings.
 - Fraud toggle contract: RunPlan.fraudScoring (default true); OFF → fraud_signal ABSENT everywhere + promptVersion judge-v1-nofraud; absent = "not scored", never fake 0.
 - Both await one 9-pager --no-fraud validation run (~20¢, needs owner approval per standing order).

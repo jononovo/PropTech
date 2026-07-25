@@ -29,6 +29,14 @@ too coarse (a set block holds many documents across many variants) and per-page 
 
 ## Rulings (Jul 25 2026)
 - Direction chosen: **Approval A — Filmstrip Groups** (canvas mockup FilmstripGroups.tsx).
+- FINAL visual spec: mockups/doc-approval/FilmstripFinal.tsx (canvas "Approval A — FINAL").
+  Combines A2's spread viewer + rail-as-only-confirm-surface with A1's filmstrip hover
+  ✓/✕/⚑ controls. Mode model: click page thumbnail = PAGE mode (single page + today's rail);
+  click group title chip = DOCUMENT mode (pages spread horizontally + document rail with
+  variant picker and Approve / Approve-incomplete / Reject). Segmented [Page|Document]
+  control atop the viewer reflects/flips the mode. NO popups anywhere — A1's chip-attached
+  inline confirm is dropped. ⚑ = accept-with-flag: flag is retained on the record as a
+  low-level note (no new state concepts), optional new-version-requested.
 - REUSE mandate: extend existing ReviewPage/filmstrip/viewer components with overlay props
   (group bands, title chips, decision ticks, good/bad control). New components ONLY for
   genuinely-new behavior (roll-up prompt, merge/link affordance, grouping logic), each small

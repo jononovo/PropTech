@@ -7,12 +7,17 @@
  */
 import type { AnalysisDocument } from './analysisDocument';
 import type { AnalysisPreflight } from './analysisPreflight';
+import type { AnalysisRunArtifactsProduced } from './analysisRunArtifactsProduced';
 import type { AnalysisUnassigned } from './analysisUnassigned';
 
 export interface AnalysisRun {
   runId: string;
   startedAt: string;
   pipelineVersion: string;
+  /** Total wall time of the run in ms (additive telemetry — the speed axis for engine comparisons). Per-stage timings live in the run store's config.json. */
+  durationMs?: number;
+  /** Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle/Mistral also emit elements). UI reads this instead of assuming capabilities. */
+  artifactsProduced?: AnalysisRunArtifactsProduced;
   preflight: AnalysisPreflight;
   documents: AnalysisDocument[];
   unassigned: AnalysisUnassigned[];

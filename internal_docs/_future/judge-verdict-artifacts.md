@@ -1,6 +1,6 @@
 # Judge Verdict Artifacts & Run Telemetry — build spec (draft for input)
 
-Status: proposal, Jul 24 2026 — spec-author endorsed, Sheaf-side review below. **Nothing built.** Feeds the v0.7 draft's amendments. Goal in one line: every score a human sees becomes traceable to the exact model output that produced it, and every run records how long each stage took — without changing how the pipeline runs.
+Status: **BUILT Jul 24, 2026** (worker + contract; no UI consumers yet, per non-goals). Spec-author endorsed; Sheaf-side review below; feeds the v0.7 draft's amendments. Build notes: `artifacts.judge` uses the `store://` URI form like its siblings; config keys are `judgePromptVersion` + `timings` + `artifactsProduced`; raw guard = 2MB with `truncated` marker; tokens come from the backends' `usage` objects (all three report; nullable when absent). Not yet validated against a paid run. Goal in one line: every score a human sees becomes traceable to the exact model output that produced it, and every run records how long each stage took — without changing how the pipeline runs.
 
 ## 1. Judge verdict artifacts (audit-grade raw output)
 

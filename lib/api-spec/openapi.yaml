@@ -1494,6 +1494,12 @@ components:
       description: URLs into the analyzer's artifact store (md + renders + crops).
       required: [md, pageRenders, crops]
       properties:
+        judge:
+          type: string
+          description: >
+            Audit-grade raw judge output for this document (judge/doc-<N>.json in
+            the run's store folder) — the pre-mapping superset that every rendered
+            score traces back to. Additive; absent on older runs.
         md: { type: string }
         pageRenders:
           type: array
@@ -1559,6 +1565,23 @@ components:
         runId: { type: string }
         startedAt: { type: string }
         pipelineVersion: { type: string }
+        durationMs:
+          type: integer
+          description: >
+            Total wall time of the run in ms (additive telemetry — the speed axis
+            for engine comparisons). Per-stage timings live in the run store's
+            config.json.
+        artifactsProduced:
+          type: object
+          description: >
+            Per-engine honesty — which artifact kinds THIS run actually produced
+            (bare-VLM parses emit md only; Paddle/Mistral also emit elements).
+            UI reads this instead of assuming capabilities.
+          required: [md, elements, crops]
+          properties:
+            md: { type: boolean }
+            elements: { type: boolean }
+            crops: { type: boolean }
         preflight:
           $ref: "#/components/schemas/AnalysisPreflight"
         documents:

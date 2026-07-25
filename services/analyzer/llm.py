@@ -17,7 +17,8 @@ def _img_b64(path: str) -> str:
         return base64.b64encode(f.read()).decode()
 
 
-async def _openai_compat(base: str, key: str, model: str, prompt: str, image_paths: list[str], max_tokens: int) -> str:
+async def _openai_compat(base: str, key: str, model: str, prompt: str, image_paths: list[str],
+                         max_tokens: int) -> tuple[str, dict | None]:
     """Any OpenAI-compatible chat endpoint (Fireworks, Novita, ...)."""
     content: list[dict] = [{"type": "text", "text": prompt}]
     for p in image_paths:
@@ -30,10 +31,13 @@ async def _openai_compat(base: str, key: str, model: str, prompt: str, image_pat
         )
         if r.status_code >= 400:
             raise RuntimeError(f"{model.rsplit('/', 1)[-1]} @ {base} -> {r.status_code}: {r.text[:200]}")
-        return r.json()["choices"][0]["message"]["content"] or ""
+        data = r.json()
+        u = data.get("usage")
+        tokens = {"input": u.get("prompt_tokens"), "output": u.get("completion_tokens")} if isinstance(u, dict) else None
+        return data["choices"][0]["message"]["content"] or "", tokens
 
 
-async def _anthropic(model: str, prompt: str, image_paths: list[str], max_tokens: int) -> str:
+async def _anthropic(model: str, prompt: str, image_paths: list[str], max_tokens: int) -> tuple[str, dict | None]:
     content: list[dict] = []
     for p in image_paths:
         content.append({"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": _img_b64(p)}})
@@ -46,13 +50,18 @@ async def _anthropic(model: str, prompt: str, image_paths: list[str], max_tokens
         )
         if r.status_code >= 400:
             raise RuntimeError(f"anthropic {model} -> {r.status_code}: {r.text[:200]}")
-        return "".join(b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text")
+        data = r.json()
+        u = data.get("usage")
+        tokens = {"input": u.get("input_tokens"), "output": u.get("output_tokens")} if isinstance(u, dict) else None
+        return "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text"), tokens
 
 
-async def chat(backend: str, model: str, prompt: str, image_paths: list[str] | None = None,
-               max_tokens: int = 4096, base_url: str = "", api_key: str = "") -> str:
+async def chat_with_meta(backend: str, model: str, prompt: str, image_paths: list[str] | None = None,
+                         max_tokens: int = 4096, base_url: str = "", api_key: str = "") -> tuple[str, dict | None]:
     """backend: anthropic | fireworks | openai (generic OpenAI-compatible —
-    requires base_url + api_key, e.g. Novita)."""
+    requires base_url + api_key, e.g. Novita). Returns (text, tokens); tokens is
+    {"input", "output"} exactly as the API reported them, or None — never
+    estimated (judge-verdict-artifacts spec)."""
     last: Exception | None = None
     for attempt in range(RETRIES):
         try:
@@ -67,6 +76,12 @@ async def chat(backend: str, model: str, prompt: str, image_paths: list[str] | N
             last = e
             await asyncio.sleep(2 ** attempt)
     raise RuntimeError(f"model call failed after {RETRIES} attempts: {last}")
+
+
+async def chat(backend: str, model: str, prompt: str, image_paths: list[str] | None = None,
+               max_tokens: int = 4096, base_url: str = "", api_key: str = "") -> str:
+    text, _ = await chat_with_meta(backend, model, prompt, image_paths, max_tokens, base_url, api_key)
+    return text
 
 
 def extract_json(text: str, required_keys: tuple[str, ...] = ()) -> dict:

@@ -1210,6 +1210,12 @@ export const GetAnalysisResponse = zod.object({
   "runId": zod.string(),
   "startedAt": zod.string(),
   "pipelineVersion": zod.string(),
+  "durationMs": zod.number().optional().describe('Total wall time of the run in ms (additive telemetry — the speed axis for engine comparisons). Per-stage timings live in the run store\'s config.json.\n'),
+  "artifactsProduced": zod.object({
+  "md": zod.boolean(),
+  "elements": zod.boolean(),
+  "crops": zod.boolean()
+}).optional().describe('Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle\/Mistral also emit elements). UI reads this instead of assuming capabilities.\n'),
   "preflight": zod.object({
   "pages": zod.number(),
   "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
@@ -1240,6 +1246,7 @@ export const GetAnalysisResponse = zod.object({
 })),
   "extractions": zod.array(zod.record(zod.string(), zod.unknown())).describe('Always present — empty in v1, populated in v2 with zero contract change.'),
   "artifacts": zod.object({
+  "judge": zod.string().optional().describe('Audit-grade raw judge output for this document (judge\/doc-<N>.json in the run\'s store folder) — the pre-mapping superset that every rendered score traces back to. Additive; absent on older runs.\n'),
   "md": zod.string(),
   "pageRenders": zod.array(zod.string()),
   "crops": zod.array(zod.string())
@@ -1274,6 +1281,12 @@ export const IngestAnalysisRunBody = zod.object({
   "runId": zod.string(),
   "startedAt": zod.string(),
   "pipelineVersion": zod.string(),
+  "durationMs": zod.number().optional().describe('Total wall time of the run in ms (additive telemetry — the speed axis for engine comparisons). Per-stage timings live in the run store\'s config.json.\n'),
+  "artifactsProduced": zod.object({
+  "md": zod.boolean(),
+  "elements": zod.boolean(),
+  "crops": zod.boolean()
+}).optional().describe('Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle\/Mistral also emit elements). UI reads this instead of assuming capabilities.\n'),
   "preflight": zod.object({
   "pages": zod.number(),
   "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
@@ -1304,6 +1317,7 @@ export const IngestAnalysisRunBody = zod.object({
 })),
   "extractions": zod.array(zod.record(zod.string(), zod.unknown())).describe('Always present — empty in v1, populated in v2 with zero contract change.'),
   "artifacts": zod.object({
+  "judge": zod.string().optional().describe('Audit-grade raw judge output for this document (judge\/doc-<N>.json in the run\'s store folder) — the pre-mapping superset that every rendered score traces back to. Additive; absent on older runs.\n'),
   "md": zod.string(),
   "pageRenders": zod.array(zod.string()),
   "crops": zod.array(zod.string())
@@ -1331,6 +1345,12 @@ export const IngestAnalysisRunResponse = zod.object({
   "runId": zod.string(),
   "startedAt": zod.string(),
   "pipelineVersion": zod.string(),
+  "durationMs": zod.number().optional().describe('Total wall time of the run in ms (additive telemetry — the speed axis for engine comparisons). Per-stage timings live in the run store\'s config.json.\n'),
+  "artifactsProduced": zod.object({
+  "md": zod.boolean(),
+  "elements": zod.boolean(),
+  "crops": zod.boolean()
+}).optional().describe('Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle\/Mistral also emit elements). UI reads this instead of assuming capabilities.\n'),
   "preflight": zod.object({
   "pages": zod.number(),
   "flags": zod.array(zod.string()).describe('Plain-language pre-flight flags (\"p.41–43 below 150 DPI\").'),
@@ -1361,6 +1381,7 @@ export const IngestAnalysisRunResponse = zod.object({
 })),
   "extractions": zod.array(zod.record(zod.string(), zod.unknown())).describe('Always present — empty in v1, populated in v2 with zero contract change.'),
   "artifacts": zod.object({
+  "judge": zod.string().optional().describe('Audit-grade raw judge output for this document (judge\/doc-<N>.json in the run\'s store folder) — the pre-mapping superset that every rendered score traces back to. Additive; absent on older runs.\n'),
   "md": zod.string(),
   "pageRenders": zod.array(zod.string()),
   "crops": zod.array(zod.string())

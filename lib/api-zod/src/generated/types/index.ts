@@ -15,6 +15,7 @@ export * from './analysisFlag';
 export * from './analysisPreflight';
 export * from './analysisPreflightGate';
 export * from './analysisRun';
+export * from './analysisRunArtifactsProduced';
 export * from './analysisScores';
 export * from './analysisScoresScrutinyTier';
 export * from './analysisSegment';

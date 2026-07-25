@@ -10,6 +10,8 @@
  * URLs into the analyzer's artifact store (md + renders + crops).
  */
 export interface AnalysisArtifacts {
+  /** Audit-grade raw judge output for this document (judge/doc-<N>.json in the run's store folder) — the pre-mapping superset that every rendered score traces back to. Additive; absent on older runs. */
+  judge?: string;
   md: string;
   pageRenders: string[];
   crops: string[];

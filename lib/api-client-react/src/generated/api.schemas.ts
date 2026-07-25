@@ -632,6 +632,8 @@ export interface AnalysisFlag {
  * URLs into the analyzer's artifact store (md + renders + crops).
  */
 export interface AnalysisArtifacts {
+  /** Audit-grade raw judge output for this document (judge/doc-<N>.json in the run's store folder) — the pre-mapping superset that every rendered score traces back to. Additive; absent on older runs. */
+  judge?: string;
   md: string;
   pageRenders: string[];
   crops: string[];
@@ -679,10 +681,23 @@ export interface AnalysisPreflight {
   gate: AnalysisPreflightGate;
 }
 
+/**
+ * Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle/Mistral also emit elements). UI reads this instead of assuming capabilities.
+ */
+export type AnalysisRunArtifactsProduced = {
+  md: boolean;
+  elements: boolean;
+  crops: boolean;
+};
+
 export interface AnalysisRun {
   runId: string;
   startedAt: string;
   pipelineVersion: string;
+  /** Total wall time of the run in ms (additive telemetry — the speed axis for engine comparisons). Per-stage timings live in the run store's config.json. */
+  durationMs?: number;
+  /** Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle/Mistral also emit elements). UI reads this instead of assuming capabilities. */
+  artifactsProduced?: AnalysisRunArtifactsProduced;
   preflight: AnalysisPreflight;
   documents: AnalysisDocument[];
   unassigned: AnalysisUnassigned[];

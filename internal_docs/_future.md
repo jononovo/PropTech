@@ -20,7 +20,7 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 ## Engine candidates (spec-author APPROVED Jul 24, 2026 — awaiting user yes/no, then into v0.7 draft)
 - **Span-gluing rule:** exclude preflight-flagged blank/duplicate pages from document spans before mapping. Author constraint: deterministic preflight flags ONLY (blank, exact-duplicate), never model judgments. Both parse engines absorbed planted blank+dup pages into the grant-deed span — see `models/parse-comparison-2026-07-24.md`.
 - **Region crops on demand:** paddle already saves per-page layout elements (bboxes) to `elements/p<N>.json`; crop regions when deep-scan needs them instead of pre-cropping every page.
-- **Judge verdict artifacts + run telemetry:** spec-author endorsed draft at `_future/judge-verdict-artifacts.md` (raw judge output per doc, per-stage timings, `artifactsProduced` honesty, promptVersion) — Sheaf-side review input baked in; feeds v0.7 amendments. Nothing built.
+- ~~Judge verdict artifacts + run telemetry~~ — **BUILT Jul 24, 2026** (worker + additive contract; validation run pending). Spec + build notes: `_future/judge-verdict-artifacts.md`. Feeds v0.7 amendments.
 
 ## Rulings from the spec author + user (Jul 24, 2026 — bake into v0.7 at blessing)
 - **Default parse = Mistral OCR 4** (user-confirmed). Paddle stays in the registry as the quality benchmark, re-armed only for dated head-to-heads.

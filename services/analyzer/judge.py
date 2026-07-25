@@ -2,9 +2,19 @@
 parsed md + pre-flight flags -> quality/formatting/fraud-signal scores,
 description, and the universal core fields (§1.4) that make the portal's clocks
 computable. Core fields are ungrounded in v1; the verdict UI makes a human
-confirm the dates. AI never writes verdicts (§1.6)."""
-from llm import chat, extract_json
+confirm the dates. AI never writes verdicts (§1.6).
+
+Each call also returns audit metadata (raw response, tokens, latency) so the
+runner can persist the complete pre-mapping output as judge/doc-<N>.json
+(judge-verdict-artifacts spec) — every score a human sees stays traceable."""
+import time
+
+from llm import chat_with_meta, extract_json
 from models import ModelChoice
+
+PROMPT_VERSION = "judge-v1"  # bump on ANY prompt change — recorded in every artifact + config.json
+
+RAW_RESPONSE_CAP = 2_000_000  # pathological guard only; audit artifacts stay untruncated below this
 
 PROMPT_TMPL = """You are the independent judge in a mortgage document pipeline. You see page image(s) of ONE document plus its machine-parsed markdown. Assess honestly.
 
@@ -32,20 +42,23 @@ Only report what you can actually see. Do not invent dates or names."""
 
 
 async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[str],
-                         pf_flags: list[str], judge: ModelChoice) -> dict:
+                         pf_flags: list[str], judge: ModelChoice) -> tuple[dict, dict]:
+    """Returns (verdict, meta). verdict = the mapped subset the sidecar carries;
+    meta = audit fields (raw_response/model/tokens/latencyMs/promptVersion) for
+    the write-once judge artifact."""
     prompt = PROMPT_TMPL.format(tax_display=tax_display, pf_flags="; ".join(pf_flags) or "none", md=md_excerpt[:4000])
+    t0 = time.monotonic()
 
-    async def ask() -> dict:
-        return extract_json(
-            await chat(judge.backend, judge.model, prompt, image_paths, max_tokens=1200,
-                       base_url=judge.base_url, api_key=judge.api_key),
-            required_keys=("quality", "formatting", "fraud_signal"),
-        )
+    async def ask() -> tuple[dict, str, dict | None]:
+        text, tokens = await chat_with_meta(judge.backend, judge.model, prompt, image_paths, max_tokens=1200,
+                                            base_url=judge.base_url, api_key=judge.api_key)
+        return extract_json(text, required_keys=("quality", "formatting", "fraud_signal")), text, tokens
 
     try:
-        out = await ask()
+        out, raw, tokens = await ask()
     except ValueError:  # one retry on malformed output — a judged doc is contract-critical, a whole-run failure is worse
-        out = await ask()
+        out, raw, tokens = await ask()
+    latency_ms = int((time.monotonic() - t0) * 1000)
 
     def clamp(v, d=0.5):
         try:
@@ -67,7 +80,7 @@ async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[st
         {"code": str(f.get("code", "finding"))[:40], "detail": str(f.get("detail", ""))[:300]}
         for f in out.get("flags", []) if isinstance(f, dict) and f.get("detail")
     ]
-    return {
+    verdict = {
         "quality": clamp(out.get("quality")),
         "formatting": clamp(out.get("formatting")),
         "fraud_signal": clamp(out.get("fraud_signal"), d=0.0),
@@ -75,3 +88,13 @@ async def judge_document(tax_display: str, md_excerpt: str, image_paths: list[st
         "flags": flags,
         "core_fields": core,
     }
+    meta = {
+        "raw_response": raw[:RAW_RESPONSE_CAP],
+        "truncated": len(raw) > RAW_RESPONSE_CAP,
+        "model": judge.model,
+        "backend": judge.backend,
+        "promptVersion": PROMPT_VERSION,
+        "tokens": tokens,  # exactly what the API reported — never estimated; None when unreported
+        "latencyMs": latency_ms,
+    }
+    return verdict, meta

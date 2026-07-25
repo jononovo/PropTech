@@ -60,11 +60,9 @@ const base = (): Template => ({
 // 3. Moves never change ids or lose blocks (reorder + cross-container).
 {
   let t = base();
-  t = templateReducer(t, { type: "MOVE_SECTION", fromIndex: 0, toIndex: 1 });
+  t = templateReducer(t, { type: "MOVE_SECTION", sectionId: "sec-a", toIndex: 2 });
   assert.deepEqual(t.sections.map((s) => s.id), ["sec-b", "sec-a"]);
-  t = templateReducer(t, {
-    type: "MOVE_BLOCK", fromSubsectionId: "sub-a1", toSubsectionId: "sub-b1", fromIndex: 0, toIndex: 0,
-  });
+  t = templateReducer(t, { type: "MOVE_BLOCK", blockId: "gov-id", toSubsectionId: "sub-b1", toIndex: 0 });
   assert.equal(t.sections[0]!.subsections[0]!.blocks[0]!.id, "gov-id", "moved block keeps id");
   const allIds = t.sections.flatMap((s) => s.subsections.flatMap((ss) => ss.blocks.map((b) => b.id)));
   assert.deepEqual(allIds.sort(), ["deed", "gov-id", "passport"], "no block lost or duplicated");
@@ -133,9 +131,7 @@ const base = (): Template => ({
 // 9. Subsection cross-section move keeps contents intact.
 {
   let t = base();
-  t = templateReducer(t, {
-    type: "MOVE_SUBSECTION", fromSectionId: "sec-a", toSectionId: "sec-b", fromIndex: 0, toIndex: 1,
-  });
+  t = templateReducer(t, { type: "MOVE_SUBSECTION", subsectionId: "sub-a1", toSectionId: "sec-b", toIndex: 1 });
   assert.equal(t.sections[0]!.subsections.length, 1);
   assert.equal(t.sections[1]!.subsections.length, 2);
   assert.equal(t.sections[1]!.subsections[1]!.id, "sub-a1");
@@ -165,3 +161,18 @@ console.log("ALL 10 REDUCER TEST GROUPS PASS");
   assert.equal(t.alternatives.length, 0, "required_alt exit must dissolve the group");
 }
 console.log("required_alt invariant PASS");
+
+// 12. Midpoint drop semantics: toIndex is insert-before in the PRE-removal list.
+{
+  let t = base(); // sub-a1: [gov-id, passport]
+  // drop gov-id BELOW passport (toIndex = 2)
+  t = templateReducer(t, { type: "MOVE_BLOCK", blockId: "gov-id", toSubsectionId: "sub-a1", toIndex: 2 });
+  assert.deepEqual(t.sections[0]!.subsections[0]!.blocks.map((b) => b.id), ["passport", "gov-id"]);
+  // drop gov-id ABOVE passport (now toIndex = 1... above passport at index 0 => 0)
+  t = templateReducer(t, { type: "MOVE_BLOCK", blockId: "gov-id", toSubsectionId: "sub-a1", toIndex: 0 });
+  assert.deepEqual(t.sections[0]!.subsections[0]!.blocks.map((b) => b.id), ["gov-id", "passport"]);
+  // no-op: drop gov-id "below itself" region resolving to its own slot
+  const same = templateReducer(t, { type: "MOVE_BLOCK", blockId: "gov-id", toSubsectionId: "sub-a1", toIndex: 1 });
+  assert.deepEqual(same.sections[0]!.subsections[0]!.blocks.map((b) => b.id), ["gov-id", "passport"]);
+}
+console.log("midpoint drop semantics PASS");

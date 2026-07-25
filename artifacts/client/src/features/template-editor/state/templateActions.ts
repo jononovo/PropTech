@@ -29,7 +29,10 @@ export type TemplateAction =
   | { type: "ADD_SECTION"; name?: string; atIndex?: number }
   | { type: "RENAME_SECTION"; sectionId: string; name: string }
   | { type: "REMOVE_SECTION"; sectionId: string }
-  | { type: "MOVE_SECTION"; fromIndex: number; toIndex: number }
+  // Moves address the dragged item by id (WHAT); toIndex is the insert-before
+  // position in the PRE-removal list (WHERE). The reducer resolves the source
+  // position itself — a stale index can never move the wrong item.
+  | { type: "MOVE_SECTION"; sectionId: string; toIndex: number }
   | { type: "SET_SECTION_OWNER"; sectionId: string; owner: Section["owner"] }
   | {
       type: "SET_PERMISSION";
@@ -42,13 +45,7 @@ export type TemplateAction =
   | { type: "ADD_SUBSECTION"; sectionId: string; name?: string; atIndex?: number }
   | { type: "RENAME_SUBSECTION"; subsectionId: string; name: string }
   | { type: "REMOVE_SUBSECTION"; subsectionId: string }
-  | {
-      type: "MOVE_SUBSECTION";
-      fromSectionId: string;
-      toSectionId: string;
-      fromIndex: number;
-      toIndex: number;
-    }
+  | { type: "MOVE_SUBSECTION"; subsectionId: string; toSectionId: string; toIndex: number }
   // blocks
   | {
       type: "ADD_BLOCK";
@@ -59,13 +56,7 @@ export type TemplateAction =
     }
   | { type: "UPDATE_BLOCK"; blockId: string; patch: BlockPatch }
   | { type: "REMOVE_BLOCK"; blockId: string }
-  | {
-      type: "MOVE_BLOCK";
-      fromSubsectionId: string;
-      toSubsectionId: string;
-      fromIndex: number;
-      toIndex: number;
-    }
+  | { type: "MOVE_BLOCK"; blockId: string; toSubsectionId: string; toIndex: number }
   // alternatives (satisfied-by-any-of groups)
   | { type: "ADD_ALTERNATIVE"; primaryBlockId: string; altBlockId: string }
   | { type: "REMOVE_ALTERNATIVE"; primaryBlockId: string; altBlockId: string }

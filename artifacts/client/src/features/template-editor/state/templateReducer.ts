@@ -48,8 +48,12 @@ export function templateReducer(template: Template, action: TemplateAction): Tem
       };
       return removed ? pruneAlternatives(next, blockIdsIn(removed)) : next;
     }
-    case "MOVE_SECTION":
-      return { ...template, sections: move(template.sections, action.fromIndex, action.toIndex) };
+    case "MOVE_SECTION": {
+      const from = template.sections.findIndex((s) => s.id === action.sectionId);
+      if (from < 0) return template;
+      const to = action.toIndex > from ? action.toIndex - 1 : action.toIndex;
+      return { ...template, sections: move(template.sections, from, to) };
+    }
     case "SET_SECTION_OWNER":
       return mapSection(template, action.sectionId, (s) => ({ ...s, owner: action.owner }));
     case "SET_PERMISSION":
@@ -85,21 +89,30 @@ export function templateReducer(template: Template, action: TemplateAction): Tem
       return pruneAlternatives(next, removedBlockIds);
     }
     case "MOVE_SUBSECTION": {
-      if (action.fromSectionId === action.toSectionId) {
-        return mapSection(template, action.fromSectionId, (s) => ({
+      let fromSectionId = "";
+      let fromIndex = -1;
+      for (const s of template.sections) {
+        const i = s.subsections.findIndex((ss) => ss.id === action.subsectionId);
+        if (i >= 0) {
+          fromSectionId = s.id;
+          fromIndex = i;
+          break;
+        }
+      }
+      if (fromIndex < 0) return template;
+      if (fromSectionId === action.toSectionId) {
+        const to = action.toIndex > fromIndex ? action.toIndex - 1 : action.toIndex;
+        return mapSection(template, fromSectionId, (s) => ({
           ...s,
-          subsections: move(s.subsections, action.fromIndex, action.toIndex),
+          subsections: move(s.subsections, fromIndex, to),
         }));
       }
-      const moving = template.sections.find((s) => s.id === action.fromSectionId)?.subsections[
-        action.fromIndex
-      ];
-      if (!moving) return template;
+      const moving = template.sections.find((s) => s.id === fromSectionId)!.subsections[fromIndex]!;
       return {
         ...template,
         sections: template.sections.map((s) => {
-          if (s.id === action.fromSectionId)
-            return { ...s, subsections: s.subsections.filter((_, i) => i !== action.fromIndex) };
+          if (s.id === fromSectionId)
+            return { ...s, subsections: s.subsections.filter((ss) => ss.id !== action.subsectionId) };
           if (s.id === action.toSectionId)
             return { ...s, subsections: insertAt(s.subsections, moving, action.toIndex) };
           return s;
@@ -154,22 +167,35 @@ export function templateReducer(template: Template, action: TemplateAction): Tem
       return pruneAlternatives(next, [action.blockId]);
     }
     case "MOVE_BLOCK": {
-      const from = findSubsection(template, action.fromSubsectionId);
-      const moving = from?.blocks[action.fromIndex];
-      if (!moving) return template;
-      if (action.fromSubsectionId === action.toSubsectionId) {
-        return mapSubsection(template, action.fromSubsectionId, (ss) => ({
+      let fromSubsectionId = "";
+      let fromIndex = -1;
+      for (const s of template.sections) {
+        for (const ss of s.subsections) {
+          const i = ss.blocks.findIndex((b) => b.id === action.blockId);
+          if (i >= 0) {
+            fromSubsectionId = ss.id;
+            fromIndex = i;
+            break;
+          }
+        }
+        if (fromIndex >= 0) break;
+      }
+      if (fromIndex < 0) return template;
+      if (fromSubsectionId === action.toSubsectionId) {
+        const to = action.toIndex > fromIndex ? action.toIndex - 1 : action.toIndex;
+        return mapSubsection(template, fromSubsectionId, (ss) => ({
           ...ss,
-          blocks: move(ss.blocks, action.fromIndex, action.toIndex),
+          blocks: move(ss.blocks, fromIndex, to),
         }));
       }
+      const moving = findSubsection(template, fromSubsectionId)!.blocks[fromIndex]!;
       return {
         ...template,
         sections: template.sections.map((s) => ({
           ...s,
           subsections: s.subsections.map((ss) => {
-            if (ss.id === action.fromSubsectionId)
-              return { ...ss, blocks: ss.blocks.filter((_, i) => i !== action.fromIndex) };
+            if (ss.id === fromSubsectionId)
+              return { ...ss, blocks: ss.blocks.filter((b) => b.id !== action.blockId) };
             if (ss.id === action.toSubsectionId)
               return { ...ss, blocks: insertAt(ss.blocks, moving, action.toIndex) };
             return ss;

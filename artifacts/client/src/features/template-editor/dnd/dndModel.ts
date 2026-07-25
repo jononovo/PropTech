@@ -59,9 +59,22 @@ export const builderCollisionDetection: CollisionDetection = (args) => {
   });
   const scoped = { ...args, droppableContainers: legal };
 
+  const specific = (collisions: ReturnType<CollisionDetection>) => {
+    // Items always beat their wrapping containers: when the pointer is over a
+    // card, the card is the target (drop position = above/below its midpoint);
+    // containers only catch drops on genuinely empty space.
+    const isItem = (id: unknown) => {
+      const c = legal.find((d) => d.id === id);
+      const p = c?.data.current?.["payload"] as DropPayload | undefined;
+      return p ? p.type === "section" || p.type === "subsection" || p.type === "block" : false;
+    };
+    const items = collisions.filter((c) => isItem(c.id));
+    return items.length > 0 ? items : collisions;
+  };
+
   const within = pointerWithin(scoped);
-  if (within.length > 0) return within;
+  if (within.length > 0) return specific(within);
   const intersecting = rectIntersection(scoped);
-  if (intersecting.length > 0) return intersecting;
+  if (intersecting.length > 0) return specific(intersecting);
   return closestCorners(scoped);
 };

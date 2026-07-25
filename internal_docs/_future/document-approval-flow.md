@@ -28,8 +28,11 @@ too coarse (a set block holds many documents across many variants) and per-page 
   (block accept ≈ one-document approval).
 
 ## Build notes
-- This is a filmstrip/ReviewPage iteration — mock up on canvas first (page-group highlighting,
-  roll-up prompt, incomplete state).
+- This is a filmstrip/ReviewPage iteration — NOT a new page. The flow integrates into the existing
+  review screen: the filmstrip stays the orientation spine (color-coded document groups + title
+  chips + per-page decision ticks live on it), and whatever main-pane layout wins (gallery row /
+  docket) replaces or augments the current single-page viewer on that same page. Mockups on canvas
+  Jul 25 2026: FilmstripGroups / GalleryRow / DocumentDocket (mockups/doc-approval/).
 - Contract sketch: per-document approval record { runId, documentRef/pages, blockId, variantId?,
   pageDecisions, outcome: approved|approved_incomplete|rejected, decidedBy/At }. Must call the same
   Phase 3 materialization function as block accept — one approval seam, two UIs.

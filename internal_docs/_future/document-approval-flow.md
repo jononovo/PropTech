@@ -27,6 +27,14 @@ too coarse (a set block holds many documents across many variants) and per-page 
 - This supersedes block-level accept for set blocks; single blocks can keep the short path
   (block accept ≈ one-document approval).
 
+## Rulings (Jul 25 2026)
+- Direction chosen: **Approval A — Filmstrip Groups** (canvas mockup FilmstripGroups.tsx).
+- REUSE mandate: extend existing ReviewPage/filmstrip/viewer components with overlay props
+  (group bands, title chips, decision ticks, good/bad control). New components ONLY for
+  genuinely-new behavior (roll-up prompt, merge/link affordance, grouping logic), each small
+  and separate, mounted conditionally. No new page, no forked near-duplicate components,
+  no 1000-line page files — keep ReviewPage a thin composition.
+
 ## Build notes
 - This is a filmstrip/ReviewPage iteration — NOT a new page. The flow integrates into the existing
   review screen: the filmstrip stays the orientation spine (color-coded document groups + title

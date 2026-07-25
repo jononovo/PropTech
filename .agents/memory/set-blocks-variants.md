@@ -18,6 +18,11 @@ Rulings (Jul 25, 2026, evening):
 - Variant shapes should become savable/preset library later (internal_docs/_future/variant-shape-library.md); single-variant set blocks are legitimate (shape = naming convention).
 - Packet ≠ one PDF long-term: multi-file intake manifest with per-file X (internal_docs/_future/multi-file-intake.md); v1 deliberately minimal.
 
+Rulings (Jul 25, 2026, night — Phase 3C direction):
+- Chosen mockup: Approval A "Filmstrip Groups" (canvas, mockups/doc-approval/FilmstripGroups.tsx).
+- REUSE mandate: 3C extends existing ReviewPage/filmstrip/viewer components via overlay props; new components only for genuinely-new behavior (roll-up prompt, merge/link, grouping), mounted conditionally; no new page, no forked components, no giant page files.
+- Pending user ruling: merge-in-approved-copy-only vs permanent merge in intake (agent default: approved copy only).
+
 **Why:** these override the other agent's addendum draft (which assumed v0.6.3 and auto-discovery-only identity).
 **How to apply:** follow the master plan phases; all contract changes additive; descriptor KEYS are mint-stable (rename labels, not keys).
 

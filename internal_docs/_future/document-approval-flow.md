@@ -35,6 +35,34 @@ too coarse (a set block holds many documents across many variants) and per-page 
   and separate, mounted conditionally. No new page, no forked near-duplicate components,
   no 1000-line page files — keep ReviewPage a thin composition.
 
+## 3C build plan (audited Jul 25 2026, pre-build)
+This is an UPGRADE to the existing review feature (`features/case-file/review/`), not a new one.
+
+Current state: ReviewPage.tsx is 705 lines with FilmStrip, PageImage, Rail, ScoreChip etc. defined
+inline — already past the size mandate. Step 0 of 3C is a pure mechanical split (no behavior change):
+
+    review/
+      ReviewPage.tsx        — thin composition only (~150 lines)
+      reviewModel.ts        — existing selector logic (unchanged)
+      components/FilmStrip.tsx, PageViewer.tsx, ReviewRail.tsx, ScoreChip.tsx  — extracted as-is
+
+Then 3C adds, each small and single-purpose:
+      approval/docGroups.ts       — pure fn: analyzer run → DocumentGroup[] (pages, title, color slot,
+                                    block/variant guess). No React. Unit-testable.
+      approval/useDocApproval.ts  — page-decision state + roll-up readiness + submit mutation.
+      approval/GroupBands.tsx     — overlay rendered BY FilmStrip via an optional `groups` prop
+                                    (bands + title chips + per-page ticks). FilmStrip without the
+                                    prop renders exactly as today.
+      approval/PageDecisionBar.tsx— good/not-good control shown by PageViewer via optional prop.
+      approval/RollUpPrompt.tsx   — the confirmation card (variant picker, approve / approve-
+                                    incomplete / reject). Mounted only when a group is fully decided.
+      approval/MergeLink.tsx      — "link as one document" affordance between adjacent groups.
+
+Deliberately NOT building (over-engineering guard): no per-page comments, no drag-to-regroup, no
+keyboard-shortcut system, no generic "annotation layer" abstraction, no new routes/pages, no
+gallery-row view (Approval B lost). Server side reuses Phase 3 verbatim: one new endpoint
+(POST document approval) that ends in the SAME materializeApproval seam; supersede logic unchanged.
+
 ## Build notes
 - This is a filmstrip/ReviewPage iteration — NOT a new page. The flow integrates into the existing
   review screen: the filmstrip stays the orientation spine (color-coded document groups + title

@@ -227,6 +227,35 @@ request), which is what it really was.
 5. **Cleanup**: drop dead schemas/routes/keys, migrate/delete fixtures,
    docs.
 
+## 4.1 Markdown intelligence corpus (SHIPPED Jul 26, ahead of phase 3)
+
+Every analyzer run now writes ONE frontmattered `.md` per suggested document
+into App Storage (`applications/<appId>/runs/<runId>/doc-NN_<slug>.md`):
+scores, flags, coreFields, confidence, provenance in YAML front matter; the
+full per-page transcript as the body (`analysis/runSidecars.ts`). This mirrors
+the approved-doc sidecar pattern, just earlier in the lifecycle.
+
+Rules:
+- These files are **projections** — derived, regenerable, never the source of
+  truth. Postgres (`analysis_runs`, `approved_documents`, `application_events`)
+  stays the authority for anything the app behaves on.
+- Write failure is loud (ledger `run.sidecars_failed`) but never fails ingest.
+- Phase 3 switches their page addressing from packet-global to
+  `(fileId, page)`; no migration needed — regenerate.
+- Together with the approved `.pdf`+`.md` pairs and a ledger export, one
+  application folder in App Storage IS the whole intelligence corpus:
+  greppable, portable markdown, ready for agents/RAG with zero schema work.
+
+## 4.2 Agent / intelligence layer (post-phase-5, own plan)
+
+Per-application Q&A agent over the corpus: tools = list files / read file /
+query ledger; context docs (company ethos, platform purpose, template
+explainer) added as plain MDs in the corpus. No vector DB at this scale —
+an application's corpus fits direct search + LLM tool use. Vector/RAG stores
+(e.g. zvec-style) only become relevant cross-application/archive; nothing in
+the corpus format blocks any of them. Agent-taken actions, if ever, go
+through the same API routes and therefore the same ledger.
+
 ## 5. Open questions for the user
 
 (asked in chat; recorded here with the answers when they land)

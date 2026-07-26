@@ -13,6 +13,7 @@ import { objectStorageClient } from "./objectStorage";
  *   <root>/applications/<applicationId>/packet/thumbs/page-<n>.png
  *   <root>/applications/<applicationId>/uploads/<blockId>/<filename>
  *   <root>/applications/<applicationId>/approved/<basename>.pdf|.md
+ *   <root>/applications/<applicationId>/runs/<runId>/doc-NN_<slug>.md
  *
  * One self-contained folder per application (ruled Jul 25 2026) so a whole
  * case can be downloaded in one click. Uploads are the immutable originals;
@@ -80,6 +81,11 @@ const intakeUploadKey = (applicationId: string, blockId: string, filename: strin
 // (set-blocks master plan, storage option B).
 const approvedKey = (applicationId: string, basename: string, ext: "pdf" | "md"): string =>
   `${appRoot(applicationId)}/approved/${basename}.${ext}`;
+// Per-run analysis projections — one frontmattered .md per analyzer-suggested
+// document, written at ingest. Regenerable (DB stays the authority); exists so
+// the whole intelligence corpus is greppable/RAG-able markdown in one place.
+const runDocKey = (applicationId: string, runId: string, filename: string): string =>
+  `${appRoot(applicationId)}/runs/${runId}/${filename}`;
 
 /** Upload the accepted packet PDF from its local staging path. Re-upload overwrites. */
 export async function putPacketPdf(applicationId: string, localPdfPath: string): Promise<void> {
@@ -169,6 +175,21 @@ export async function putApprovedObject(
     return;
   }
   await gcsFile(key).save(bytes, { contentType, resumable: false });
+}
+
+/** Write one per-run document projection (.md). Overwrite = regenerate semantics. */
+export async function putRunDocMarkdown(
+  applicationId: string,
+  runId: string,
+  filename: string,
+  bytes: Buffer,
+): Promise<void> {
+  const key = runDocKey(applicationId, runId, filename);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => writeFile(dest, bytes));
+    return;
+  }
+  await gcsFile(key).save(bytes, { contentType: "text/markdown", resumable: false });
 }
 
 /** Readable stream of one approved-registry object, or undefined when missing. */

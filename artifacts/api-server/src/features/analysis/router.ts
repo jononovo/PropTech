@@ -14,6 +14,7 @@ import { HttpError, isHttpError } from "../../lib/httpError";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
 import { appendRun, readSidecar } from "./store";
+import { writeRunSidecars } from "./runSidecars";
 import { appendEvent } from "../ledger/store";
 import { clientIp } from "../../lib/clientIp";
 import { materializeApproval } from "../approved-docs/materialize";
@@ -81,6 +82,21 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
     target: { type: "run", id: parsed.data.runId },
     detail: { documents: parsed.data.documents.length },
   });
+  // Markdown projections into App Storage (intelligence corpus). Regenerable,
+  // so a failure is loud (ledger) but never fails the ingest.
+  try {
+    await writeRunSidecars(id, parsed.data, app.packet?.sha256);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[analysis] run sidecar write failed for ${id}/${parsed.data.runId}: ${message}`);
+    await appendEvent({
+      applicationId: id,
+      actor: { kind: "system" },
+      action: "run.sidecars_failed",
+      target: { type: "run", id: parsed.data.runId },
+      detail: { message },
+    });
+  }
   await updateApplication(id, (app) => {
     if (app.packet?.state === "processing") {
       const next: NonNullable<Application["packet"]> = { ...app.packet, state: "report" };

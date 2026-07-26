@@ -18,6 +18,8 @@ Core rules:
 **Why:** user rejected concatenation ("irrelevant benefit"), wants clean audit trail, less code, modularity.
 **How to apply:** follow spec sequencing (ledger → SourceFile registry → file-native runs → review on FileSpans → cleanup). No back-compat shims; migrate/delete demo fixtures.
 
+Markdown intelligence corpus (ruled + shipped Jul 26): every run ingest writes one frontmattered .md per suggested doc to App Storage `applications/<appId>/runs/<runId>/` (scores/flags/coreFields/provenance + transcript). These are regenerable PROJECTIONS — Postgres stays authority; write failure emits `run.sidecars_failed`, never fails ingest. Agent layer = post-phase-5 own plan; no vector DB per application (direct search + tools suffice); context docs as plain MDs in corpus.
+
 Progress:
 - Phase 1 (ledger) SHIPPED + tester-verified Jul 26: `application_events` table, `updateApplication(id, (app, emit) => …)` emit hook writes events in-tx, `appendEvent` for out-of-tx inserts, GET /applications/:id/events, Ledger lens in case file. All mutating routes instrumented (see features/ledger/README).
 - Rulings: one gate per run with per-file X to exclude before proceed; run picker surfaces never-analyzed files only; archive concept deferred (status field in schema only, zero UI); physical split/merge-as-derived-files DEFERRED — review-room merges stay logical.

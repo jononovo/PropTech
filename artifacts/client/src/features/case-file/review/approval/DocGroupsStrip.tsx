@@ -84,7 +84,7 @@ export function DocGroupsStrip({
         return (
           <div key={g.id} className="flex items-stretch gap-3 shrink-0" ref={selected ? activeRef : undefined}>
             <div
-              className={`flex flex-col rounded-md border relative transition-all ${palette.bg} ${
+              className={`flex flex-col w-min rounded-md border relative transition-all ${palette.bg} ${
                 selected
                   ? 'border-[var(--ops-accent)] shadow-[0_0_0_1px_rgba(59,130,246,0.25)]'
                   : palette.border
@@ -95,7 +95,7 @@ export function DocGroupsStrip({
               <div
                 onClick={() => onGroupSelect(g.id)}
                 data-testid={`chip-group-${g.pages[0]}`}
-                className={`group/hdr relative px-2 py-1 border-b ${palette.divider} bg-white/50 hover:bg-white/80 rounded-t-md flex items-center justify-between gap-1.5 min-h-[30px] cursor-pointer transition-colors`}
+                className={`group/hdr relative w-full min-w-0 px-2 py-1 border-b ${palette.divider} bg-white/50 hover:bg-white/80 rounded-t-md flex items-center justify-between gap-1.5 min-h-[30px] cursor-pointer transition-colors`}
                 title={`${g.title} · pp. ${g.pages[0]}–${g.pages[1]}`}
               >
                 <div className="flex flex-col min-w-0 leading-tight">

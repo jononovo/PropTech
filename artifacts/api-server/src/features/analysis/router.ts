@@ -14,7 +14,7 @@ import { HttpError, isHttpError } from "../../lib/httpError";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
 import { appendRun, readSidecar } from "./store";
-import { writeRunSidecars } from "./runSidecars";
+import { writeRunSidecars, writeRunElements } from "./runSidecars";
 import { appendEvent } from "../ledger/store";
 import { clientIp } from "../../lib/clientIp";
 import { materializeApproval } from "../approved-docs/materialize";
@@ -113,6 +113,22 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
       applicationId: id,
       actor: { kind: "system" },
       action: "run.sidecars_failed",
+      target: { type: "run", id: parsed.data.runId },
+      detail: { message },
+    });
+  }
+  // Citation-geometry projection (elements/pN.json per input page) — durable
+  // bbox source for Q&A agent citations. Same regenerable semantics: loud
+  // ledger event on failure, never fails the ingest.
+  try {
+    await writeRunElements(id, app.storageFolder, parsed.data);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[analysis] run elements write failed for ${id}/${parsed.data.runId}: ${message}`);
+    await appendEvent({
+      applicationId: id,
+      actor: { kind: "system" },
+      action: "run.elements_failed",
       target: { type: "run", id: parsed.data.runId },
       detail: { message },
     });

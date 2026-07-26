@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { IngestAnalysisRunBody } from "@workspace/api-zod";
-import { putRunDocMarkdown } from "../../lib/packetObjectStore";
+import { putRunDocMarkdown, putRunElementsJson } from "../../lib/packetObjectStore";
 
 type AnalysisRun = z.infer<typeof IngestAnalysisRunBody>;
 type RunDocument = AnalysisRun["documents"][number];
@@ -35,6 +35,32 @@ async function fetchPageMarkdown(applicationId: string, runId: string, fileId: s
   const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/files/${fileId}/md/${page}`);
   if (!res.ok) throw new Error(`Analyzer store answered ${res.status} for ${fileId} p.${page} markdown`);
   return res.text();
+}
+
+async function fetchPageElements(applicationId: string, runId: string, fileId: string, page: number): Promise<Buffer> {
+  const base = process.env["ANALYZER_URL"];
+  if (!base) throw new Error("ANALYZER_URL is not configured — analyzer worker unreachable");
+  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/files/${fileId}/elements/${page}`);
+  if (!res.ok) throw new Error(`Analyzer store answered ${res.status} for ${fileId} p.${page} elements`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+/**
+ * Project per-page layout-elements JSON (typed blocks + bboxes) into App
+ * Storage for every page of the run's input set. Durable citation geometry
+ * for the Q&A agent — never grepped, only consulted to resolve a citation's
+ * quote to an on-page bbox. Regenerable; failure is loud but never fails ingest.
+ */
+export async function writeRunElements(applicationId: string, storageFolder: string, run: AnalysisRun): Promise<number> {
+  let count = 0;
+  for (const input of run.input) {
+    for (let page = 1; page <= input.pages; page++) {
+      const bytes = await fetchPageElements(applicationId, run.runId, input.fileId, page);
+      await putRunElementsJson(storageFolder, run.runId, input.fileId, page, bytes);
+      count++;
+    }
+  }
+  return count;
 }
 
 function spanPages(spans: FileSpan[]): { fileId: string; page: number }[] {

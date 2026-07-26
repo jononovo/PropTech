@@ -58,7 +58,7 @@ paths, no direct disk or bucket access:
   `storageFolder`.
 - NEVER the analyzer's local `store/` disk (ephemeral).
 
-## 5. Prerequisite: durable elements projection (small, do first)
+## 5. Prerequisite: durable elements projection — ✅ SHIPPED Jul 26 2026
 
 `elements/pN.json` (typed blocks + bboxes + page dimensions, written by BOTH
 parse engines — Mistral OCR and Paddle) today lives only on the analyzer's
@@ -74,7 +74,7 @@ fetches during ingest exactly like page markdown for sidecars.)
 
 ## 6. Build order
 
-1. Elements projection at ingest (§5) + `run.elements_failed` ledger action.
+1. ✅ Elements projection at ingest (§5) + `run.elements_failed` ledger action.
 2. Portal endpoints for the agent tools (list/grep/read scoped to one
    application) + citation resolver (quote → bbox).
 3. Agent loop + chat UI in the case file (new lens or side panel), streaming,

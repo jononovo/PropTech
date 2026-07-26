@@ -87,6 +87,11 @@ const runDocKey = (storageFolder: string, runId: string, filename: string): stri
 // SourceFile registry bytes (file-native intake phase 2) — immutable,
 // id-addressed. ext comes from the immutable ORIGINAL filename, so renames
 // never touch storage.
+// Per-run citation geometry — one elements JSON (typed blocks + bboxes) per
+// (file, page), projected at ingest. Never grepped by the Q&A agent; consulted
+// only to resolve a made citation's quote to an on-page bbox.
+const runElementsKey = (storageFolder: string, runId: string, fileId: string, page: number): string =>
+  `${appRoot(storageFolder)}/runs/${runId}/elements/${fileId}/p${page}.json`;
 const sourceFileKey = (storageFolder: string, fileId: string, ext: string): string =>
   `${appRoot(storageFolder)}/files/${fileId}${ext}`;
 
@@ -144,6 +149,22 @@ export async function putRunDocMarkdown(
     return;
   }
   await gcsFile(key).save(bytes, { contentType: "text/markdown", resumable: false });
+}
+
+/** Write one per-run page-elements projection (.json). Overwrite = regenerate semantics. */
+export async function putRunElementsJson(
+  storageFolder: string,
+  runId: string,
+  fileId: string,
+  page: number,
+  bytes: Buffer,
+): Promise<void> {
+  const key = runElementsKey(storageFolder, runId, fileId, page);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => writeFile(dest, bytes));
+    return;
+  }
+  await gcsFile(key).save(bytes, { contentType: "application/json", resumable: false });
 }
 
 /** Readable stream of one approved-registry object, or undefined when missing. */

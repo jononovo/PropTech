@@ -1,0 +1,26 @@
+OK, so you early you gave me this list of where stuff is saved.
+Can you give me an updated table?
+
+And also, you know I don't see why some of the scores and all that couldn't be saved in the MD file that stores the analysis and transcription of the document right there's the official document and then the MD file transcript and analysis and everything.
+
+I don't see why we couldn't store like the scoring and everything in notes as front matter within that MD file.
+
+Do you know what I mean?
+
+Because having all these MD files in, for example, a S3 bucket would make it all I think perhaps more indexable and more searchable.
+
+And perhaps we could throw all these md files into a vector database ( I don't know how it would work I guess per application) and make it kind of indexable and searchable so an agent can easily like pull up information and say oh yeah check out this file. Here's a link to it on this file and then also have access to obviously the audit ledger logs file as well.
+
+Does that make sense?
+
+Because what we want is an intelligence layer that sits over the processing and over all documents within the application so far, and perhaps, even those that are archived, it could be expanded to that it could include obviously the template and understand if you know what this application is and yada yada you know and obviously a basic document of what the company is and what the purpose is and what the goal is with the ethos and policies are in anyway anyone then querying this agent just would have immediate access to like oh yeah if you need a passport or an identification, we already saving it here in this field and you can just link to it for those other requirements or.
+
+Any question basically could just be answered by an agent and some cases actions could even be taken, but that could be next level obviously.
+
+What do you think about that?
+
+And why don't you start by giving me well the table of where everything is saved right now and what you think about moving perhaps some things out of the database and into like a file index system where all that information is just stored and markdown files and not databases.
+
+But obviously, you know I'm perfectly fine having you know certain lists in the database, but I think intelligence based information like fraud, scores, and stuff like that might benefit from being in one location and that could be the markdown file that we have per document or page or however, it is currently being managed.
+
+Don't change anything yet

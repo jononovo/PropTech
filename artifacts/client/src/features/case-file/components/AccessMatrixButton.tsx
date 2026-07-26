@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Eye, Upload, PenLine, ShieldCheck } from 'lucide-react';
-import { profileHeaders } from '../../auth/ProfileContext';
 
 /**
  * Access matrix — header popover (revived Jul 26 2026 from the original
@@ -31,7 +30,7 @@ export function AccessMatrixButton() {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   useEffect(() => {
     if (!open || matrix) return;
-    fetch(`${base}/api/access-matrix`, { headers: profileHeaders() })
+    fetch(`${base}/api/access-matrix`)
       .then((r) => (r.ok ? r.json() : null))
       .then((m: Matrix | null) => m && setMatrix(m))
       .catch(() => {});

@@ -1,13 +1,16 @@
 import type { NextFunction, Request, Response } from "express";
 import { listUsers } from "../users/store";
 import { roleHas, type AccessRight } from "./matrix";
+import { SESSION_COOKIE, verifySession } from "./session";
 
 /**
  * Central authorization for /api (retention/access-controls gate, Jul 26 2026).
  *
- * Identity: the `x-profile` header carries the signed-in username (demo
- * sign-in; real auth later replaces WHO the caller is, this module keeps
- * deciding WHAT they may do). Role is looked up from the users store with a
+ * Identity: primarily the signed session cookie set by POST /login (the
+ * browser attaches it to every request — fetch, <img>, downloads). The
+ * `x-profile` header remains as a curl/testing convenience. Real auth later
+ * replaces WHO the caller is (how the cookie gets issued); this module keeps
+ * deciding WHAT they may do. Role is looked up from the users store with a
  * short cache.
  *
  * Right required per request:
@@ -52,6 +55,7 @@ export async function accessControl(req: Request, res: Response, next: NextFunct
   if (
     path === "/healthz" ||
     (path === "/login" && req.method === "POST") ||
+    (path === "/logout" && req.method === "POST") ||
     (path === "/users" && req.method === "GET")
   ) {
     next();
@@ -70,9 +74,11 @@ export async function accessControl(req: Request, res: Response, next: NextFunct
     return;
   }
 
-  const username = req.header("x-profile");
+  const username =
+    verifySession((req.cookies as Record<string, string> | undefined)?.[SESSION_COOKIE]) ??
+    req.header("x-profile");
   if (!username) {
-    res.status(401).json({ error: "Not signed in — x-profile header missing" });
+    res.status(401).json({ error: "Not signed in" });
     return;
   }
   const role = await roleFor(username);

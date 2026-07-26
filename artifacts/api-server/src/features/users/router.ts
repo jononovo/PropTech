@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { ListUsersResponse, LoginBody, LoginResponse } from "@workspace/api-zod";
 import { listUsers, verifyLogin } from "./store";
+import { clearSessionCookie, setSessionCookie } from "../access/session";
 
 const router: IRouter = Router();
 
@@ -19,7 +20,13 @@ router.post("/login", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Wrong username or password." });
     return;
   }
+  setSessionCookie(res, user.username);
   res.json(LoginResponse.parse(user));
+});
+
+router.post("/logout", (_req, res): void => {
+  clearSessionCookie(res);
+  res.status(204).end();
 });
 
 export default router;

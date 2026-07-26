@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { setDefaultHeadersGetter, type User } from '@workspace/api-client-react';
+import { type User } from '@workspace/api-client-react';
 
 /**
  * The signed-in demo user, as returned by POST /login. Kept whole in
- * localStorage — no sessions or tokens yet; real authentication replaces
- * this edge later, the rest of the app only ever consumes `Profile`.
+ * localStorage for the UI (name, role, initials). Server-side identity is
+ * the signed session cookie set by POST /login — the browser attaches it to
+ * every request (fetch, <img>, downloads) automatically, so no header
+ * plumbing is needed here.
  */
 export type Profile = User;
 
@@ -27,24 +29,6 @@ function readStored(): Profile | null {
   }
 }
 
-/**
- * The signed-in profile as an `x-profile` header — the server's access
- * matrix identifies every call by it. Exported for the few raw fetches that
- * bypass the generated client (citations resolver, agent chat transport).
- */
-export function profileHeaders(): Record<string, string> {
-  const p = readStored();
-  return p ? { 'x-profile': p.username } : {};
-}
-
-// Every generated-client request carries the current profile (module-level:
-// registered once at import, reads storage per request so login/logout and
-// multi-tab changes are always current).
-setDefaultHeadersGetter(() => {
-  const p = readStored();
-  return p ? { 'x-profile': p.username } : null;
-});
-
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(readStored);
 
@@ -59,6 +43,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     setProfile(null);
+    // Best-effort: clear the server session cookie.
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    void fetch(`${base}/api/logout`, { method: 'POST' }).catch(() => {});
     try {
       window.localStorage.removeItem(STORAGE_KEY);
     } catch {

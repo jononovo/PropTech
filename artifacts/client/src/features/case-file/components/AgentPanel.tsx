@@ -3,7 +3,6 @@ import { useLocation } from 'wouter';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import { ArrowUp, ExternalLink, Search, FileText, List, Database, X, Check, Ban, Stamp, PenLine, RefreshCw, FolderInput, GitMerge, Pencil, Layers, ShieldCheck, Zap } from 'lucide-react';
-import { profileHeaders } from '../../auth/ProfileContext';
 
 /**
  * Case assistant — chat panel scoped to one application (qa-agent spec).
@@ -155,7 +154,6 @@ export function AgentPanel({
     () =>
       new DefaultChatTransport({
         api: `${base}/api/applications/${applicationId}/agent/chat`,
-        headers: () => profileHeaders(),
         body: () => ({ mode: modeRef.current }),
       }),
     [base, applicationId],

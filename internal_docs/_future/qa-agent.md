@@ -31,20 +31,32 @@ Tool ladder (cheapest first):
 3. **Grep** — regex/keyword search across the markdown corpus for this
    application only.
 4. **Read** — fetch a whole sidecar/page markdown when grep hits need context.
-5. **Act** (RULED IN Jul 26 2026 — this is NOT a read-only agent). Mutating
-   tools, granted one capability at a time as authority is extended:
-   rename/archive a file, approve a document, kick a re-scan, apply a
-   field value, copy/move corpus objects, invoke registered application
-   functions. Contract for EVERY write tool:
-   - **Approval-gated**: the tool call pauses and renders an approve/decline
-     card in chat; nothing mutates until a human approves (AI SDK 7 tool
-     approvals). Reads never gate.
-   - **Portal-only**: executes through the existing feature endpoints/stores —
-     never direct SQL or bucket writes. Same validation, same invariants.
-   - **Ledgered**: actor kind `agent` (+ approving user) on every event, so
-     the case ledger reads "agent renamed X — approved by Marcus".
+5. **Act** ✅ SHIPPED Jul 26 2026 (e2e-verified; arch doc:
+   `features/qa-agent/README.md`). Seven write tools: `approve_document`,
+   `update_fields`, `trigger_rescan`, `file_pages`, `resolve_merge`,
+   `rename_file`, `add_variant`. Contract for EVERY write tool:
+   - **Approval-gated**: `needsApproval: true` — the call pauses and renders
+     an approve/decline card in chat (AI SDK 7 tool approvals;
+     `addToolApprovalResponse` + auto-resend). Reads never gate.
+   - **Mode-gated** (ruling Jul 26 2026): a Read-only / Full-control toggle
+     on the panel header, DEFAULT read-only, never persisted — the client
+     sends `mode` per request and the server simply doesn't build write
+     tools in read mode. Stateless corollary: the toggle must still be on
+     when an approval response lands.
+   - **Portal-only**: `portal.ts` self-calls the app's own HTTP endpoints
+     with the caller's forwarded auth headers — never direct SQL or bucket
+     writes. Same validation, transactions, ledger.
+   - **Ledgered**: via the portal's existing emission. Deviation from the
+     original sketch: events carry the approving human's role in
+     `decidedBy` (actor kind stays `user`), not a distinct `agent` kind —
+     acceptable because every write was human-approved in chat.
    - **Narrow schema**: one tool per capability with strict Zod input; no
      generic "execute" tool, ever.
+   - **Hard limits** (rulings Jul 26 2026): approve-only — the agent can
+     never reject a document, delete a variant, or archive data; it can
+     never bypass red flags (`trigger_rescan` is `confirmed`-only); and
+     templates are read-only FOREVER — no template mutation tool may be
+     added.
 
 **Vectors are a measured retrofit ONLY if grep recall demonstrably fails on
 real packets. Not before.** (Decision researched Jul 2026; grep-based agentic

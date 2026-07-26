@@ -268,6 +268,13 @@ export function useIntakeActions(applicationId: string) {
   const dropFiles = (files: File[]) => receive.mutate({ applicationId, data: { files } });
   const renameFile = (fileId: string, filename: string) =>
     rename.mutate({ applicationId, fileId, data: { filename } });
+  // Same PATCH seam as rename — archive removes the file from the active set
+  // (estimate + gate recompute server-side); nothing is deleted.
+  const archiveFile = (fileId: string, filename: string) =>
+    rename.mutate(
+      { applicationId, fileId, data: { status: 'archived' } },
+      { onSuccess: () => toast({ description: `${filename} removed from the set — archived, not deleted.` }) },
+    );
 
   const decide = (
     decision: 'confirmed' | 'bypassed',
@@ -286,7 +293,7 @@ export function useIntakeActions(applicationId: string) {
       },
     );
 
-  return { dropFiles, receive, decide, gate, renameFile, rename };
+  return { dropFiles, receive, decide, gate, renameFile, archiveFile, rename };
 }
 
 /** Retry approval materialization after a loud failure (worker/storage). */

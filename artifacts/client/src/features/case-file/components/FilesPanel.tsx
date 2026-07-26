@@ -8,7 +8,7 @@ import {
   type ModelStageOptions,
   type SourceFile,
 } from '@workspace/api-client-react';
-import { AlertCircle, FileText, Loader2, UploadCloud } from 'lucide-react';
+import { AlertCircle, FileText, Loader2, UploadCloud, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '../../auth/ProfileContext';
 import { useIntakeActions } from '../useCaseFile';
@@ -239,7 +239,7 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
   const files = deltaFiles(model);
   const isDelta = (model.run?.input?.length ?? 0) > 0;
   const run = model.app.run;
-  const { decide, gate } = useIntakeActions(applicationId);
+  const { decide, gate, archiveFile } = useIntakeActions(applicationId);
   const { profile } = useProfile();
   const { toast } = useToast();
 
@@ -328,6 +328,15 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
                   </div>
                 ))}
               </div>
+              {/* remove from the processing set — archive, never delete */}
+              <button
+                onClick={() => archiveFile(f.id, f.filename)}
+                title="Remove from this run (archived, not deleted)"
+                data-testid={`button-archive-file-${f.id}`}
+                className="w-6 h-6 flex items-center justify-center rounded-[4px] shrink-0 text-[var(--ops-muted)] hover:bg-[var(--ops-inner-rule)] hover:text-[var(--ops-critical-text)] transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </li>
           ))}
         </ul>

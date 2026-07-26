@@ -9,9 +9,14 @@ import { objectStorageClient } from "./objectStorage";
  * Domain layout for document bytes. This is the ONLY module that knows where
  * bytes live:
  *
- *   <root>/applications/<applicationId>/files/<fileId><ext>
- *   <root>/applications/<applicationId>/approved/<basename>.pdf|.md
- *   <root>/applications/<applicationId>/runs/<runId>/doc-NN_<slug>.md
+ *   <root>/applications/<storageFolder>/files/<fileId><ext>
+ *   <root>/applications/<storageFolder>/approved/<basename>.pdf|.md
+ *   <root>/applications/<storageFolder>/runs/<runId>/doc-NN_<slug>.md
+ *
+ * <storageFolder> is the application's human-legible folder name
+ * (yyyymm_surname_initials_<id>), frozen at creation on the application
+ * record — see features/intake/storageFolder.ts. Callers pass
+ * app.storageFolder, never app.id.
  *
  * One self-contained folder per application (ruled Jul 25 2026) so a whole
  * case can be downloaded in one click. Uploads are the immutable originals;
@@ -69,30 +74,30 @@ function gcsFile(key: string) {
   return objectStorageClient.bucket(bucketName).file(objectName);
 }
 
-const appRoot = (applicationId: string): string => `applications/${applicationId}`;
+const appRoot = (storageFolder: string): string => `applications/${storageFolder}`;
 // Approved registry bytes — flat per application, paired same-basename .pdf/.md
 // (set-blocks master plan, storage option B).
-const approvedKey = (applicationId: string, basename: string, ext: "pdf" | "md"): string =>
-  `${appRoot(applicationId)}/approved/${basename}.${ext}`;
+const approvedKey = (storageFolder: string, basename: string, ext: "pdf" | "md"): string =>
+  `${appRoot(storageFolder)}/approved/${basename}.${ext}`;
 // Per-run analysis projections — one frontmattered .md per analyzer-suggested
 // document, written at ingest. Regenerable (DB stays the authority); exists so
 // the whole intelligence corpus is greppable/RAG-able markdown in one place.
-const runDocKey = (applicationId: string, runId: string, filename: string): string =>
-  `${appRoot(applicationId)}/runs/${runId}/${filename}`;
+const runDocKey = (storageFolder: string, runId: string, filename: string): string =>
+  `${appRoot(storageFolder)}/runs/${runId}/${filename}`;
 // SourceFile registry bytes (file-native intake phase 2) — immutable,
 // id-addressed. ext comes from the immutable ORIGINAL filename, so renames
 // never touch storage.
-const sourceFileKey = (applicationId: string, fileId: string, ext: string): string =>
-  `${appRoot(applicationId)}/files/${fileId}${ext}`;
+const sourceFileKey = (storageFolder: string, fileId: string, ext: string): string =>
+  `${appRoot(storageFolder)}/files/${fileId}${ext}`;
 
 /** Write one approved-registry object (pdf bytes or md sidecar). Overwrite = retry semantics. */
 export async function putApprovedObject(
-  applicationId: string,
+  storageFolder: string,
   basename: string,
   ext: "pdf" | "md",
   bytes: Buffer,
 ): Promise<void> {
-  const key = approvedKey(applicationId, basename, ext);
+  const key = approvedKey(storageFolder, basename, ext);
   const contentType = ext === "pdf" ? "application/pdf" : "text/markdown";
   if (USE_DISK) {
     await diskWrite(key, (dest) => writeFile(dest, bytes));
@@ -103,13 +108,13 @@ export async function putApprovedObject(
 
 /** Store one SourceFile's immutable bytes. Write-once by convention (ids are never reused). */
 export async function putSourceFileBytes(
-  applicationId: string,
+  storageFolder: string,
   fileId: string,
   ext: string,
   bytes: Buffer,
   contentType: string,
 ): Promise<void> {
-  const key = sourceFileKey(applicationId, fileId, ext);
+  const key = sourceFileKey(storageFolder, fileId, ext);
   if (USE_DISK) {
     await diskWrite(key, (dest) => writeFile(dest, bytes));
     return;
@@ -119,21 +124,21 @@ export async function putSourceFileBytes(
 
 /** Readable stream of one SourceFile's bytes, or undefined when missing. */
 export async function openSourceFileStream(
-  applicationId: string,
+  storageFolder: string,
   fileId: string,
   ext: string,
 ): Promise<Readable | undefined> {
-  return openStream(sourceFileKey(applicationId, fileId, ext));
+  return openStream(sourceFileKey(storageFolder, fileId, ext));
 }
 
 /** Write one per-run document projection (.md). Overwrite = regenerate semantics. */
 export async function putRunDocMarkdown(
-  applicationId: string,
+  storageFolder: string,
   runId: string,
   filename: string,
   bytes: Buffer,
 ): Promise<void> {
-  const key = runDocKey(applicationId, runId, filename);
+  const key = runDocKey(storageFolder, runId, filename);
   if (USE_DISK) {
     await diskWrite(key, (dest) => writeFile(dest, bytes));
     return;
@@ -143,11 +148,11 @@ export async function putRunDocMarkdown(
 
 /** Readable stream of one approved-registry object, or undefined when missing. */
 export async function openApprovedObjectStream(
-  applicationId: string,
+  storageFolder: string,
   basename: string,
   ext: "pdf" | "md",
 ): Promise<Readable | undefined> {
-  return openStream(approvedKey(applicationId, basename, ext));
+  return openStream(approvedKey(storageFolder, basename, ext));
 }
 
 async function openStream(key: string): Promise<Readable | undefined> {

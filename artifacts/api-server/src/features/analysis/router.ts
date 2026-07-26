@@ -105,7 +105,7 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
   // Markdown projections into App Storage (intelligence corpus). Regenerable,
   // so a failure is loud (ledger) but never fails the ingest.
   try {
-    await writeRunSidecars(id, parsed.data);
+    await writeRunSidecars(id, app.storageFolder, parsed.data);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[analysis] run sidecar write failed for ${id}/${parsed.data.runId}: ${message}`);

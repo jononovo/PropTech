@@ -1832,9 +1832,15 @@ components:
         projectedClosingDate: { type: string }
     Application:
       type: object
-      required: [id, family, version, applicantName, createdAt, fieldValues, uploads, template]
+      required: [id, family, version, applicantName, createdAt, fieldValues, uploads, template, storageFolder]
       properties:
         id: { type: string }
+        storageFolder:
+          type: string
+          description: >
+            Human-legible App Storage folder for this application, frozen at
+            creation: yyyymm_surname_initials_<id>. Never re-derived from the
+            applicant name — renames/corrections do not move bytes.
         family: { type: string }
         version: { type: integer }
         applicantName: { type: string }

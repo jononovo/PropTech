@@ -666,6 +666,7 @@ export const createApplicationResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const CreateApplicationResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -885,6 +886,7 @@ export const getApplicationResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const GetApplicationResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -1109,6 +1111,7 @@ export const updateApplicationResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const UpdateApplicationResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -1334,6 +1337,7 @@ export const upgradeTemplateVersionResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const UpgradeTemplateVersionResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -1558,6 +1562,7 @@ export const saveFieldValuesResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const SaveFieldValuesResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -1858,6 +1863,7 @@ export const ReceiveFilesResponse = zod.object({
 }).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).describe('the SourceFiles minted by THIS drop, in received order'),
   "application": zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -2098,6 +2104,7 @@ export const updateSourceFileResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const UpdateSourceFileResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -2434,6 +2441,7 @@ export const recordMergeResolutionResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const RecordMergeResolutionResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -2678,6 +2686,7 @@ export const recordDocumentApprovalResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const RecordDocumentApprovalResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -3304,6 +3313,7 @@ export const decideRunGateResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const DecideRunGateResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -3529,6 +3539,7 @@ export const reportRunFailureResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const ReportRunFailureResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -3760,6 +3771,7 @@ export const recordVerdictResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const RecordVerdictResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),
@@ -4014,6 +4026,7 @@ export const recordPlacementResponseManualPlacementsItemSpanPagesMax = 2;
 
 export const RecordPlacementResponse = zod.object({
   "id": zod.string(),
+  "storageFolder": zod.string().describe('Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames\/corrections do not move bytes.\n'),
   "family": zod.string(),
   "version": zod.number(),
   "applicantName": zod.string(),

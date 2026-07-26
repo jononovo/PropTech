@@ -81,7 +81,7 @@ export async function receiveSourceFiles(opts: {
     const sf = minted[i]!;
     const src = opts.files[i]!;
     await putSourceFileBytes(
-      opts.app.id,
+      opts.app.storageFolder,
       sf.id,
       storageExt(sf),
       readFileSync(src.tempPath),

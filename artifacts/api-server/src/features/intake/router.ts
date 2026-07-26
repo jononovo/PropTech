@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { nanoid } from "nanoid";
+import { buildStorageFolder } from "./storageFolder";
 import {
   CreateApplicationBody,
   CreateApplicationResponse,
@@ -51,8 +52,10 @@ router.post("/applications", async (req, res): Promise<void> => {
     return;
   }
   // The application pins a full copy of the template version forever.
+  const id = nanoid(10);
   const app: Application = {
-    id: nanoid(10),
+    id,
+    storageFolder: buildStorageFolder(parsed.data.applicantName, id, new Date()),
     family: parsed.data.family,
     version: parsed.data.version,
     applicantName: parsed.data.applicantName,

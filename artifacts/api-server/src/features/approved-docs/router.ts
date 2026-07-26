@@ -168,7 +168,12 @@ router.get("/applications/:applicationId/approved-docs/:approvedDocId/file", asy
     res.status(404).json({ error: "Approved document not found" });
     return;
   }
-  const stream = await openApprovedObjectStream(id!, doc.basename, kind);
+  const owner = await readApplication(id!);
+  if (!owner) {
+    res.status(404).json({ error: "Application not found" });
+    return;
+  }
+  const stream = await openApprovedObjectStream(owner.storageFolder, doc.basename, kind);
   if (!stream) {
     res.status(404).json({ error: `Approved ${kind} object missing from storage` });
     return;

@@ -72,7 +72,7 @@ async function extractSpans(app: Application, spans: FileSpan[]): Promise<Buffer
     if (!src) {
       const sf = (app.files ?? []).find((f) => f.id === span.fileId);
       if (!sf) throw new HttpError(502, `Span addresses ${span.fileId}, which is not in the file registry`);
-      const stream = await openSourceFileStream(app.id, sf.id, storageExt(sf));
+      const stream = await openSourceFileStream(app.storageFolder, sf.id, storageExt(sf));
       if (!stream) throw new HttpError(502, `File ${sf.filename} (${sf.id}) missing from storage`);
       src = await PDFDocument.load(await streamToBuffer(stream));
       loaded.set(span.fileId, src);
@@ -158,7 +158,7 @@ export async function materializeApproval(app: Application, blockId: string): Pr
       }
       const sf = (app.files ?? []).find((f) => f.id === upload!.fileId);
       if (!sf) throw new HttpError(502, `Upload ${upload!.filename} has no SourceFile registry entry`);
-      const uploadStream = await openSourceFileStream(app.id, sf.id, storageExt(sf));
+      const uploadStream = await openSourceFileStream(app.storageFolder, sf.id, storageExt(sf));
       if (!uploadStream) throw new HttpError(502, `Upload ${upload!.filename} missing from storage`);
       pdfBytes = await streamToBuffer(uploadStream);
       doc = {
@@ -179,8 +179,8 @@ export async function materializeApproval(app: Application, blockId: string): Pr
 
     // Bytes first, registry row second — an orphaned object is harmless,
     // a registry row without bytes is not.
-    await putApprovedObject(app.id, basename, "pdf", pdfBytes);
-    await putApprovedObject(app.id, basename, "md", Buffer.from(md, "utf8"));
+    await putApprovedObject(app.storageFolder, basename, "pdf", pdfBytes);
+    await putApprovedObject(app.storageFolder, basename, "md", Buffer.from(md, "utf8"));
     await insertApprovedDoc(doc);
     await setMaterializationError(app.id, blockId, null);
     return doc;
@@ -263,8 +263,8 @@ export async function materializeDocumentApproval(
       pageMarkdown,
     });
 
-    await putApprovedObject(app.id, basename, "pdf", pdfBytes);
-    await putApprovedObject(app.id, basename, "md", Buffer.from(md, "utf8"));
+    await putApprovedObject(app.storageFolder, basename, "pdf", pdfBytes);
+    await putApprovedObject(app.storageFolder, basename, "md", Buffer.from(md, "utf8"));
     await insertApprovedDoc(doc, { matchSpans: spans });
     await setMaterializationError(app.id, blockId, null);
     return doc;

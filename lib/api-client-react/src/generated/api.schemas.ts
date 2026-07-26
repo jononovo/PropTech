@@ -741,6 +741,8 @@ export type ApplicationVariants = {[key: string]: ApplicationVariant[]};
 
 export interface Application {
   id: string;
+  /** Human-legible App Storage folder for this application, frozen at creation: yyyymm_surname_initials_<id>. Never re-derived from the applicant name — renames/corrections do not move bytes. */
+  storageFolder: string;
   family: string;
   version: number;
   applicantName: string;

@@ -98,7 +98,7 @@ router.get("/applications/:applicationId/files/:fileId", async (req, res): Promi
     res.status(404).json({ error: "No such file" });
     return;
   }
-  const stream = await openSourceFileStream(id!, sf.id, storageExt(sf));
+  const stream = await openSourceFileStream(app.storageFolder, sf.id, storageExt(sf));
   if (!stream) {
     res.status(404).json({ error: "File bytes missing from storage" });
     return;

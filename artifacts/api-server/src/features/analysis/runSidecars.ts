@@ -46,6 +46,7 @@ function spanPages(spans: FileSpan[]): { fileId: string; page: number }[] {
 
 export function buildRunDocMarkdown(opts: {
   applicationId: string;
+  storageFolder: string;
   run: AnalysisRun;
   doc: RunDocument;
   pageMarkdown: string[];
@@ -76,7 +77,7 @@ export function buildRunDocMarkdown(opts: {
   const fileIds = [...new Set(doc.spans.map((s) => s.fileId))];
   for (const fileId of fileIds) {
     const input = run.input.find((f) => f.fileId === fileId);
-    lines.push(`    - sourceKey: ${yamlStr(`applications/${opts.applicationId}/files/${fileId}`)}`);
+    lines.push(`    - sourceKey: ${yamlStr(`applications/${opts.storageFolder}/files/${fileId}`)}`);
     if (input) lines.push(`      sha256: ${yamlStr(input.sha256)}`, `      filename: ${yamlStr(input.filename)}`);
   }
   lines.push(`  analyzedAt: ${yamlStr(run.startedAt)}`);
@@ -94,15 +95,15 @@ export function buildRunDocMarkdown(opts: {
  * Write every document projection for a freshly ingested run. Throws on the
  * first failure — caller decides how loud to be (ingest must not roll back).
  */
-export async function writeRunSidecars(applicationId: string, run: AnalysisRun): Promise<number> {
+export async function writeRunSidecars(applicationId: string, storageFolder: string, run: AnalysisRun): Promise<number> {
   let n = 0;
   for (const doc of run.documents) {
     const pageMarkdown = await Promise.all(
       spanPages(doc.spans).map((p) => fetchPageMarkdown(applicationId, run.runId, p.fileId, p.page)),
     );
-    const md = buildRunDocMarkdown({ applicationId, run, doc, pageMarkdown });
+    const md = buildRunDocMarkdown({ applicationId, storageFolder, run, doc, pageMarkdown });
     const filename = `doc-${String(n + 1).padStart(2, "0")}_${slug(doc.suggestedBlockId)}.md`;
-    await putRunDocMarkdown(applicationId, run.runId, filename, Buffer.from(md, "utf8"));
+    await putRunDocMarkdown(storageFolder, run.runId, filename, Buffer.from(md, "utf8"));
     n++;
   }
   return n;

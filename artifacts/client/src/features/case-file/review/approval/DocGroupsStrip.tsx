@@ -91,7 +91,7 @@ export function DocGroupsStrip({
               <div
                 onClick={() => onGroupSelect(g.id)}
                 data-testid={`chip-group-${g.pages[0]}`}
-                className={`group/hdr relative w-full min-w-0 px-2 py-1 border-b ${palette.divider} bg-white/50 hover:bg-white/80 rounded-t-md flex items-center justify-between gap-1.5 min-h-[30px] cursor-pointer transition-colors`}
+                className={`group/hdr relative w-0 min-w-full px-2 py-1 border-b ${palette.divider} bg-white/50 hover:bg-white/80 rounded-t-md flex items-center justify-between gap-1.5 min-h-[30px] cursor-pointer transition-colors`}
                 title={`${g.title} · pp. ${g.pages[0]}–${g.pages[1]}`}
               >
                 <div className="flex flex-col min-w-0 leading-tight">

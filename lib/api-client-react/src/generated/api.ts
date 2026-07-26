@@ -44,6 +44,9 @@ import type {
   PacketRunFailure,
   PacketUpload,
   PlacementInput,
+  ReceiveFilesBody,
+  ReceiveFilesParams,
+  ReceiveFilesResponse,
   SavedSection,
   SavedSectionInput,
   SetPacketFileRemovedBody,
@@ -53,6 +56,7 @@ import type {
   TemplateListing,
   TemplateRef,
   TemplateUpgradeInput,
+  UpdateSourceFileBody,
   UploadDocumentParams,
   UploadPacketFilesBody,
   UploadedFile,
@@ -1738,6 +1742,248 @@ export const useDeleteDocument = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeleteDocumentMutationOptions(options));
+    }
+
+export const getReceiveFilesUrl = (applicationId: string,
+    params?: ReceiveFilesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/files?${stringifiedParams}` : `/api/applications/${applicationId}/files`
+}
+
+/**
+ * Multi-file multipart receive (field name "files"). Optional blockId/variantId query params declare solicited intent (origin becomes "solicited"); without them the drop is "unsolicited". Whole-drop validation — one bad file rejects the drop. Bytes are stored id-addressed and immutable; renames never touch storage.
+ * @summary Unified file receive — every file that enters the system lands here as an immutable SourceFile
+ */
+export const receiveFiles = async (applicationId: string,
+    receiveFilesBody: ReceiveFilesBody,
+    params?: ReceiveFilesParams, options?: RequestInit): Promise<ReceiveFilesResponse> => {
+    const formData = new FormData();
+if(receiveFilesBody.files !== undefined) {
+ receiveFilesBody.files.forEach(value => formData.append(`files`, value));
+ }
+
+  return customFetch<ReceiveFilesResponse>(getReceiveFilesUrl(applicationId,params),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getReceiveFilesMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveFiles>>, TError,{applicationId: string;data: BodyType<ReceiveFilesBody>;params?: ReceiveFilesParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveFiles>>, TError,{applicationId: string;data: BodyType<ReceiveFilesBody>;params?: ReceiveFilesParams}, TContext> => {
+
+const mutationKey = ['receiveFiles'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveFiles>>, {applicationId: string;data: BodyType<ReceiveFilesBody>;params?: ReceiveFilesParams}> = (props) => {
+          const {applicationId,data,params} = props ?? {};
+
+          return  receiveFiles(applicationId,data,params,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveFilesMutationResult = NonNullable<Awaited<ReturnType<typeof receiveFiles>>>
+    export type ReceiveFilesMutationBody = BodyType<ReceiveFilesBody>
+    export type ReceiveFilesMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Unified file receive — every file that enters the system lands here as an immutable SourceFile
+ */
+export const useReceiveFiles = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveFiles>>, TError,{applicationId: string;data: BodyType<ReceiveFilesBody>;params?: ReceiveFilesParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof receiveFiles>>,
+        TError,
+        {applicationId: string;data: BodyType<ReceiveFilesBody>;params?: ReceiveFilesParams},
+        TContext
+      > => {
+      return useMutation(getReceiveFilesMutationOptions(options));
+    }
+
+export const getGetSourceFileBytesUrl = (applicationId: string,
+    fileId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/files/${fileId}`
+}
+
+/**
+ * @summary Stream a SourceFile's immutable bytes
+ */
+export const getSourceFileBytes = async (applicationId: string,
+    fileId: string, options?: RequestInit): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetSourceFileBytesUrl(applicationId,fileId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSourceFileBytesQueryKey = (applicationId: string,
+    fileId: string,) => {
+    return [
+    `/api/applications/${applicationId}/files/${fileId}`
+    ] as const;
+    }
+
+
+export const getGetSourceFileBytesQueryOptions = <TData = Awaited<ReturnType<typeof getSourceFileBytes>>, TError = ErrorType<void>>(applicationId: string,
+    fileId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSourceFileBytes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSourceFileBytesQueryKey(applicationId,fileId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSourceFileBytes>>> = ({ signal }) => getSourceFileBytes(applicationId,fileId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && fileId !== null && fileId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSourceFileBytes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSourceFileBytesQueryResult = NonNullable<Awaited<ReturnType<typeof getSourceFileBytes>>>
+export type GetSourceFileBytesQueryError = ErrorType<void>
+
+
+/**
+ * @summary Stream a SourceFile's immutable bytes
+ */
+
+export function useGetSourceFileBytes<TData = Awaited<ReturnType<typeof getSourceFileBytes>>, TError = ErrorType<void>>(
+ applicationId: string,
+    fileId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSourceFileBytes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSourceFileBytesQueryOptions(applicationId,fileId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateSourceFileUrl = (applicationId: string,
+    fileId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/files/${fileId}`
+}
+
+/**
+ * @summary Metadata-only update — rename (bytes untouched, recorded in the ledger)
+ */
+export const updateSourceFile = async (applicationId: string,
+    fileId: string,
+    updateSourceFileBody: UpdateSourceFileBody, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getUpdateSourceFileUrl(applicationId,fileId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateSourceFileBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateSourceFileMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSourceFile>>, TError,{applicationId: string;fileId: string;data: BodyType<UpdateSourceFileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateSourceFile>>, TError,{applicationId: string;fileId: string;data: BodyType<UpdateSourceFileBody>}, TContext> => {
+
+const mutationKey = ['updateSourceFile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateSourceFile>>, {applicationId: string;fileId: string;data: BodyType<UpdateSourceFileBody>}> = (props) => {
+          const {applicationId,fileId,data} = props ?? {};
+
+          return  updateSourceFile(applicationId,fileId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateSourceFileMutationResult = NonNullable<Awaited<ReturnType<typeof updateSourceFile>>>
+    export type UpdateSourceFileMutationBody = BodyType<UpdateSourceFileBody>
+    export type UpdateSourceFileMutationError = ErrorType<void>
+
+    /**
+ * @summary Metadata-only update — rename (bytes untouched, recorded in the ledger)
+ */
+export const useUpdateSourceFile = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateSourceFile>>, TError,{applicationId: string;fileId: string;data: BodyType<UpdateSourceFileBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateSourceFile>>,
+        TError,
+        {applicationId: string;fileId: string;data: BodyType<UpdateSourceFileBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateSourceFileMutationOptions(options));
     }
 
 export const getAddVariantUrl = (applicationId: string,

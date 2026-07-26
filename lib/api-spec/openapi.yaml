@@ -496,6 +496,98 @@ paths:
       responses:
         "204":
           description: Deleted
+  /applications/{applicationId}/files:
+    post:
+      operationId: receiveFiles
+      tags: [files]
+      summary: Unified file receive — every file that enters the system lands here as an immutable SourceFile
+      description: >
+        Multi-file multipart receive (field name "files"). Optional blockId/variantId
+        query params declare solicited intent (origin becomes "solicited"); without
+        them the drop is "unsolicited". Whole-drop validation — one bad file rejects
+        the drop. Bytes are stored id-addressed and immutable; renames never touch
+        storage.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: blockId
+          in: query
+          required: false
+          schema: { type: string }
+          description: Solicited intent — must be a document block on the pinned template.
+        - name: variantId
+          in: query
+          required: false
+          schema: { type: string }
+          description: Solicited intent — one of the block's variants (400 if unknown).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        "201":
+          description: The received SourceFile records (whole application returned for state sync)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReceiveFilesResponse"
+        "400":
+          description: Validation failure — whole drop rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/files/{fileId}:
+    get:
+      operationId: getSourceFileBytes
+      tags: [files]
+      summary: Stream a SourceFile's immutable bytes
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: File bytes
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "404":
+          description: No such file
+    patch:
+      operationId: updateSourceFile
+      tags: [files]
+      summary: Metadata-only update — rename (bytes untouched, recorded in the ledger)
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSourceFileBody"
+      responses:
+        "200":
+          description: Updated application
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          description: No such file
   /applications/{applicationId}/blocks/{blockId}/variants:
     post:
       operationId: addVariant
@@ -1651,6 +1743,82 @@ components:
         uploaderIp:
           type: string
           description: audit trail — client IP the upload arrived from
+        fileId:
+          type: string
+          description: The SourceFile this upload landed as.
+    SourceFile:
+      type: object
+      description: >
+        One file as it entered the system — immutable, id-addressed bytes.
+        Rename is metadata only. Files are never removed from the list;
+        status is the only lifecycle field (archive behavior deferred).
+      required: [id, kind, origin, filename, sizeBytes, status, receivedAt]
+      properties:
+        id: { type: string, description: "sf-<nanoid8>, minted at intake, never reused" }
+        kind:
+          type: string
+          enum: [original, derived]
+        origin:
+          type: string
+          enum: [unsolicited, solicited]
+          description: solicited = uploaded against a block/variant with declared intent
+        filename: { type: string, description: "current assigned name (rename = metadata)" }
+        originalFilename: { type: string, description: "as received (originals)" }
+        blockId: { type: string, description: "solicited intent, if any" }
+        variantId: { type: string }
+        sizeBytes: { type: integer }
+        pages: { type: integer, description: "PDFs only" }
+        sha256: { type: string }
+        flags:
+          type: array
+          items: { type: string }
+          description: per-file deterministic pre-flight flags, computed at drop
+        status:
+          type: string
+          enum: [active, archived]
+          description: archived = out of the working view, never deleted (no UI yet — deferred)
+        receivedAt: { type: string }
+        receivedBy: { type: string }
+        receivedIp: { type: string }
+        derivation:
+          type: object
+          description: derived files only — lineage back to immutable sources
+          required: [op, sources]
+          properties:
+            op:
+              type: string
+              enum: [split, merge]
+            sources:
+              type: array
+              items:
+                type: object
+                required: [fileId, pages]
+                properties:
+                  fileId: { type: string }
+                  pages:
+                    type: array
+                    items: { type: integer }
+                    minItems: 2
+                    maxItems: 2
+    ReceiveFilesResponse:
+      type: object
+      required: [files, application]
+      properties:
+        files:
+          type: array
+          description: the SourceFiles minted by THIS drop, in received order
+          items:
+            $ref: "#/components/schemas/SourceFile"
+        application:
+          $ref: "#/components/schemas/Application"
+    UpdateSourceFileBody:
+      type: object
+      properties:
+        filename:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: new assigned name — bytes and id unchanged, ledger records from→to
     ApplicationVariant:
       type: object
       description: >
@@ -1940,6 +2108,14 @@ components:
           $ref: "#/components/schemas/PacketState"
         packetManifest:
           $ref: "#/components/schemas/PacketManifest"
+        files:
+          type: array
+          description: >
+            SourceFile registry (file-native intake phase 2) — every file that
+            entered this application, append-only in spirit. filename and
+            status are the only mutable fields.
+          items:
+            $ref: "#/components/schemas/SourceFile"
         template:
           $ref: "#/components/schemas/Template"
         templateHistory:

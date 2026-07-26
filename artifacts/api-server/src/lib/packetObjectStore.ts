@@ -11,7 +11,6 @@ import { objectStorageClient } from "./objectStorage";
  *
  *   <root>/applications/<applicationId>/packet/packet.pdf
  *   <root>/applications/<applicationId>/packet/thumbs/page-<n>.png
- *   <root>/applications/<applicationId>/uploads/<blockId>/<filename>
  *   <root>/applications/<applicationId>/approved/<basename>.pdf|.md
  *   <root>/applications/<applicationId>/runs/<runId>/doc-NN_<slug>.md
  *
@@ -75,8 +74,6 @@ const appRoot = (applicationId: string): string => `applications/${applicationId
 const packetPdfKey = (applicationId: string): string => `${appRoot(applicationId)}/packet/packet.pdf`;
 const pageThumbnailKey = (applicationId: string, page: number): string =>
   `${appRoot(applicationId)}/packet/thumbs/page-${page}.png`;
-const intakeUploadKey = (applicationId: string, blockId: string, filename: string): string =>
-  `${appRoot(applicationId)}/uploads/${blockId}/${filename}`;
 // Approved registry bytes — flat per application, paired same-basename .pdf/.md
 // (set-blocks master plan, storage option B).
 const approvedKey = (applicationId: string, basename: string, ext: "pdf" | "md"): string =>
@@ -86,6 +83,11 @@ const approvedKey = (applicationId: string, basename: string, ext: "pdf" | "md")
 // the whole intelligence corpus is greppable/RAG-able markdown in one place.
 const runDocKey = (applicationId: string, runId: string, filename: string): string =>
   `${appRoot(applicationId)}/runs/${runId}/${filename}`;
+// SourceFile registry bytes (file-native intake phase 2) — immutable,
+// id-addressed. ext comes from the immutable ORIGINAL filename, so renames
+// never touch storage.
+const sourceFileKey = (applicationId: string, fileId: string, ext: string): string =>
+  `${appRoot(applicationId)}/files/${fileId}${ext}`;
 
 /** Upload the accepted packet PDF from its local staging path. Re-upload overwrites. */
 export async function putPacketPdf(applicationId: string, localPdfPath: string): Promise<void> {
@@ -113,35 +115,6 @@ export async function putPageThumbnail(applicationId: string, page: number, loca
     .upload(localPngPath, { destination: objectName, contentType: "image/png" });
 }
 
-/** Store one intake document upload (buffer from multer memory storage). */
-export async function putIntakeUpload(
-  applicationId: string,
-  blockId: string,
-  filename: string,
-  bytes: Buffer,
-  contentType: string,
-): Promise<void> {
-  const key = intakeUploadKey(applicationId, blockId, filename);
-  if (USE_DISK) {
-    await diskWrite(key, (dest) => writeFile(dest, bytes));
-    return;
-  }
-  await gcsFile(key).save(bytes, {
-    contentType,
-    resumable: false,
-  });
-}
-
-/** Remove one intake document upload. A missing object is not an error. */
-export async function deleteIntakeUpload(applicationId: string, blockId: string, filename: string): Promise<void> {
-  const key = intakeUploadKey(applicationId, blockId, filename);
-  if (USE_DISK) {
-    await rm(diskPath(key), { force: true });
-    return;
-  }
-  await gcsFile(key).delete({ ignoreNotFound: true });
-}
-
 /** Readable stream of the packet PDF, or undefined when no object exists. */
 export async function openPacketPdfStream(applicationId: string): Promise<Readable | undefined> {
   return openStream(packetPdfKey(applicationId));
@@ -150,15 +123,6 @@ export async function openPacketPdfStream(applicationId: string): Promise<Readab
 /** Readable stream of one page thumbnail, or undefined when no object exists. */
 export async function openPageThumbnailStream(applicationId: string, page: number): Promise<Readable | undefined> {
   return openStream(pageThumbnailKey(applicationId, page));
-}
-
-/** Readable stream of one intake upload, or undefined when no object exists. */
-export async function openIntakeUploadStream(
-  applicationId: string,
-  blockId: string,
-  filename: string,
-): Promise<Readable | undefined> {
-  return openStream(intakeUploadKey(applicationId, blockId, filename));
 }
 
 /** Write one approved-registry object (pdf bytes or md sidecar). Overwrite = retry semantics. */
@@ -175,6 +139,31 @@ export async function putApprovedObject(
     return;
   }
   await gcsFile(key).save(bytes, { contentType, resumable: false });
+}
+
+/** Store one SourceFile's immutable bytes. Write-once by convention (ids are never reused). */
+export async function putSourceFileBytes(
+  applicationId: string,
+  fileId: string,
+  ext: string,
+  bytes: Buffer,
+  contentType: string,
+): Promise<void> {
+  const key = sourceFileKey(applicationId, fileId, ext);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => writeFile(dest, bytes));
+    return;
+  }
+  await gcsFile(key).save(bytes, { contentType, resumable: false });
+}
+
+/** Readable stream of one SourceFile's bytes, or undefined when missing. */
+export async function openSourceFileStream(
+  applicationId: string,
+  fileId: string,
+  ext: string,
+): Promise<Readable | undefined> {
+  return openStream(sourceFileKey(applicationId, fileId, ext));
 }
 
 /** Write one per-run document projection (.md). Overwrite = regenerate semantics. */

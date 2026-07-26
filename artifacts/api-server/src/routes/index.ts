@@ -15,6 +15,7 @@ import packetManifestRouter from "../features/packet-manifest/router";
 import usersRouter from "../features/users/router";
 import modelsRouter from "../features/models/router";
 import ledgerRouter from "../features/ledger/router";
+import filesRouter from "../features/files/router";
 
 const router: IRouter = Router();
 
@@ -24,6 +25,7 @@ router.use(templateEditorRouter);
 router.use(savedSectionsRouter);
 router.use(intakeRouter);
 router.use(intakeUploadsRouter);
+router.use(filesRouter);
 router.use(variantsRouter);
 router.use(approvedDocsRouter);
 router.use(mergeResolutionsRouter);

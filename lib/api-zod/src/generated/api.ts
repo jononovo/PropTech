@@ -648,6 +648,9 @@ export const CreateApplicationBody = zod.object({
 export const createApplicationResponsePacketFilesItemPagesMin = 2;
 export const createApplicationResponsePacketFilesItemPagesMax = 2;
 
+export const createApplicationResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const createApplicationResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const createApplicationResponseDocumentApprovalsItemPagesMin = 2;
 export const createApplicationResponseDocumentApprovalsItemPagesMax = 2;
@@ -678,7 +681,8 @@ export const CreateApplicationResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -738,6 +742,30 @@ export const CreateApplicationResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(createApplicationResponseFilesItemDerivationSourcesItemPagesMin).max(createApplicationResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -861,6 +889,9 @@ export const GetApplicationParams = zod.object({
 export const getApplicationResponsePacketFilesItemPagesMin = 2;
 export const getApplicationResponsePacketFilesItemPagesMax = 2;
 
+export const getApplicationResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const getApplicationResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const getApplicationResponseDocumentApprovalsItemPagesMin = 2;
 export const getApplicationResponseDocumentApprovalsItemPagesMax = 2;
@@ -891,7 +922,8 @@ export const GetApplicationResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -951,6 +983,30 @@ export const GetApplicationResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(getApplicationResponseFilesItemDerivationSourcesItemPagesMin).max(getApplicationResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1079,6 +1135,9 @@ export const UpdateApplicationBody = zod.object({
 export const updateApplicationResponsePacketFilesItemPagesMin = 2;
 export const updateApplicationResponsePacketFilesItemPagesMax = 2;
 
+export const updateApplicationResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const updateApplicationResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const updateApplicationResponseDocumentApprovalsItemPagesMin = 2;
 export const updateApplicationResponseDocumentApprovalsItemPagesMax = 2;
@@ -1109,7 +1168,8 @@ export const UpdateApplicationResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1169,6 +1229,30 @@ export const UpdateApplicationResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(updateApplicationResponseFilesItemDerivationSourcesItemPagesMin).max(updateApplicationResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1298,6 +1382,9 @@ export const UpgradeTemplateVersionBody = zod.object({
 export const upgradeTemplateVersionResponsePacketFilesItemPagesMin = 2;
 export const upgradeTemplateVersionResponsePacketFilesItemPagesMax = 2;
 
+export const upgradeTemplateVersionResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const upgradeTemplateVersionResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const upgradeTemplateVersionResponseDocumentApprovalsItemPagesMin = 2;
 export const upgradeTemplateVersionResponseDocumentApprovalsItemPagesMax = 2;
@@ -1328,7 +1415,8 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1388,6 +1476,30 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(upgradeTemplateVersionResponseFilesItemDerivationSourcesItemPagesMin).max(upgradeTemplateVersionResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1516,6 +1628,9 @@ export const SaveFieldValuesBody = zod.object({
 export const saveFieldValuesResponsePacketFilesItemPagesMin = 2;
 export const saveFieldValuesResponsePacketFilesItemPagesMax = 2;
 
+export const saveFieldValuesResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const saveFieldValuesResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const saveFieldValuesResponseDocumentApprovalsItemPagesMin = 2;
 export const saveFieldValuesResponseDocumentApprovalsItemPagesMax = 2;
@@ -1546,7 +1661,8 @@ export const SaveFieldValuesResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1606,6 +1722,30 @@ export const SaveFieldValuesResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(saveFieldValuesResponseFilesItemDerivationSourcesItemPagesMin).max(saveFieldValuesResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1740,7 +1880,8 @@ export const UploadDocumentResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 })
 
 
@@ -1754,6 +1895,547 @@ export const DeleteDocumentParams = zod.object({
 })
 
 export const DeleteDocumentResponse = zod.void()
+
+
+/**
+ * Multi-file multipart receive (field name "files"). Optional blockId/variantId query params declare solicited intent (origin becomes "solicited"); without them the drop is "unsolicited". Whole-drop validation — one bad file rejects the drop. Bytes are stored id-addressed and immutable; renames never touch storage.
+ * @summary Unified file receive — every file that enters the system lands here as an immutable SourceFile
+ */
+export const ReceiveFilesParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const ReceiveFilesQueryParams = zod.object({
+  "blockId": zod.coerce.string().optional().describe('Solicited intent — must be a document block on the pinned template.'),
+  "variantId": zod.coerce.string().optional().describe('Solicited intent — one of the block\'s variants (400 if unknown).')
+})
+
+export const ReceiveFilesBody = zod.object({
+  "files": zod.array(zod.instanceof(File)).optional()
+})
+
+export const receiveFilesResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const receiveFilesResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
+export const receiveFilesResponseApplicationPacketFilesItemPagesMin = 2;
+export const receiveFilesResponseApplicationPacketFilesItemPagesMax = 2;
+
+export const receiveFilesResponseApplicationFilesItemDerivationSourcesItemPagesMin = 2;
+export const receiveFilesResponseApplicationFilesItemDerivationSourcesItemPagesMax = 2;
+
+
+export const receiveFilesResponseApplicationDocumentApprovalsItemPagesMin = 2;
+export const receiveFilesResponseApplicationDocumentApprovalsItemPagesMax = 2;
+
+export const receiveFilesResponseApplicationDocumentApprovalsItemPageRangesItemMin = 2;
+export const receiveFilesResponseApplicationDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const receiveFilesResponseApplicationMergeResolutionsRangesItemMin = 2;
+export const receiveFilesResponseApplicationMergeResolutionsRangesItemMax = 2;
+
+export const receiveFilesResponseApplicationMergeResolutionsRangesMin = 2;
+export const receiveFilesResponseApplicationMergeResolutionsRangesMax = 2;
+
+export const receiveFilesResponseApplicationManualPlacementsItemPagesMin = 2;
+export const receiveFilesResponseApplicationManualPlacementsItemPagesMax = 2;
+
+
+
+export const ReceiveFilesResponse = zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(receiveFilesResponseFilesItemDerivationSourcesItemPagesMin).max(receiveFilesResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).describe('the SourceFiles minted by THIS drop, in received order'),
+  "application": zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(receiveFilesResponseApplicationPacketFilesItemPagesMin).max(receiveFilesResponseApplicationPacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(receiveFilesResponseApplicationFilesItemDerivationSourcesItemPagesMin).max(receiveFilesResponseApplicationFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
+  "documentApprovals": zod.array(zod.object({
+  "id": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document files into'),
+  "runId": zod.string().describe('analyzer run whose grouping this approval is based on'),
+  "pages": zod.array(zod.number()).min(receiveFilesResponseApplicationDocumentApprovalsItemPagesMin).max(receiveFilesResponseApplicationDocumentApprovalsItemPagesMax).describe('inclusive 1-based packet page range [first, last]'),
+  "pageDecisions": zod.array(zod.object({
+  "page": zod.number().describe('1-based packet page'),
+  "decision": zod.enum(['good', 'bad', 'flag_accepted']).describe('good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags\/low scores — the flag stays on the record as a low-level note.\n'),
+  "note": zod.string().optional()
+}).describe('A per-page pre-step decision inside the document approval flow.')).optional(),
+  "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(receiveFilesResponseApplicationDocumentApprovalsItemPageRangesItemMin).max(receiveFilesResponseApplicationDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
+}).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(receiveFilesResponseApplicationMergeResolutionsRangesItemMin).max(receiveFilesResponseApplicationMergeResolutionsRangesItemMax)).min(receiveFilesResponseApplicationMergeResolutionsRangesMin).max(receiveFilesResponseApplicationMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(receiveFilesResponseApplicationManualPlacementsItemPagesMin).max(receiveFilesResponseApplicationManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
+})
+})
+
+
+/**
+ * @summary Stream a SourceFile's immutable bytes
+ */
+export const GetSourceFileBytesParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "fileId": zod.coerce.string()
+})
+
+export const GetSourceFileBytesResponse = zod.unknown()
+
+
+/**
+ * @summary Metadata-only update — rename (bytes untouched, recorded in the ledger)
+ */
+export const UpdateSourceFileParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "fileId": zod.coerce.string()
+})
+
+export const updateSourceFileBodyFilenameMax = 120;
+
+
+
+export const UpdateSourceFileBody = zod.object({
+  "filename": zod.string().min(1).max(updateSourceFileBodyFilenameMax).optional().describe('new assigned name — bytes and id unchanged, ledger records from→to')
+})
+
+export const updateSourceFileResponsePacketFilesItemPagesMin = 2;
+export const updateSourceFileResponsePacketFilesItemPagesMax = 2;
+
+export const updateSourceFileResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const updateSourceFileResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
+
+export const updateSourceFileResponseDocumentApprovalsItemPagesMin = 2;
+export const updateSourceFileResponseDocumentApprovalsItemPagesMax = 2;
+
+export const updateSourceFileResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const updateSourceFileResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const updateSourceFileResponseMergeResolutionsRangesItemMin = 2;
+export const updateSourceFileResponseMergeResolutionsRangesItemMax = 2;
+
+export const updateSourceFileResponseMergeResolutionsRangesMin = 2;
+export const updateSourceFileResponseMergeResolutionsRangesMax = 2;
+
+export const updateSourceFileResponseManualPlacementsItemPagesMin = 2;
+export const updateSourceFileResponseManualPlacementsItemPagesMax = 2;
+
+
+
+export const UpdateSourceFileResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(updateSourceFileResponsePacketFilesItemPagesMin).max(updateSourceFileResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(updateSourceFileResponseFilesItemDerivationSourcesItemPagesMin).max(updateSourceFileResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
+  "documentApprovals": zod.array(zod.object({
+  "id": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document files into'),
+  "runId": zod.string().describe('analyzer run whose grouping this approval is based on'),
+  "pages": zod.array(zod.number()).min(updateSourceFileResponseDocumentApprovalsItemPagesMin).max(updateSourceFileResponseDocumentApprovalsItemPagesMax).describe('inclusive 1-based packet page range [first, last]'),
+  "pageDecisions": zod.array(zod.object({
+  "page": zod.number().describe('1-based packet page'),
+  "decision": zod.enum(['good', 'bad', 'flag_accepted']).describe('good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags\/low scores — the flag stays on the record as a low-level note.\n'),
+  "note": zod.string().optional()
+}).describe('A per-page pre-step decision inside the document approval flow.')).optional(),
+  "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(updateSourceFileResponseDocumentApprovalsItemPageRangesItemMin).max(updateSourceFileResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
+}).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(updateSourceFileResponseMergeResolutionsRangesItemMin).max(updateSourceFileResponseMergeResolutionsRangesItemMax)).min(updateSourceFileResponseMergeResolutionsRangesMin).max(updateSourceFileResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(updateSourceFileResponseManualPlacementsItemPagesMin).max(updateSourceFileResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
+})
 
 
 /**
@@ -1884,6 +2566,9 @@ export const RecordMergeResolutionBody = zod.object({
 export const recordMergeResolutionResponsePacketFilesItemPagesMin = 2;
 export const recordMergeResolutionResponsePacketFilesItemPagesMax = 2;
 
+export const recordMergeResolutionResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const recordMergeResolutionResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const recordMergeResolutionResponseDocumentApprovalsItemPagesMin = 2;
 export const recordMergeResolutionResponseDocumentApprovalsItemPagesMax = 2;
@@ -1914,7 +2599,8 @@ export const RecordMergeResolutionResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -1974,6 +2660,30 @@ export const RecordMergeResolutionResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(recordMergeResolutionResponseFilesItemDerivationSourcesItemPagesMin).max(recordMergeResolutionResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -2121,6 +2831,9 @@ export const RecordDocumentApprovalBody = zod.object({
 export const recordDocumentApprovalResponsePacketFilesItemPagesMin = 2;
 export const recordDocumentApprovalResponsePacketFilesItemPagesMax = 2;
 
+export const recordDocumentApprovalResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const recordDocumentApprovalResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const recordDocumentApprovalResponseDocumentApprovalsItemPagesMin = 2;
 export const recordDocumentApprovalResponseDocumentApprovalsItemPagesMax = 2;
@@ -2151,7 +2864,8 @@ export const RecordDocumentApprovalResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -2211,6 +2925,30 @@ export const RecordDocumentApprovalResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(recordDocumentApprovalResponseFilesItemDerivationSourcesItemPagesMin).max(recordDocumentApprovalResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -2661,6 +3399,9 @@ export const UploadPacketBody = zod.object({
 export const uploadPacketResponsePacketFilesItemPagesMin = 2;
 export const uploadPacketResponsePacketFilesItemPagesMax = 2;
 
+export const uploadPacketResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const uploadPacketResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const uploadPacketResponseDocumentApprovalsItemPagesMin = 2;
 export const uploadPacketResponseDocumentApprovalsItemPagesMax = 2;
@@ -2691,7 +3432,8 @@ export const UploadPacketResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -2751,6 +3493,30 @@ export const UploadPacketResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(uploadPacketResponseFilesItemDerivationSourcesItemPagesMin).max(uploadPacketResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -2879,6 +3645,9 @@ export const UploadPacketFilesBody = zod.object({
 export const uploadPacketFilesResponsePacketFilesItemPagesMin = 2;
 export const uploadPacketFilesResponsePacketFilesItemPagesMax = 2;
 
+export const uploadPacketFilesResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const uploadPacketFilesResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const uploadPacketFilesResponseDocumentApprovalsItemPagesMin = 2;
 export const uploadPacketFilesResponseDocumentApprovalsItemPagesMax = 2;
@@ -2909,7 +3678,8 @@ export const UploadPacketFilesResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -2969,6 +3739,30 @@ export const UploadPacketFilesResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(uploadPacketFilesResponseFilesItemDerivationSourcesItemPagesMin).max(uploadPacketFilesResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -3097,6 +3891,9 @@ export const SetPacketFileRemovedBody = zod.object({
 export const setPacketFileRemovedResponsePacketFilesItemPagesMin = 2;
 export const setPacketFileRemovedResponsePacketFilesItemPagesMax = 2;
 
+export const setPacketFileRemovedResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const setPacketFileRemovedResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const setPacketFileRemovedResponseDocumentApprovalsItemPagesMin = 2;
 export const setPacketFileRemovedResponseDocumentApprovalsItemPagesMax = 2;
@@ -3127,7 +3924,8 @@ export const SetPacketFileRemovedResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -3187,6 +3985,30 @@ export const SetPacketFileRemovedResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(setPacketFileRemovedResponseFilesItemDerivationSourcesItemPagesMin).max(setPacketFileRemovedResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -3311,6 +4133,9 @@ export const AssemblePacketParams = zod.object({
 export const assemblePacketResponsePacketFilesItemPagesMin = 2;
 export const assemblePacketResponsePacketFilesItemPagesMax = 2;
 
+export const assemblePacketResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const assemblePacketResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const assemblePacketResponseDocumentApprovalsItemPagesMin = 2;
 export const assemblePacketResponseDocumentApprovalsItemPagesMax = 2;
@@ -3341,7 +4166,8 @@ export const AssemblePacketResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -3401,6 +4227,30 @@ export const AssemblePacketResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(assemblePacketResponseFilesItemDerivationSourcesItemPagesMin).max(assemblePacketResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -3536,6 +4386,9 @@ export const DecidePacketGateBody = zod.object({
 export const decidePacketGateResponsePacketFilesItemPagesMin = 2;
 export const decidePacketGateResponsePacketFilesItemPagesMax = 2;
 
+export const decidePacketGateResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const decidePacketGateResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const decidePacketGateResponseDocumentApprovalsItemPagesMin = 2;
 export const decidePacketGateResponseDocumentApprovalsItemPagesMax = 2;
@@ -3566,7 +4419,8 @@ export const DecidePacketGateResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -3626,6 +4480,30 @@ export const DecidePacketGateResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(decidePacketGateResponseFilesItemDerivationSourcesItemPagesMin).max(decidePacketGateResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -3766,6 +4644,9 @@ export const ReportPacketRunFailureBody = zod.object({
 export const reportPacketRunFailureResponsePacketFilesItemPagesMin = 2;
 export const reportPacketRunFailureResponsePacketFilesItemPagesMax = 2;
 
+export const reportPacketRunFailureResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const reportPacketRunFailureResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const reportPacketRunFailureResponseDocumentApprovalsItemPagesMin = 2;
 export const reportPacketRunFailureResponseDocumentApprovalsItemPagesMax = 2;
@@ -3796,7 +4677,8 @@ export const ReportPacketRunFailureResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -3856,6 +4738,30 @@ export const ReportPacketRunFailureResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(reportPacketRunFailureResponseFilesItemDerivationSourcesItemPagesMin).max(reportPacketRunFailureResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -4002,6 +4908,9 @@ export const RecordVerdictBody = zod.object({
 export const recordVerdictResponsePacketFilesItemPagesMin = 2;
 export const recordVerdictResponsePacketFilesItemPagesMax = 2;
 
+export const recordVerdictResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const recordVerdictResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const recordVerdictResponseDocumentApprovalsItemPagesMin = 2;
 export const recordVerdictResponseDocumentApprovalsItemPagesMax = 2;
@@ -4032,7 +4941,8 @@ export const RecordVerdictResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -4092,6 +5002,30 @@ export const RecordVerdictResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(recordVerdictResponseFilesItemDerivationSourcesItemPagesMin).max(recordVerdictResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -4246,6 +5180,9 @@ export const RecordPlacementBody = zod.object({
 export const recordPlacementResponsePacketFilesItemPagesMin = 2;
 export const recordPlacementResponsePacketFilesItemPagesMax = 2;
 
+export const recordPlacementResponseFilesItemDerivationSourcesItemPagesMin = 2;
+export const recordPlacementResponseFilesItemDerivationSourcesItemPagesMax = 2;
+
 
 export const recordPlacementResponseDocumentApprovalsItemPagesMin = 2;
 export const recordPlacementResponseDocumentApprovalsItemPagesMax = 2;
@@ -4276,7 +5213,8 @@ export const RecordPlacementResponse = zod.object({
   "size": zod.number(),
   "uploadedAt": zod.string(),
   "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from'),
+  "fileId": zod.string().optional().describe('The SourceFile this upload landed as.')
 }))).describe('blockId -> uploaded files'),
   "projectedClosingDate": zod.string().optional(),
   "verdicts": zod.record(zod.string(), zod.object({
@@ -4336,6 +5274,30 @@ export const RecordPlacementResponse = zod.object({
   "createdAt": zod.string(),
   "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
 }).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "files": zod.array(zod.object({
+  "id": zod.string().describe('sf-<nanoid8>, minted at intake, never reused'),
+  "kind": zod.enum(['original', 'derived']),
+  "origin": zod.enum(['unsolicited', 'solicited']).describe('solicited = uploaded against a block\/variant with declared intent'),
+  "filename": zod.string().describe('current assigned name (rename = metadata)'),
+  "originalFilename": zod.string().optional().describe('as received (originals)'),
+  "blockId": zod.string().optional().describe('solicited intent, if any'),
+  "variantId": zod.string().optional(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number().optional().describe('PDFs only'),
+  "sha256": zod.string().optional(),
+  "flags": zod.array(zod.string()).optional().describe('per-file deterministic pre-flight flags, computed at drop'),
+  "status": zod.enum(['active', 'archived']).describe('archived = out of the working view, never deleted (no UI yet — deferred)'),
+  "receivedAt": zod.string(),
+  "receivedBy": zod.string().optional(),
+  "receivedIp": zod.string().optional(),
+  "derivation": zod.object({
+  "op": zod.enum(['split', 'merge']),
+  "sources": zod.array(zod.object({
+  "fileId": zod.string(),
+  "pages": zod.array(zod.number()).min(recordPlacementResponseFilesItemDerivationSourcesItemPagesMin).max(recordPlacementResponseFilesItemDerivationSourcesItemPagesMax)
+}))
+}).optional().describe('derived files only — lineage back to immutable sources')
+}).describe('One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).\n')).optional().describe('SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),

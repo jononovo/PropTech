@@ -22,6 +22,7 @@ import {
   putPacketPdf,
   putPageThumbnail,
 } from "../../lib/packetObjectStore";
+import { receiveSourceFiles } from "../files/receive";
 
 type PacketState = NonNullable<Application["packet"]>;
 
@@ -296,6 +297,16 @@ router.post(
     }
 
     try {
+      // File-native intake phase 2: even the single-PDF packet upload lands in
+      // the SourceFile registry first (immutable, id-addressed) — acceptPacketPdf
+      // then consumes the temp copy for the (phase-3-doomed) packet pipeline.
+      await receiveSourceFiles({
+        app: ctx.app,
+        files: [{ tempPath, originalname: req.file.originalname, sizeBytes, mimetype: "application/pdf" }],
+        origin: "unsolicited",
+        ...(clientIp(req) ? { receivedIp: clientIp(req) } : {}),
+        requirePdf: true,
+      });
       const app = await acceptPacketPdf({
         appId: ctx.app.id,
         tempPath,

@@ -14,4 +14,6 @@ export interface UploadedFile {
   variantId?: string;
   /** audit trail — client IP the upload arrived from */
   uploaderIp?: string;
+  /** The SourceFile this upload landed as. */
+  fileId?: string;
 }

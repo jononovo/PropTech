@@ -2,18 +2,19 @@ import path from "node:path";
 import os from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { copyFileSync, existsSync, statSync, unlinkSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, rmSync, statSync, unlinkSync } from "node:fs";
+import { pipeline } from "node:stream/promises";
 import { Router, type IRouter, type Request } from "express";
 import multer from "multer";
-import { nanoid } from "nanoid";
 import { SetPacketFileRemovedBody } from "@workspace/api-zod";
 import { HttpError, isHttpError } from "../../lib/httpError";
 import { clientIp } from "../../lib/clientIp";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
-import { readPdfInfo, quickFileFlags } from "../packet/preflight";
+import { readPdfInfo } from "../packet/preflight";
 import { acceptPacketPdf } from "../packet/router";
-import { clearStaging, ensureStagingDir, stagedFilePath } from "./staging";
+import { openSourceFileStream } from "../../lib/packetObjectStore";
+import { receiveSourceFiles, storageExt } from "../files/receive";
 
 const run = promisify(execFile);
 
@@ -32,17 +33,17 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 100 * 1024 * 1024, files: 25 } });
 
-function sanitizeFilename(name: string): string {
-  return path.basename(name).replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120) || "file.pdf";
-}
-
 const router: IRouter = Router();
 
 /**
- * Multi-file intake v1 (Phase 5): drop N PDFs → reviewable manifest → per-file
- * X → assemble into ONE packet that flows through the unchanged single-packet
- * pipeline. Whole-drop validation: one bad file rejects the drop (fix and
- * re-drop) — a half-accepted manifest is worse than a clear error.
+ * Multi-file intake, registry-backed (file-native intake phase 2): drop N
+ * PDFs → each lands durably as an immutable SourceFile → reviewable manifest
+ * (manifest file id == SourceFile id) → per-file X → assemble reads the
+ * durable bytes. Local staging is gone — no "staged bytes missing" mode.
+ * Whole-drop validation: one bad file rejects the drop (fix and re-drop).
+ *
+ * NOTE: the assemble/concatenation step itself dies in phase 3 — files
+ * already land as themselves; only the run input is still one blob.
  */
 router.post("/applications/:applicationId/packet/files", upload.array("files", 25), async (req, res): Promise<void> => {
   const id = param(req, "applicationId");
@@ -55,34 +56,30 @@ router.post("/applications/:applicationId/packet/files", upload.array("files", 2
     if (app.packet?.state === "processing") {
       throw new HttpError(409, "Analyzer is running for this packet — wait for the run to land");
     }
-    if (files.length === 0) {
-      throw new HttpError(400, 'No files provided (multipart field name must be "files")');
-    }
 
-    // Validate + measure every file BEFORE any state lands.
-    const entries: ManifestFile[] = [];
-    for (const f of files) {
-      const filename = sanitizeFilename(f.originalname);
-      if (!filename.toLowerCase().endsWith(".pdf")) {
-        throw new HttpError(400, `${filename}: not a PDF — the whole drop was rejected, fix and re-drop`);
-      }
-      const info = await readPdfInfo(f.path);
-      if ("error" in info) throw new HttpError(400, `${filename}: ${info.error}`);
-      if (info.encrypted) throw new HttpError(400, `${filename}: encrypted — remove the password and re-drop`);
-      entries.push({
-        id: `pf-${nanoid(8)}`,
-        filename,
+    // Unified receive: validates the whole drop, stores immutable bytes,
+    // appends registry rows + file.received ledger events in one tx.
+    const received = await receiveSourceFiles({
+      app,
+      files: files.map((f) => ({
+        tempPath: f.path,
+        originalname: f.originalname,
         sizeBytes: f.size,
-        pages: info.pages,
-        flags: await quickFileFlags(f.path),
-        removed: false,
-      });
-    }
+        mimetype: "application/pdf",
+      })),
+      origin: "unsolicited",
+      ...(clientIp(req) ? { receivedIp: clientIp(req) } : {}),
+      requirePdf: true,
+    });
 
-    // Stage bytes (replacing any previous manifest's staging), then persist.
-    clearStaging(id!);
-    ensureStagingDir(id!);
-    entries.forEach((e, i) => copyFileSync(files[i]!.path, stagedFilePath(id!, e.id)));
+    const entries: ManifestFile[] = received.files.map((sf) => ({
+      id: sf.id,
+      filename: sf.filename,
+      sizeBytes: sf.sizeBytes,
+      pages: sf.pages ?? 0,
+      flags: sf.flags ?? [],
+      removed: false,
+    }));
     const updated = await updateApplication(id!, (a) => {
       a.packetManifest = { files: entries, createdAt: new Date().toISOString() };
       return a;
@@ -129,11 +126,14 @@ router.post("/applications/:applicationId/packet/files/:fileId", async (req, res
 
 /**
  * Concatenate kept files (manifest order, pdfunite) into ONE packet PDF and
- * push it through the exact single-packet acceptance path. Global page
- * addressing everywhere downstream; packet.files records provenance spans.
+ * push it through the exact single-packet acceptance path. Bytes come from
+ * the durable SourceFile registry — re-assemble works any time. Global page
+ * addressing downstream; packet.files records provenance spans. (Dies in
+ * phase 3 — runs will take the file set directly.)
  */
 router.post("/applications/:applicationId/packet/assemble", async (req, res): Promise<void> => {
   const id = param(req, "applicationId");
+  const scratch = path.join(os.tmpdir(), `packet-assemble-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   try {
     if (!isSafeSegment(id)) throw new HttpError(400, "Invalid application id");
     const app = await readApplication(id);
@@ -143,11 +143,6 @@ router.post("/applications/:applicationId/packet/assemble", async (req, res): Pr
     if (manifest.assembledAt) throw new HttpError(409, "Manifest already assembled — re-drop to start over");
     const kept = manifest.files.filter((f) => !f.removed);
     if (kept.length === 0) throw new HttpError(400, "Every file was removed — keep at least one or re-drop");
-    const missing = kept.filter((f) => !existsSync(stagedFilePath(id!, f.id)));
-    if (missing.length > 0) {
-      throw new HttpError(409,
-        `Staged bytes missing for ${missing.map((f) => f.filename).join(", ")} — re-drop the files`);
-    }
 
     // provenance: global page span per source file, in manifest order
     const files: { filename: string; pages: [number, number] }[] = [];
@@ -157,23 +152,38 @@ router.post("/applications/:applicationId/packet/assemble", async (req, res): Pr
       cursor += f.pages;
     }
 
-    const tempPath = path.join(os.tmpdir(), `packet-assemble-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`);
-    if (kept.length === 1) {
-      copyFileSync(stagedFilePath(id!, kept[0]!.id), tempPath);
+    // Pull durable bytes to scratch from the SourceFile registry.
+    mkdirSync(scratch, { recursive: true });
+    const localPaths: string[] = [];
+    for (const f of kept) {
+      const sf = (app.files ?? []).find((x) => x.id === f.id);
+      const stream = sf ? await openSourceFileStream(id!, sf.id, storageExt(sf)) : undefined;
+      if (!stream) {
+        throw new HttpError(409, `Bytes missing for ${f.filename} — re-drop the files`);
+      }
+      const dest = path.join(scratch, `${f.id}.pdf`);
+      await pipeline(stream, createWriteStream(dest));
+      localPaths.push(dest);
+    }
+
+    const tempPath = path.join(scratch, "assembled.pdf");
+    if (localPaths.length === 1) {
+      // single file: pass through untouched
+      localPaths[0] && (await run("cp", [localPaths[0], tempPath]));
     } else {
-      await run("pdfunite", [...kept.map((f) => stagedFilePath(id!, f.id)), tempPath]).catch((err: unknown) => {
+      await run("pdfunite", [...localPaths, tempPath]).catch((err: unknown) => {
         throw new HttpError(500, `pdfunite failed: ${err instanceof Error ? err.message : String(err)}`);
       });
     }
     const info = await readPdfInfo(tempPath);
     if ("error" in info) {
-      unlinkSync(tempPath);
       throw new HttpError(500, `Assembled packet does not parse: ${info.error}`);
     }
     const originalName = kept.length === 1
       ? kept[0]!.filename
       : `assembled-packet-${kept.length}-files.pdf`;
 
+    // acceptPacketPdf consumes tempPath (it unlinks it); scratch dir cleanup below.
     const accepted = await acceptPacketPdf({
       appId: id!,
       tempPath,
@@ -184,7 +194,6 @@ router.post("/applications/:applicationId/packet/assemble", async (req, res): Pr
       consumeManifest: true,
       ...(clientIp(req) ? { uploaderIp: clientIp(req) } : {}),
     });
-    clearStaging(id!); // consumed — staged bytes are gone by design (no defer queue in v1)
     res.json(accepted);
   } catch (err) {
     if (isHttpError(err)) {
@@ -192,6 +201,8 @@ router.post("/applications/:applicationId/packet/assemble", async (req, res): Pr
       return;
     }
     throw err;
+  } finally {
+    if (existsSync(scratch)) rmSync(scratch, { recursive: true, force: true });
   }
 });
 

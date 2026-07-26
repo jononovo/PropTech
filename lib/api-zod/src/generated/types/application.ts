@@ -15,6 +15,7 @@ import type { DocumentApproval } from './documentApproval';
 import type { ManualPlacement } from './manualPlacement';
 import type { PacketManifest } from './packetManifest';
 import type { PacketState } from './packetState';
+import type { SourceFile } from './sourceFile';
 import type { Template } from './template';
 import type { TemplateRepinEvent } from './templateRepinEvent';
 
@@ -33,6 +34,8 @@ export interface Application {
   verdicts?: ApplicationVerdicts;
   packet?: PacketState;
   packetManifest?: PacketManifest;
+  /** SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields. */
+  files?: SourceFile[];
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];

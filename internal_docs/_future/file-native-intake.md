@@ -217,9 +217,17 @@ request), which is what it really was.
 1. **Ledger** (table, `recordEvent`, emit from all existing mutations, boring
    UI page). Zero schema breakage, immediate value, and every later step
    then audits itself from day one.
-2. **SourceFile registry + unified receive** (files land as themselves;
-   uploads and drops unified; rename/archive; per-file flags at drop).
-   Packet flow still runs on single files during this step.
+2. **SourceFile registry + unified receive** — SHIPPED Jul 26. `app.files`
+   registry; `receiveSourceFiles()` is the ONE receive seam (features/files);
+   all three entry points (unsolicited drop `POST /files`, solicited block
+   upload, manifest drop, plus single packet upload) route through it. Bytes
+   immutable + id-addressed at `applications/<appId>/files/<fileId><ext>`;
+   per-file flags/sha/pages at drop; rename = metadata + ledger event
+   (`PATCH /files/:fileId`); bytes served at `GET /files/:fileId`. Local
+   packet staging DELETED — assemble reads durable registry bytes (legacy
+   pf- manifests must re-drop). Upload delete archives the registry row
+   (status field only, no UI — archive deferred). Packet concatenation
+   itself still stands until phase 3.
 3. **File-native runs** (contract + worker + kick/gate on file sets; delete
    concatenation, manifest, packet blob). The big one.
 4. **Review room on FileSpans** + solicited-upload approval flow w/ caveat

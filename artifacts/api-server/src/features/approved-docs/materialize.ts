@@ -5,10 +5,11 @@ import { updateApplication, type Application } from "../intake/store";
 import { findBlock } from "../intake/blocks";
 import { readSidecar } from "../analysis/store";
 import {
-  openIntakeUploadStream,
   openPacketPdfStream,
+  openSourceFileStream,
   putApprovedObject,
 } from "../../lib/packetObjectStore";
+import { storageExt } from "../files/receive";
 import { HttpError } from "../../lib/httpError";
 import { buildSidecarMarkdown } from "./frontmatter";
 import { insertApprovedDoc, liveBasenames, type ApprovedDoc } from "./registry";
@@ -134,7 +135,10 @@ export async function materializeApproval(app: Application, blockId: string): Pr
       if (!upload!.filename.toLowerCase().endsWith(".pdf")) {
         throw new HttpError(502, `Only PDF uploads can be materialized (got ${upload!.filename}) — upload a PDF version or run it through a packet`);
       }
-      const uploadStream = await openIntakeUploadStream(app.id, blockId, upload!.filename);
+      // Uploads live id-addressed in the SourceFile registry (phase 2).
+      const sf = (app.files ?? []).find((f) => f.id === upload!.fileId);
+      if (!sf) throw new HttpError(502, `Upload ${upload!.filename} has no SourceFile registry entry`);
+      const uploadStream = await openSourceFileStream(app.id, sf.id, storageExt(sf));
       if (!uploadStream) throw new HttpError(502, `Upload ${upload!.filename} missing from storage`);
       pdfBytes = await streamToBuffer(uploadStream);
       doc = {

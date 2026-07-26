@@ -2,6 +2,15 @@
 
 Document-ops platform for lending compliance: define document templates, collect applicant documents, and (in later phases) split/classify/score 300-page loan packets with AI + human verdicts. **Sheaf is the product brand; Homium is the client** whose deposit-assistance program runs inside it — no Homium branding in the app shell. The analyzer's source of truth is the analyzer build spec at `attached_assets/homium-analyzer-spec-v0.7-FINAL.md` (supersedes ALL prior spec versions — older copies are deleted; defers to the portal docs wherever they overlap).
 
+## ZERO backward compatibility — standing order (Jul 26 2026, until further notice)
+
+**Never build, keep, or ship backward compatibility of any kind.** No legacy
+fallbacks, no dual read/write paths, no "absent on older records" tolerance,
+no migration shims, no deprecated-but-kept functions or routes. When a model
+changes, delete the old code path entirely and migrate or delete old fixture
+data. Code does exactly what the current features need — nothing else. If a
+change breaks old data, the old data is wrong, not the change.
+
 ## Architecture map — READ THIS FIRST
 
 | Folder | Role |

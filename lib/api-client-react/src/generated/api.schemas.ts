@@ -366,300 +366,95 @@ export interface UploadedFile {
   variantId?: string;
   /** audit trail — client IP the upload arrived from */
   uploaderIp?: string;
+  /** The SourceFile this upload landed as. */
+  fileId?: string;
 }
 
-/**
- * descriptorField key -> value, keys exactly as the template block declares
- */
-export type ApplicationVariantDescriptor = {[key: string]: string};
+export type SourceFileKind = typeof SourceFileKind[keyof typeof SourceFileKind];
+
+
+export const SourceFileKind = {
+  original: 'original',
+  derived: 'derived',
+} as const;
 
 /**
- * One real-world instance of a set block's requirement on THIS application ("Chase ····1234", "Jane Doe · 1990-04-24"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.
+ * solicited = uploaded against a block/variant with declared intent
  */
-export interface ApplicationVariant {
-  id: string;
-  /** descriptorField key -> value, keys exactly as the template block declares */
-  descriptor: ApplicationVariantDescriptor;
-  /** server-built display label (descriptor values joined) */
-  label: string;
-  createdAt: string;
-}
+export type SourceFileOrigin = typeof SourceFileOrigin[keyof typeof SourceFileOrigin];
+
+
+export const SourceFileOrigin = {
+  unsolicited: 'unsolicited',
+  solicited: 'solicited',
+} as const;
 
 /**
- * A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.
+ * archived = out of the working view, never deleted (no UI yet — deferred)
  */
-export interface VariantShapeInput {
-  /** library display name, unique */
-  name: string;
-  variantNoun: string;
-  /** @minItems 1 */
-  descriptorFields: DescriptorField[];
-  docsPerVariant?: DocsPerVariant;
-}
+export type SourceFileStatus = typeof SourceFileStatus[keyof typeof SourceFileStatus];
 
-export type VariantShape = VariantShapeInput & {
-  id: string;
-  /** seeded built-in (top document types) — shown first in the picker */
-  preset?: boolean;
+
+export const SourceFileStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export type SourceFileDerivationOp = typeof SourceFileDerivationOp[keyof typeof SourceFileDerivationOp];
+
+
+export const SourceFileDerivationOp = {
+  split: 'split',
+  merge: 'merge',
+} as const;
+
+export type SourceFileDerivationSourcesItem = {
+  fileId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
 };
 
 /**
- * extract = pages pulled from the packet PDF; copy = direct intake upload copied whole
+ * derived files only — lineage back to immutable sources
  */
-export type ApprovedDocumentSource = typeof ApprovedDocumentSource[keyof typeof ApprovedDocumentSource];
-
-
-export const ApprovedDocumentSource = {
-  extract: 'extract',
-  copy: 'copy',
-} as const;
+export type SourceFileDerivation = {
+  op: SourceFileDerivationOp;
+  sources: SourceFileDerivationSourcesItem[];
+};
 
 /**
- * One approved, materialized document — the unit of the approved registry. Bytes live flat at approved/<applicationId>/<basename>.pdf + .md; this is the row that makes them findable. Append-only; re-acceptance supersedes (supersededBy), never deletes.
+ * One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).
  */
-export interface ApprovedDocument {
+export interface SourceFile {
+  /** sf-<nanoid8>, minted at intake, never reused */
   id: string;
-  applicationId: string;
-  blockId: string;
-  /** set blocks — which variant this document belongs to */
+  kind: SourceFileKind;
+  /** solicited = uploaded against a block/variant with declared intent */
+  origin: SourceFileOrigin;
+  /** current assigned name (rename = metadata) */
+  filename: string;
+  /** as received (originals) */
+  originalFilename?: string;
+  /** solicited intent, if any */
+  blockId?: string;
   variantId?: string;
-  /** shared basename of the .pdf/.md pair in the approved store */
-  basename: string;
-  /** extract = pages pulled from the packet PDF; copy = direct intake upload copied whole */
-  source: ApprovedDocumentSource;
-  /**
-     * packet page range [first, last] (extract only)
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages?: number[];
-  /** analyzer run the assignment came from (extract only) */
-  runId?: string;
-  /**
-     * When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
-  packetSha256?: string;
-  /** original upload filename (copy only) */
-  sourceFilename?: string;
-  approvedBy: string;
-  approvedAt: string;
-  /** id of the newer row that replaced this one */
-  supersededBy?: string;
+  sizeBytes: number;
+  /** PDFs only */
+  pages?: number;
+  sha256?: string;
+  /** per-file deterministic pre-flight flags, computed at drop */
+  flags?: string[];
+  /** archived = out of the working view, never deleted (no UI yet — deferred) */
+  status: SourceFileStatus;
+  receivedAt: string;
+  receivedBy?: string;
+  receivedIp?: string;
+  /** derived files only — lineage back to immutable sources */
+  derivation?: SourceFileDerivation;
 }
-
-/**
- * good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note.
- */
-export type PageDecisionDecision = typeof PageDecisionDecision[keyof typeof PageDecisionDecision];
-
-
-export const PageDecisionDecision = {
-  good: 'good',
-  bad: 'bad',
-  flag_accepted: 'flag_accepted',
-} as const;
-
-/**
- * A per-page pre-step decision inside the document approval flow.
- */
-export interface PageDecision {
-  /** 1-based packet page */
-  page: number;
-  /** good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note. */
-  decision: PageDecisionDecision;
-  note?: string;
-}
-
-export type DocumentApprovalOutcome = typeof DocumentApprovalOutcome[keyof typeof DocumentApprovalOutcome];
-
-
-export const DocumentApprovalOutcome = {
-  approved: 'approved',
-  approved_incomplete: 'approved_incomplete',
-  rejected: 'rejected',
-} as const;
-
-export type DocumentApprovalDecidedBy = typeof DocumentApprovalDecidedBy[keyof typeof DocumentApprovalDecidedBy];
-
-
-export const DocumentApprovalDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-/**
- * A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.
- */
-export interface DocumentApproval {
-  id: string;
-  blockId: string;
-  /** set blocks — which variant this document files into */
-  variantId?: string;
-  /** analyzer run whose grouping this approval is based on */
-  runId: string;
-  /**
-     * inclusive 1-based packet page range [first, last]
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
-  pageDecisions?: PageDecision[];
-  outcome: DocumentApprovalOutcome;
-  decidedBy: DocumentApprovalDecidedBy;
-  decidedAt: string;
-  /** registry row created by materialization (approved outcomes only) */
-  approvedDocId?: string;
-  /**
-     * For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
-}
-
-export type DocumentApprovalInputOutcome = typeof DocumentApprovalInputOutcome[keyof typeof DocumentApprovalInputOutcome];
-
-
-export const DocumentApprovalInputOutcome = {
-  approved: 'approved',
-  approved_incomplete: 'approved_incomplete',
-  rejected: 'rejected',
-} as const;
-
-export type DocumentApprovalInputDecidedBy = typeof DocumentApprovalInputDecidedBy[keyof typeof DocumentApprovalInputDecidedBy];
-
-
-export const DocumentApprovalInputDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-export interface DocumentApprovalInput {
-  blockId: string;
-  variantId?: string;
-  runId: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
-  pageDecisions?: PageDecision[];
-  outcome: DocumentApprovalInputOutcome;
-  decidedBy: DocumentApprovalInputDecidedBy;
-  /**
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
-}
-
-export type MergeResolutionDecision = typeof MergeResolutionDecision[keyof typeof MergeResolutionDecision];
-
-
-export const MergeResolutionDecision = {
-  merged: 'merged',
-  dismissed: 'dismissed',
-} as const;
-
-export type MergeResolutionDecidedBy = typeof MergeResolutionDecidedBy[keyof typeof MergeResolutionDecidedBy];
-
-
-export const MergeResolutionDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-/**
- * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:p<f>-<l>|p<f>-<l>" (ranges sorted by first page). Latest decision wins — reversible.
- */
-export interface MergeResolution {
-  runId: string;
-  /**
-     * the two inclusive page ranges the recommendation covers
-     * @minItems 2
-     * @maxItems 2
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  ranges: number[][];
-  decision: MergeResolutionDecision;
-  decidedBy: MergeResolutionDecidedBy;
-  decidedAt: string;
-}
-
-export type MergeResolutionInputDecision = typeof MergeResolutionInputDecision[keyof typeof MergeResolutionInputDecision];
-
-
-export const MergeResolutionInputDecision = {
-  merged: 'merged',
-  dismissed: 'dismissed',
-} as const;
-
-export type MergeResolutionInputDecidedBy = typeof MergeResolutionInputDecidedBy[keyof typeof MergeResolutionInputDecidedBy];
-
-
-export const MergeResolutionInputDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-export interface MergeResolutionInput {
-  runId: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  ranges: number[][];
-  decision: MergeResolutionInputDecision;
-  decidedBy: MergeResolutionInputDecidedBy;
-}
-
-export interface DocumentUpload {
-  file: Blob;
-}
-
-export interface ApplicationInput {
-  family: string;
-  version: number;
-  /** @minLength 1 */
-  applicantName: string;
-  projectedClosingDate?: string;
-}
-
-export interface ApplicationUpdate {
-  projectedClosingDate?: string | null;
-}
-
-export interface ApplicationSummary {
-  id: string;
-  family: string;
-  version: number;
-  templateName: string;
-  applicantName: string;
-  createdAt: string;
-  docsFiled: number;
-  docsTotal: number;
-  projectedClosingDate?: string;
-}
-
-/**
- * blockId -> field values map
- */
-export type ApplicationFieldValues = {[key: string]: {[key: string]: string}};
-
-/**
- * blockId -> uploaded files
- */
-export type ApplicationUploads = {[key: string]: UploadedFile[]};
 
 export type VerdictVerdict = typeof VerdictVerdict[keyof typeof VerdictVerdict];
 
@@ -691,29 +486,6 @@ export interface Verdict {
   decidedBy: VerdictDecidedBy;
   runId?: string;
 }
-
-/**
- * blockId -> latest human verdict
- */
-export type ApplicationVerdicts = {[key: string]: Verdict};
-
-/**
- * blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.
- */
-export type ApplicationMaterializationErrors = {[key: string]: {
-  message: string;
-  at: string;
-}};
-
-/**
- * Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.
- */
-export type ApplicationMergeResolutions = {[key: string]: MergeResolution};
-
-/**
- * blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts.
- */
-export type ApplicationVariants = {[key: string]: ApplicationVariant[]};
 
 export type PacketStateState = typeof PacketStateState[keyof typeof PacketStateState];
 
@@ -829,6 +601,129 @@ export interface TemplateRepinEvent {
   decidedAt: string;
 }
 
+/**
+ * good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note.
+ */
+export type PageDecisionDecision = typeof PageDecisionDecision[keyof typeof PageDecisionDecision];
+
+
+export const PageDecisionDecision = {
+  good: 'good',
+  bad: 'bad',
+  flag_accepted: 'flag_accepted',
+} as const;
+
+/**
+ * A per-page pre-step decision inside the document approval flow.
+ */
+export interface PageDecision {
+  /** 1-based packet page */
+  page: number;
+  /** good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note. */
+  decision: PageDecisionDecision;
+  note?: string;
+}
+
+export type DocumentApprovalOutcome = typeof DocumentApprovalOutcome[keyof typeof DocumentApprovalOutcome];
+
+
+export const DocumentApprovalOutcome = {
+  approved: 'approved',
+  approved_incomplete: 'approved_incomplete',
+  rejected: 'rejected',
+} as const;
+
+export type DocumentApprovalDecidedBy = typeof DocumentApprovalDecidedBy[keyof typeof DocumentApprovalDecidedBy];
+
+
+export const DocumentApprovalDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+/**
+ * A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.
+ */
+export interface DocumentApproval {
+  id: string;
+  blockId: string;
+  /** set blocks — which variant this document files into */
+  variantId?: string;
+  /** analyzer run whose grouping this approval is based on */
+  runId: string;
+  /**
+     * inclusive 1-based packet page range [first, last]
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+  pageDecisions?: PageDecision[];
+  outcome: DocumentApprovalOutcome;
+  decidedBy: DocumentApprovalDecidedBy;
+  decidedAt: string;
+  /** registry row created by materialization (approved outcomes only) */
+  approvedDocId?: string;
+  /**
+     * For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
+}
+
+export type MergeResolutionDecision = typeof MergeResolutionDecision[keyof typeof MergeResolutionDecision];
+
+
+export const MergeResolutionDecision = {
+  merged: 'merged',
+  dismissed: 'dismissed',
+} as const;
+
+export type MergeResolutionDecidedBy = typeof MergeResolutionDecidedBy[keyof typeof MergeResolutionDecidedBy];
+
+
+export const MergeResolutionDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+/**
+ * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:p<f>-<l>|p<f>-<l>" (ranges sorted by first page). Latest decision wins — reversible.
+ */
+export interface MergeResolution {
+  runId: string;
+  /**
+     * the two inclusive page ranges the recommendation covers
+     * @minItems 2
+     * @maxItems 2
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  ranges: number[][];
+  decision: MergeResolutionDecision;
+  decidedBy: MergeResolutionDecidedBy;
+  decidedAt: string;
+}
+
+/**
+ * descriptorField key -> value, keys exactly as the template block declares
+ */
+export type ApplicationVariantDescriptor = {[key: string]: string};
+
+/**
+ * One real-world instance of a set block's requirement on THIS application ("Chase ····1234", "Jane Doe · 1990-04-24"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.
+ */
+export interface ApplicationVariant {
+  id: string;
+  /** descriptorField key -> value, keys exactly as the template block declares */
+  descriptor: ApplicationVariantDescriptor;
+  /** server-built display label (descriptor values joined) */
+  label: string;
+  createdAt: string;
+}
+
 export type ManualPlacementDecidedBy = typeof ManualPlacementDecidedBy[keyof typeof ManualPlacementDecidedBy];
 
 
@@ -856,6 +751,39 @@ export interface ManualPlacement {
   runId?: string;
 }
 
+/**
+ * blockId -> field values map
+ */
+export type ApplicationFieldValues = {[key: string]: {[key: string]: string}};
+
+/**
+ * blockId -> uploaded files
+ */
+export type ApplicationUploads = {[key: string]: UploadedFile[]};
+
+/**
+ * blockId -> latest human verdict
+ */
+export type ApplicationVerdicts = {[key: string]: Verdict};
+
+/**
+ * blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.
+ */
+export type ApplicationMaterializationErrors = {[key: string]: {
+  message: string;
+  at: string;
+}};
+
+/**
+ * Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.
+ */
+export type ApplicationMergeResolutions = {[key: string]: MergeResolution};
+
+/**
+ * blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts.
+ */
+export type ApplicationVariants = {[key: string]: ApplicationVariant[]};
+
 export interface Application {
   id: string;
   family: string;
@@ -871,6 +799,8 @@ export interface Application {
   verdicts?: ApplicationVerdicts;
   packet?: PacketState;
   packetManifest?: PacketManifest;
+  /** SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields. */
+  files?: SourceFile[];
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
@@ -884,6 +814,181 @@ export interface Application {
   variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */
   manualPlacements?: ManualPlacement[];
+}
+
+export interface ReceiveFilesResponse {
+  /** the SourceFiles minted by THIS drop, in received order */
+  files: SourceFile[];
+  application: Application;
+}
+
+export interface UpdateSourceFileBody {
+  /**
+     * new assigned name — bytes and id unchanged, ledger records from→to
+     * @minLength 1
+     * @maxLength 120
+     */
+  filename?: string;
+}
+
+/**
+ * A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.
+ */
+export interface VariantShapeInput {
+  /** library display name, unique */
+  name: string;
+  variantNoun: string;
+  /** @minItems 1 */
+  descriptorFields: DescriptorField[];
+  docsPerVariant?: DocsPerVariant;
+}
+
+export type VariantShape = VariantShapeInput & {
+  id: string;
+  /** seeded built-in (top document types) — shown first in the picker */
+  preset?: boolean;
+};
+
+/**
+ * extract = pages pulled from the packet PDF; copy = direct intake upload copied whole
+ */
+export type ApprovedDocumentSource = typeof ApprovedDocumentSource[keyof typeof ApprovedDocumentSource];
+
+
+export const ApprovedDocumentSource = {
+  extract: 'extract',
+  copy: 'copy',
+} as const;
+
+/**
+ * One approved, materialized document — the unit of the approved registry. Bytes live flat at approved/<applicationId>/<basename>.pdf + .md; this is the row that makes them findable. Append-only; re-acceptance supersedes (supersededBy), never deletes.
+ */
+export interface ApprovedDocument {
+  id: string;
+  applicationId: string;
+  blockId: string;
+  /** set blocks — which variant this document belongs to */
+  variantId?: string;
+  /** shared basename of the .pdf/.md pair in the approved store */
+  basename: string;
+  /** extract = pages pulled from the packet PDF; copy = direct intake upload copied whole */
+  source: ApprovedDocumentSource;
+  /**
+     * packet page range [first, last] (extract only)
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages?: number[];
+  /** analyzer run the assignment came from (extract only) */
+  runId?: string;
+  /**
+     * When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
+  packetSha256?: string;
+  /** original upload filename (copy only) */
+  sourceFilename?: string;
+  approvedBy: string;
+  approvedAt: string;
+  /** id of the newer row that replaced this one */
+  supersededBy?: string;
+}
+
+export type DocumentApprovalInputOutcome = typeof DocumentApprovalInputOutcome[keyof typeof DocumentApprovalInputOutcome];
+
+
+export const DocumentApprovalInputOutcome = {
+  approved: 'approved',
+  approved_incomplete: 'approved_incomplete',
+  rejected: 'rejected',
+} as const;
+
+export type DocumentApprovalInputDecidedBy = typeof DocumentApprovalInputDecidedBy[keyof typeof DocumentApprovalInputDecidedBy];
+
+
+export const DocumentApprovalInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface DocumentApprovalInput {
+  blockId: string;
+  variantId?: string;
+  runId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+  pageDecisions?: PageDecision[];
+  outcome: DocumentApprovalInputOutcome;
+  decidedBy: DocumentApprovalInputDecidedBy;
+  /**
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
+}
+
+export type MergeResolutionInputDecision = typeof MergeResolutionInputDecision[keyof typeof MergeResolutionInputDecision];
+
+
+export const MergeResolutionInputDecision = {
+  merged: 'merged',
+  dismissed: 'dismissed',
+} as const;
+
+export type MergeResolutionInputDecidedBy = typeof MergeResolutionInputDecidedBy[keyof typeof MergeResolutionInputDecidedBy];
+
+
+export const MergeResolutionInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface MergeResolutionInput {
+  runId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  ranges: number[][];
+  decision: MergeResolutionInputDecision;
+  decidedBy: MergeResolutionInputDecidedBy;
+}
+
+export interface DocumentUpload {
+  file: Blob;
+}
+
+export interface ApplicationInput {
+  family: string;
+  version: number;
+  /** @minLength 1 */
+  applicantName: string;
+  projectedClosingDate?: string;
+}
+
+export interface ApplicationUpdate {
+  projectedClosingDate?: string | null;
+}
+
+export interface ApplicationSummary {
+  id: string;
+  family: string;
+  version: number;
+  templateName: string;
+  applicantName: string;
+  createdAt: string;
+  docsFiled: number;
+  docsTotal: number;
+  projectedClosingDate?: string;
 }
 
 export interface TemplateUpgradeInput {
@@ -1187,6 +1292,21 @@ export type UploadDocumentParams = {
  * Set blocks — tag the upload to one of the block's variants (400 if unknown).
  */
 variantId?: string;
+};
+
+export type ReceiveFilesParams = {
+/**
+ * Solicited intent — must be a document block on the pinned template.
+ */
+blockId?: string;
+/**
+ * Solicited intent — one of the block's variants (400 if unknown).
+ */
+variantId?: string;
+};
+
+export type ReceiveFilesBody = {
+  files?: Blob[];
 };
 
 export type AddVariantBodyDescriptor = {[key: string]: string};

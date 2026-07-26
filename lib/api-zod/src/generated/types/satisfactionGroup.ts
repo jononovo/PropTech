@@ -5,6 +5,7 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { FileSpan } from './fileSpan';
 import type { SatisfactionGroupDescriptorGuess } from './satisfactionGroupDescriptorGuess';
 
 /**
@@ -15,12 +16,8 @@ export interface SatisfactionGroup {
   variantId?: string;
   /** descriptor values the pass read off the documents (keys = the block's descriptorFields) */
   descriptorGuess?: SatisfactionGroupDescriptorGuess;
-  /**
-     * [first,last] of each run document in this pile
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  docPages: number[][];
+  /** each run document in this pile, as its file-qualified spans */
+  docSpans: FileSpan[][];
   /** human sentence on sequence coverage (periods present, holes) */
   coverage?: string;
 }

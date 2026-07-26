@@ -48,8 +48,7 @@ router.post("/applications/:applicationId/document-approvals", async (req, res):
     blockId: body.blockId,
     ...(body.variantId ? { variantId: body.variantId } : {}),
     runId: body.runId,
-    pages: body.pages as [number, number],
-    ...(body.pageRanges?.length ? { pageRanges: body.pageRanges as [number, number][] } : {}),
+    spans: body.spans,
     ...(body.pageDecisions ? { pageDecisions: body.pageDecisions } : {}),
     outcome: body.outcome,
     decidedBy: body.decidedBy,
@@ -68,22 +67,21 @@ router.post("/applications/:applicationId/document-approvals", async (req, res):
       } else if (body.variantId) {
         throw new HttpError(409, "variantId only applies to set blocks");
       }
-      const [first, last] = approval.pages;
-      if (!Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first) {
-        throw new HttpError(400, "pages must be an ascending 1-based range");
-      }
-      if (approval.pageRanges) {
-        let prev = 0;
-        for (const [f, l] of approval.pageRanges) {
-          if (!Number.isInteger(f) || !Number.isInteger(l) || f <= prev || l < f) {
-            throw new HttpError(400, "pageRanges must be ascending, non-overlapping 1-based ranges");
-          }
-          prev = l;
+      // spans: each a valid in-file range; per file ascending and non-overlapping
+      const prevByFile = new Map<string, number>();
+      for (const s of approval.spans) {
+        const [f, l] = s.pages;
+        if (f === undefined || l === undefined || !Number.isInteger(f) || !Number.isInteger(l) || f < 1 || l < f) {
+          throw new HttpError(400, "each span must carry an ascending 1-based [first,last]");
         }
-        const ranges = approval.pageRanges;
-        if (ranges[0]![0] !== first || ranges[ranges.length - 1]![1] !== last) {
-          throw new HttpError(400, "pages must be the envelope of pageRanges");
+        const sf = (app.files ?? []).find((file) => file.id === s.fileId);
+        if (!sf) throw new HttpError(400, `span addresses unknown file ${s.fileId}`);
+        if (sf.pages !== undefined && l > sf.pages) {
+          throw new HttpError(400, `span exceeds the ${sf.pages}-page file ${sf.filename}`);
         }
+        const prev = prevByFile.get(s.fileId) ?? 0;
+        if (f <= prev) throw new HttpError(400, "spans within a file must be ascending and non-overlapping");
+        prevByFile.set(s.fileId, l);
       }
       // append-only decision trail, newest first
       app.documentApprovals = [approval, ...(app.documentApprovals ?? [])];
@@ -92,7 +90,7 @@ router.post("/applications/:applicationId/document-approvals", async (req, res):
         action: `document.${approval.outcome}`,
         target: { type: "block", id: body.blockId, label: block.name },
         detail: {
-          pages: approval.pages,
+          spans: approval.spans,
           ...(body.variantId ? { variantId: body.variantId } : {}),
           runId: body.runId,
         },
@@ -108,11 +106,8 @@ router.post("/applications/:applicationId/document-approvals", async (req, res):
       // Same posture as block accepts: the decision stands even if
       // materialization fails — failure lands loudly on materializationErrors.
       try {
-        const { pageRanges: rawRanges, ...rest } = approval;
         const row = await materializeDocumentApproval(app, {
-          ...rest,
-          pages: approval.pages as [number, number],
-          ...(rawRanges ? { pageRanges: rawRanges as [number, number][] } : {}),
+          ...approval,
           outcome: approval.outcome as "approved" | "approved_incomplete",
         });
         await updateApplication(id!, (a) => {

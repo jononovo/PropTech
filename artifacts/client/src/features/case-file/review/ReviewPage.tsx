@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { ArrowLeft, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
 import { confidencePct, pageSpan, type CaseModel } from '../caseData';
 import { useCaseFile } from '../useCaseFile';
-import { buildReviewModel, pageImageUrl, type PageCell, type ReviewModel, type ReviewStop } from './reviewModel';
+import { buildReviewModel, globalPageImageUrl, type PageCell, type ReviewModel, type ReviewStop } from './reviewModel';
 import { CenterCard, ModeButton, Room, ScoreChip } from './components/chrome';
 import { AllClear, PageImage } from './components/PageViewer';
 import { FilmStrip } from './components/FilmStrip';
@@ -60,7 +60,7 @@ export function ReviewPage({ id }: { id: string }) {
 }
 
 /** One page in the document-mode spread — honest placeholder when no render exists. */
-function SpreadPage({ appId, runId, page }: { appId: string; runId: string; page: number }) {
+function SpreadPage({ src, page }: { src: string; page: number }) {
   const [broken, setBroken] = useState(false);
   return (
     <div className="shrink-0 h-full flex flex-col items-center gap-1.5">
@@ -71,7 +71,7 @@ function SpreadPage({ appId, runId, page }: { appId: string; runId: string; page
         </div>
       ) : (
         <img
-          src={pageImageUrl(appId, runId, page)}
+          src={src}
           alt={`Page ${page}`}
           data-testid={`img-spread-page-${page}`}
           onError={() => setBroken(true)}
@@ -93,10 +93,15 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
   const [ack, setAck] = useState<Set<number>>(new Set());
   const [armTick, setArmTick] = useState(0);
 
+  // global page numbers are the room's view currency; the index resolves them
+  // back to (fileId, in-file page) for image URLs and submissions
+  const imageUrl = (p: number, size?: 'full' | 'strip') =>
+    globalPageImageUrl(id, run.runId, review.index, p, size);
+
   // ── document-approval layer ────────────────────────────────────────────────
-  const approval = useDocApproval(id);
+  const approval = useDocApproval(id, review.index);
   const mergeRes = model.app.mergeResolutions ?? {};
-  const groups = useMemo(() => buildDocGroups(model, mergeRes), [model, mergeRes]);
+  const groups = useMemo(() => buildDocGroups(model, mergeRes, review.index), [model, mergeRes, review.index]);
   // landing rule: DOCUMENT mode on the first unsettled document
   const [docGroupId, setDocGroupId] = useState<string | null>(() => firstOpenGroup(groups)?.id ?? null);
   const docGroup = docGroupId ? groups.find((g) => g.id === docGroupId) : undefined;
@@ -309,20 +314,18 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
             {docGroup ? (
               <div className="absolute inset-0 overflow-auto p-4 md:p-6 flex items-start gap-6 bg-[var(--ops-inset)]">
                 {docGroup.pageList.map((p) => (
-                  <SpreadPage key={p} appId={id} runId={run.runId} page={p} />
+                  <SpreadPage key={p} src={imageUrl(p)} page={p} />
                 ))}
               </div>
             ) : emptyQueue ? (
               <AllClear onAll={() => switchMode('all')} onReport={() => setLocation(`/applications/${id}/triage`)} />
             ) : (
-              <PageImage appId={id} runId={run.runId} page={activePage} />
+              <PageImage runId={run.runId} page={activePage} imageUrl={imageUrl} />
             )}
           </div>
 
           {groups.length > 0 ? (
             <DocGroupsStrip
-              appId={id}
-              runId={run.runId}
               groups={groups}
               activePage={activePage}
               selectedGroupId={docGroup?.id ?? null}
@@ -331,18 +334,18 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
               onPageClick={jumpToPage}
               onGroupSelect={setDocGroupId}
               onDecide={onDecide}
-              onResolveMerge={(ranges, d) => approval.resolveMerge(run.runId, ranges, d)}
+              onResolveMerge={(spans, d) => approval.resolveMerge(run.runId, spans, d)}
               onQuickApprove={quickApprove}
+              imageUrl={imageUrl}
             />
           ) : (
             <FilmStrip
-              appId={id}
-              runId={run.runId}
               mode={mode}
               review={review}
               pos={pos}
               ack={ack}
               onJump={setIdx}
+              imageUrl={imageUrl}
             />
           )}
         </div>

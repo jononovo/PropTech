@@ -10,10 +10,14 @@ import type { AnalysisCoreFields } from './analysisCoreFields';
 import type { AnalysisDocumentExtractionsItem } from './analysisDocumentExtractionsItem';
 import type { AnalysisFlag } from './analysisFlag';
 import type { AnalysisScores } from './analysisScores';
-import type { AnalysisSegment } from './analysisSegment';
+import type { FileSpan } from './fileSpan';
 
 export interface AnalysisDocument {
-  segment: AnalysisSegment;
+  /**
+     * the document's pages as file-qualified spans, in reading order — ascending, non-overlapping; multiple spans = the analyzer read one document across ranges/files (merge recommendation surface)
+     * @minItems 1
+     */
+  spans: FileSpan[];
   /** Must resolve to a document block in the application's pinned template. */
   suggestedBlockId: string;
   confidence: number;

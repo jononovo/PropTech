@@ -33,15 +33,16 @@ router.post("/applications/:applicationId/merge-resolutions", async (req, res): 
     return;
   }
   const body = parsed.data;
-  const ranges = body.ranges as [number, number][];
-  for (const [f, l] of ranges) {
-    if (!Number.isInteger(f) || !Number.isInteger(l) || f < 1 || l < f) {
-      res.status(400).json({ error: "Each range must be an ascending 1-based [first,last]" });
+  const spans = body.spans.map((s) => ({ fileId: s.fileId, pages: s.pages as [number, number] }));
+  for (const s of spans) {
+    const [f, l] = s.pages;
+    if (!Number.isInteger(f) || !Number.isInteger(l) || f! < 1 || l! < f!) {
+      res.status(400).json({ error: "Each span must carry an ascending 1-based [first,last]" });
       return;
     }
   }
-  if (ranges[0]![0] === ranges[1]![0]) {
-    res.status(400).json({ error: "The two ranges must be distinct" });
+  if (spans[0]!.fileId === spans[1]!.fileId && spans[0]!.pages[0] === spans[1]!.pages[0]) {
+    res.status(400).json({ error: "The two spans must be distinct" });
     return;
   }
   // the run must exist on this application — resolutions never dangle
@@ -52,18 +53,18 @@ router.post("/applications/:applicationId/merge-resolutions", async (req, res): 
   }
   try {
     const app = await updateApplication(id!, (app, emit) => {
-      const key = mergeResolutionKey(body.runId, ranges);
+      const key = mergeResolutionKey(body.runId, spans);
       emit({
         actor: { kind: "user", name: body.decidedBy, ip: clientIp(req) },
         action: `merge.${body.decision}`,
         target: { type: "run", id: body.runId },
-        detail: { ranges },
+        detail: { spans },
       });
       app.mergeResolutions = {
         ...(app.mergeResolutions ?? {}),
         [key]: {
           runId: body.runId,
-          ranges,
+          spans,
           decision: body.decision,
           decidedBy: body.decidedBy,
           decidedAt: new Date().toISOString(),

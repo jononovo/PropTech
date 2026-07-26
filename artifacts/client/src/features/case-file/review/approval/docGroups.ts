@@ -1,10 +1,13 @@
-import type { AnalysisDocument, DocumentApproval } from '@workspace/api-client-react';
+import type { AnalysisDocument, DocumentApproval, FileSpan } from '@workspace/api-client-react';
 import { actionableFlags, type CaseModel } from '../../caseData';
+import { buildPageIndex, spanPageList, type PageIndex } from '../reviewModel';
 
 /**
  * Pure grouping for the document-approval flow: analyzer run → DocGroup[].
  * A group is the unit a human approves — one document as the analyzer split
- * it (a claim needing review), or an unassigned range. No React, no fetching.
+ * it (a claim needing review), or an unassigned span. File-native: the
+ * canonical identity of a group is its FileSpan[]; global page numbers are a
+ * view convenience derived from the run's page index. No React, no fetching.
  */
 
 export type PageDecisionValue = 'good' | 'bad' | 'flag_accepted';
@@ -12,20 +15,35 @@ export type MergeDecision = 'merged' | 'dismissed';
 
 /**
  * Canonical key for a merge recommendation — MUST stay in lockstep with the
- * server's features/merge-resolutions/mergeKey.ts: "<runId>:p<f>-<l>|p<f>-<l>",
- * ranges sorted by first page. Resolutions persist on the application under
- * this key, so the gate and the audit trail survive refreshes.
+ * server's features/merge-resolutions/mergeKey.ts:
+ * "<runId>:<fileId>:p<f>-<l>|<fileId>:p<f>-<l>", spans sorted by fileId then
+ * first page. Resolutions persist on the application under this key, so the
+ * gate and the audit trail survive refreshes.
  */
-export const mergeResolutionKey = (runId: string, ranges: [number, number][]) => {
-  const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
-  return `${runId}:${sorted.map(([f, l]) => `p${f}-${l}`).join('|')}`;
+export const mergeResolutionKey = (runId: string, spans: FileSpan[]) => {
+  const sorted = [...spans].sort((a, b) =>
+    a.fileId === b.fileId ? (a.pages[0] ?? 0) - (b.pages[0] ?? 0) : a.fileId.localeCompare(b.fileId),
+  );
+  return `${runId}:${sorted.map((s) => `${s.fileId}:p${s.pages[0]}-${s.pages[1]}`).join('|')}`;
 };
+
+const sameSpans = (a: FileSpan[], b: FileSpan[]) =>
+  a.length === b.length &&
+  a.every((s, i) => s.fileId === b[i]!.fileId && s.pages[0] === b[i]!.pages[0] && s.pages[1] === b[i]!.pages[1]);
+
+const sortSpans = (spans: FileSpan[]) =>
+  [...spans].sort((a, b) =>
+    a.fileId === b.fileId ? (a.pages[0] ?? 0) - (b.pages[0] ?? 0) : a.fileId.localeCompare(b.fileId),
+  );
 
 export interface DocGroup {
   id: string;
   kind: 'document' | 'unassigned';
-  /** inclusive 1-based page range */
+  /** the group's canonical address — every span making it up (>1 = merge or cross-file doc) */
+  spans: FileSpan[];
+  /** inclusive 1-based GLOBAL page envelope (view/sort only) */
   pages: [number, number];
+  /** every global page of the group, in reading order */
   pageList: number[];
   title: string;
   /** second header line (analyzer's document-specific name, when it adds info) */
@@ -38,20 +56,15 @@ export interface DocGroup {
   /** color band index; -1 = no color (standalone / unassigned — nothing to claim) */
   colorSlot: number;
   band?: 'hold' | 'attend';
-  /** latest per-document approval recorded for exactly these pages on this run */
+  /** latest per-document approval recorded for exactly these spans on this run */
   settled?: DocumentApproval;
   /** true when this group is a human-accepted merge of analyzer groups */
   merged?: boolean;
-  /** every [first,last] range making up the group (>1 = non-adjacent merge) */
-  ranges: [number, number][];
   /** id of another open group the analyzer filed under the SAME requirement — a recommended merge */
   mergeWith?: string;
   /** resolution key for the pending/dismissed recommendation with mergeWith */
   mergeKey?: string;
 }
-
-const rangeList = (first: number, last: number) =>
-  Array.from({ length: last - first + 1 }, (_, i) => first + i);
 
 /**
  * @param mergeResolutions Application.mergeResolutions — decision per
@@ -61,28 +74,32 @@ const rangeList = (first: number, last: number) =>
 export function buildDocGroups(
   model: CaseModel,
   mergeResolutions: Record<string, { decision: MergeDecision }> = {},
+  index?: PageIndex,
 ): DocGroup[] {
   const run = model.run;
   if (!run) return [];
+  const idx = index ?? buildPageIndex(run.input);
 
   const reqFor = (blockId: string) => model.reqs.find((r) => r.block.id === blockId);
   const blockName = (blockId: string) => reqFor(blockId)?.block.name ?? blockId;
 
+  const groupId = (spans: FileSpan[]) =>
+    `g-${spans.map((s) => `${s.fileId}:${s.pages[0]}-${s.pages[1]}`).join('+')}`;
+  const envelope = (spans: FileSpan[]): [number, number] => idx.globalEnvelope(spans) ?? [1, 1];
+
   const raw: DocGroup[] = [];
   for (const doc of run.documents) {
-    const [a, b] = doc.segment.pages;
-    const first = a ?? 1;
-    const last = b ?? first;
+    const spans = sortSpans(doc.spans);
     const flags = actionableFlags(doc);
     const fs = doc.scores.fraud_signal;
     const fraudHigh = fs != null && fs >= 0.3;
     const name = blockName(doc.suggestedBlockId);
     raw.push({
-      id: `g-${first}-${last}`,
+      id: groupId(spans),
       kind: 'document',
-      pages: [first, last],
-      ranges: [[first, last]],
-      pageList: rangeList(first, last),
+      spans,
+      pages: envelope(spans),
+      pageList: spanPageList(idx, spans),
       title: name,
       // analyzer's doc-specific name as the second line, when it adds info
       ...(doc.suggestedName && doc.suggestedName !== name ? { subtitle: doc.suggestedName } : {}),
@@ -96,15 +113,13 @@ export function buildDocGroups(
     });
   }
   for (const u of model.unassignedOpen) {
-    const [a, b] = u.pages;
-    const first = a ?? 1;
-    const last = b ?? first;
+    const spans = [u.span];
     raw.push({
-      id: `g-${first}-${last}`,
+      id: groupId(spans),
       kind: 'unassigned',
-      pages: [first, last],
-      ranges: [[first, last]],
-      pageList: rangeList(first, last),
+      spans,
+      pages: envelope(spans),
+      pageList: spanPageList(idx, spans),
       title: 'Unassigned pages',
       colorSlot: -1,
       band: 'attend',
@@ -113,20 +128,11 @@ export function buildDocGroups(
   raw.sort((x, y) => x.pages[0] - y.pages[0]);
   let groups = raw;
 
-  // settle from the decision trail: approval for exactly these ranges on this run
+  // settle from the decision trail: approval for exactly these spans on this run
   const approvals = model.app.documentApprovals ?? [];
-  const settleFor = (ranges: [number, number][]) =>
-    approvals.find((a) => {
-      if (a.runId !== run.runId) return false;
-      const aRanges: [number, number][] = a.pageRanges?.length
-        ? (a.pageRanges as [number, number][])
-        : [[a.pages[0]!, a.pages[1]!]];
-      return (
-        aRanges.length === ranges.length &&
-        aRanges.every((r, i) => r[0] === ranges[i]![0] && r[1] === ranges[i]![1])
-      );
-    });
-  for (const g of groups) g.settled = settleFor(g.ranges);
+  const settleFor = (spans: FileSpan[]) =>
+    approvals.find((a) => a.runId === run.runId && sameSpans(sortSpans(a.spans), spans));
+  for (const g of groups) g.settled = settleFor(g.spans);
 
   // merge recommendations: two OPEN groups filed under the same requirement are
   // probably one document. The human must resolve each recommendation — merged
@@ -142,19 +148,20 @@ export function buildDocGroups(
   }
   for (const list of byBlock.values()) {
     for (let i = 0; i < list.length - 1; i++) {
-      const a = list[i];
-      const b = list[i + 1];
-      const key = mergeResolutionKey(run.runId, [a.pages, b.pages]);
+      const a = list[i]!;
+      const b = list[i + 1]!;
+      const key = mergeResolutionKey(run.runId, [...a.spans, ...b.spans]);
       if (mergeResolutions[key]?.decision === 'merged') {
+        const spans = sortSpans([...a.spans, ...b.spans]);
         const combined: DocGroup = {
           ...a,
           id: `${a.id}+${b.id}`,
-          pages: [Math.min(a.pages[0], b.pages[0]), Math.max(a.pages[1], b.pages[1])],
-          ranges: [...a.ranges, ...b.ranges].sort((x, y) => x[0] - y[0]),
-          pageList: [...a.pageList, ...b.pageList].sort((x, y) => x - y),
+          spans,
+          pages: envelope(spans),
+          pageList: spanPageList(idx, spans),
           merged: true,
         };
-        combined.settled = settleFor(combined.ranges);
+        combined.settled = settleFor(combined.spans);
         groups = groups.flatMap((g) => (g === a ? [combined] : g === b ? [] : [g]));
         list.splice(i, 2, combined);
         i--; // the combined group may pair with the next sibling
@@ -167,8 +174,8 @@ export function buildDocGroups(
     }
   }
 
-  // color bands only when the analyzer split ONE file into several documents —
-  // the claim needing review. A standalone one-document packet gets no color.
+  // color bands only when the analyzer split the input into several documents —
+  // the claim needing review. A standalone one-document run gets no color.
   const docGroups = groups.filter((g) => g.kind === 'document');
   if (docGroups.length > 1) {
     docGroups.forEach((g, i) => {

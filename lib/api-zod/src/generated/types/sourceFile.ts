@@ -5,6 +5,7 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { FileFlag } from './fileFlag';
 import type { SourceFileDerivation } from './sourceFileDerivation';
 import type { SourceFileKind } from './sourceFileKind';
 import type { SourceFileOrigin } from './sourceFileOrigin';
@@ -30,8 +31,8 @@ export interface SourceFile {
   /** PDFs only */
   pages?: number;
   sha256?: string;
-  /** per-file deterministic pre-flight flags, computed at drop */
-  flags?: string[];
+  /** per-file deterministic pre-flight flags, computed at drop (fileId implicit) */
+  flags?: FileFlag[];
   /** archived = out of the working view, never deleted (no UI yet — deferred) */
   status: SourceFileStatus;
   receivedAt: string;

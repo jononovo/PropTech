@@ -13,8 +13,7 @@ import type { ApplicationVariants } from './applicationVariants';
 import type { ApplicationVerdicts } from './applicationVerdicts';
 import type { DocumentApproval } from './documentApproval';
 import type { ManualPlacement } from './manualPlacement';
-import type { PacketManifest } from './packetManifest';
-import type { PacketState } from './packetState';
+import type { RunState } from './runState';
 import type { SourceFile } from './sourceFile';
 import type { Template } from './template';
 import type { TemplateRepinEvent } from './templateRepinEvent';
@@ -32,8 +31,7 @@ export interface Application {
   projectedClosingDate?: string;
   /** blockId -> latest human verdict */
   verdicts?: ApplicationVerdicts;
-  packet?: PacketState;
-  packetManifest?: PacketManifest;
+  run?: RunState;
   /** SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields. */
   files?: SourceFile[];
   template: Template;

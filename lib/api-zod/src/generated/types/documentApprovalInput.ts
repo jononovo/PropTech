@@ -7,23 +7,16 @@
  */
 import type { DocumentApprovalInputDecidedBy } from './documentApprovalInputDecidedBy';
 import type { DocumentApprovalInputOutcome } from './documentApprovalInputOutcome';
+import type { FileSpan } from './fileSpan';
 import type { PageDecision } from './pageDecision';
 
 export interface DocumentApprovalInput {
   blockId: string;
   variantId?: string;
   runId: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  /** @minItems 1 */
+  spans: FileSpan[];
   pageDecisions?: PageDecision[];
   outcome: DocumentApprovalInputOutcome;
   decidedBy: DocumentApprovalInputDecidedBy;
-  /**
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
 }

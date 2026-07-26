@@ -6,22 +6,26 @@ import {
   getListApplicationsQueryKey,
   useRecordDocumentApproval,
   useRecordMergeResolution,
+  type FileSpan,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '../../../auth/ProfileContext';
 import type { DocGroup, MergeDecision, PageDecisionValue } from './docGroups';
+import type { PageIndex } from '../reviewModel';
 
 /**
  * Page-decision state (the pre-step — nothing lands anywhere) + the
  * document-level submit that files into a block/variant and materializes
- * through the same seam as block accepts.
+ * through the same seam as block accepts. File-native: submissions carry
+ * FileSpans; global page decisions are translated to (fileId, page) via the
+ * run's page index.
  */
-export function useDocApproval(applicationId: string) {
+export function useDocApproval(applicationId: string, index: PageIndex) {
   const queryClient = useQueryClient();
   const { profile } = useProfile();
   const { toast } = useToast();
 
-  /** groupId -> page -> decision (pre-step, client-side only) */
+  /** groupId -> global page -> decision (pre-step, client-side only) */
   const [decisions, setDecisions] = useState<Record<string, Record<number, PageDecisionValue>>>({});
 
   const mutation = useRecordDocumentApproval({
@@ -55,10 +59,10 @@ export function useDocApproval(applicationId: string) {
   const decide = (groupId: string, page: number, value: PageDecisionValue) =>
     setDecisions((d) => ({ ...d, [groupId]: { ...(d[groupId] ?? {}), [page]: value } }));
 
-  const resolveMerge = (runId: string, ranges: [number, number][], decision: MergeDecision) =>
+  const resolveMerge = (runId: string, spans: FileSpan[], decision: MergeDecision) =>
     mergeMutation.mutate({
       applicationId,
-      data: { runId, ranges, decision, decidedBy: profile.role as 'Originator' | 'Underwriter' | 'Manager' },
+      data: { runId, spans, decision, decidedBy: profile.role as 'Originator' | 'Underwriter' | 'Manager' },
     });
 
   /** every page decided → the roll-up (rail auto-switches to document mode) */
@@ -80,7 +84,10 @@ export function useDocApproval(applicationId: string) {
     const d = decisions[group.id] ?? {};
     const pageDecisions = group.pageList
       .filter((p) => d[p] != null)
-      .map((p) => ({ page: p, decision: d[p]! }));
+      .map((p) => {
+        const rp = index.at(p)!;
+        return { fileId: rp.fileId, page: rp.page, decision: d[p]! };
+      });
     mutation.mutate(
       {
         applicationId,
@@ -88,8 +95,7 @@ export function useDocApproval(applicationId: string) {
           blockId: opts.blockId,
           ...(opts.variantId ? { variantId: opts.variantId } : {}),
           runId: opts.runId,
-          pages: group.pages,
-          ...(group.ranges.length > 1 ? { pageRanges: group.ranges } : {}),
+          spans: group.spans,
           ...(pageDecisions.length > 0 ? { pageDecisions } : {}),
           outcome: opts.outcome,
           decidedBy: profile.role as 'Originator' | 'Underwriter' | 'Manager',

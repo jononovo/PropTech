@@ -67,6 +67,26 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
       return;
     }
   }
+  // INVARIANT (file-native runs): every span must address a file in the run's
+  // declared input set, within that file's page count. The run body carries its
+  // own input (frozen at kick); cross-check against the registry for page counts.
+  const inputIds = new Set(parsed.data.input.map((f) => f.fileId));
+  const allSpans = [
+    ...parsed.data.documents.flatMap((d) => d.spans),
+    ...parsed.data.unassigned.map((u) => u.span),
+  ];
+  for (const span of allSpans) {
+    if (!inputIds.has(span.fileId)) {
+      res.status(400).json({ error: `span addresses ${span.fileId}, which is not in the run's input set` });
+      return;
+    }
+    const sf = (app.files ?? []).find((f) => f.id === span.fileId);
+    const [f, l] = span.pages as [number, number];
+    if (!Number.isInteger(f) || !Number.isInteger(l) || f < 1 || l < f || (sf?.pages !== undefined && l > sf.pages)) {
+      res.status(400).json({ error: `span ${span.fileId}:p${f}-${l} is not a valid range within the file` });
+      return;
+    }
+  }
   const result = await appendRun(id, parsed.data);
   if (result === "duplicate") {
     res.status(409).json({ error: `runId "${parsed.data.runId}" already ingested` });
@@ -85,7 +105,7 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
   // Markdown projections into App Storage (intelligence corpus). Regenerable,
   // so a failure is loud (ledger) but never fails the ingest.
   try {
-    await writeRunSidecars(id, parsed.data, app.packet?.sha256);
+    await writeRunSidecars(id, parsed.data);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[analysis] run sidecar write failed for ${id}/${parsed.data.runId}: ${message}`);
@@ -98,10 +118,10 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
     });
   }
   await updateApplication(id, (app) => {
-    if (app.packet?.state === "processing") {
-      const next: NonNullable<Application["packet"]> = { ...app.packet, state: "report" };
+    if (app.run?.state === "processing") {
+      const next: NonNullable<Application["run"]> = { ...app.run, state: "report" };
       delete next.lastRunError;
-      app.packet = next;
+      app.run = next;
     }
     return app;
   });
@@ -181,11 +201,12 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
  * worker's run store (the API never grows its own copy of run artifacts).
  * Run artifacts are immutable, so responses cache aggressively.
  */
-router.get("/applications/:applicationId/runs/:runId/pages/:page", async (req, res): Promise<void> => {
+router.get("/applications/:applicationId/runs/:runId/files/:fileId/pages/:page", async (req, res): Promise<void> => {
   const id = paramStr(req.params["applicationId"]);
   const runId = paramStr(req.params["runId"]);
-  if (!isSafeSegment(id) || !isSafeSegment(runId)) {
-    res.status(400).json({ error: "Invalid application or run id" });
+  const fileId = paramStr(req.params["fileId"]);
+  if (!isSafeSegment(id) || !isSafeSegment(runId) || !isSafeSegment(fileId)) {
+    res.status(400).json({ error: "Invalid application, run or file id" });
     return;
   }
   const page = Number.parseInt(paramStr(req.params["page"]) ?? "", 10);
@@ -201,7 +222,7 @@ router.get("/applications/:applicationId/runs/:runId/pages/:page", async (req, r
   }
   let upstream;
   try {
-    upstream = await fetch(`${base.replace(/\/$/, "")}/store/${id}/${runId}/pages/${page}?size=${size}`, {
+    upstream = await fetch(`${base.replace(/\/$/, "")}/store/${id}/${runId}/files/${fileId}/pages/${page}?size=${size}`, {
       signal: AbortSignal.timeout(20000),
     });
   } catch (err) {
@@ -238,18 +259,21 @@ router.post("/applications/:applicationId/placements", async (req, res): Promise
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [first, last] = parsed.data.pages;
+  const span = parsed.data.span;
+  const [first, last] = span.pages;
   if (
     first === undefined || last === undefined ||
     !Number.isInteger(first) || !Number.isInteger(last) || first < 1 || last < first
   ) {
-    res.status(400).json({ error: "pages must be an inclusive 1-based range [first, last]" });
+    res.status(400).json({ error: "span.pages must be an inclusive 1-based range [first, last]" });
     return;
   }
   try {
     const app = await updateApplication(id, (app, emit) => {
-      if (app.packet?.pages && last > app.packet.pages) {
-        throw new HttpError(400, `Page range exceeds the ${app.packet.pages}-page packet`);
+      const sf = (app.files ?? []).find((f) => f.id === span.fileId);
+      if (!sf) throw new HttpError(400, `span addresses unknown file ${span.fileId}`);
+      if (sf.pages !== undefined && last > sf.pages) {
+        throw new HttpError(400, `Span exceeds the ${sf.pages}-page file ${sf.filename}`);
       }
       if (parsed.data.target !== "archive") {
         const block = findBlock(app, parsed.data.target);
@@ -258,22 +282,23 @@ router.post("/applications/:applicationId/placements", async (req, res): Promise
         }
       }
       const placement: NonNullable<Application["manualPlacements"]>[number] = {
-        pages: [first, last],
+        span: { fileId: span.fileId, pages: [first, last] },
         target: parsed.data.target,
         decidedBy: parsed.data.decidedBy,
         decidedAt: new Date().toISOString(),
         ...(parsed.data.note !== undefined ? { note: parsed.data.note } : {}),
         ...(parsed.data.runId !== undefined ? { runId: parsed.data.runId } : {}),
       };
+      // newest human decision wins — drop earlier placements overlapping the same file span
       const keep = (app.manualPlacements ?? []).filter(
-        (p) => (p.pages[1] ?? 0) < first || (p.pages[0] ?? 0) > last,
+        (p) => p.span.fileId !== span.fileId || (p.span.pages[1] ?? 0) < first || (p.span.pages[0] ?? 0) > last,
       );
       app.manualPlacements = [...keep, placement];
       emit({
         actor: { kind: "user", name: parsed.data.decidedBy, ip: clientIp(req) },
         action: "placement.recorded",
         target: { type: "block", id: parsed.data.target },
-        detail: { pages: [first, last] },
+        detail: { span: { fileId: span.fileId, pages: [first, last] } },
       });
       return app;
     });

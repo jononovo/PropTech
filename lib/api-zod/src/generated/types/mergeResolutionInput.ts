@@ -5,6 +5,7 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { FileSpan } from './fileSpan';
 import type { MergeResolutionInputDecidedBy } from './mergeResolutionInputDecidedBy';
 import type { MergeResolutionInputDecision } from './mergeResolutionInputDecision';
 
@@ -13,10 +14,8 @@ export interface MergeResolutionInput {
   /**
      * @minItems 2
      * @maxItems 2
-     * @items.minItems 2
-     * @items.maxItems 2
      */
-  ranges: number[][];
+  spans: FileSpan[];
   decision: MergeResolutionInputDecision;
   decidedBy: MergeResolutionInputDecidedBy;
 }

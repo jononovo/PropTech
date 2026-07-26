@@ -4,11 +4,7 @@ import type { Readable } from "node:stream";
 import { updateApplication, type Application } from "../intake/store";
 import { findBlock } from "../intake/blocks";
 import { readSidecar } from "../analysis/store";
-import {
-  openPacketPdfStream,
-  openSourceFileStream,
-  putApprovedObject,
-} from "../../lib/packetObjectStore";
+import { openSourceFileStream, putApprovedObject } from "../../lib/packetObjectStore";
 import { storageExt } from "../files/receive";
 import { HttpError } from "../../lib/httpError";
 import { buildSidecarMarkdown } from "./frontmatter";
@@ -16,16 +12,20 @@ import { insertApprovedDoc, liveBasenames, type ApprovedDoc } from "./registry";
 
 /**
  * Approval materialization — the ONE seam both triggers share:
- *   - today: accept verdict on a single-arity block (analysis router calls this)
- *   - later: the per-document approval flow for set blocks (filmstrip roll-up)
+ *   - accept verdict on a single-arity block (analysis router calls this)
+ *   - the per-document approval flow for set blocks (filmstrip roll-up)
  *
- * Physical extraction happens at approval ONLY (user ruling). Source priority:
- *   1. analyzer-assigned document in the accepted run → extract pages from the
- *      packet PDF, pull per-page markdown from the worker
+ * Physical extraction happens at approval ONLY (user ruling). File-native:
+ * spans are extracted straight from the immutable SourceFile registry bytes —
+ * there is no packet blob. Source priority:
+ *   1. analyzer-assigned document in the accepted run → extract its FileSpans,
+ *      pull per-(file,page) markdown from the worker
  *   2. direct intake upload (newest) → copy bytes whole (PDF only in v1)
  * Anything else fails loudly — a 409 up front, or a 502 recorded on the
  * application as materializationErrors[blockId] (verdict stands, retry clears).
  */
+
+type FileSpan = { fileId: string; pages: [number, number] };
 
 const slug = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "doc";
@@ -36,31 +36,55 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-async function fetchPageMarkdown(applicationId: string, runId: string, page: number): Promise<string> {
+async function fetchPageMarkdown(applicationId: string, runId: string, fileId: string, page: number): Promise<string> {
   const base = process.env["ANALYZER_URL"];
   if (!base) throw new HttpError(502, "ANALYZER_URL is not configured — analyzer worker unreachable");
-  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/md/${page}`).catch((err) => {
+  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/files/${fileId}/md/${page}`).catch((err) => {
     throw new HttpError(502, `Analyzer worker unreachable: ${err instanceof Error ? err.message : String(err)}`);
   });
-  if (!res.ok) throw new HttpError(502, `Analyzer store answered ${res.status} for page ${page} markdown`);
+  if (!res.ok) throw new HttpError(502, `Analyzer store answered ${res.status} for ${fileId} p.${page} markdown`);
   return res.text();
 }
 
-/** Flatten inclusive [first,last] ranges into an ordered 1-based page list. */
-function rangesToPageList(ranges: [number, number][]): number[] {
-  return ranges.flatMap(([f, l]) => Array.from({ length: l - f + 1 }, (_, i) => f + i));
+/** Flatten spans into an ordered (fileId, in-file page) list. */
+function spanPages(spans: FileSpan[]): { fileId: string; page: number }[] {
+  return spans.flatMap((s) =>
+    Array.from({ length: s.pages[1] - s.pages[0] + 1 }, (_, i) => ({ fileId: s.fileId, page: s.pages[0] + i })),
+  );
 }
 
-async function extractPages(packet: Buffer, ranges: [number, number][]): Promise<Buffer> {
-  const src = await PDFDocument.load(packet);
-  const pageList = rangesToPageList(ranges);
-  const max = pageList[pageList.length - 1]!;
-  if (max > src.getPageCount()) {
-    throw new HttpError(502, `Packet has ${src.getPageCount()} pages — cannot extract p. ${max}`);
-  }
+function normalizeSpans(spans: { fileId: string; pages: number[] }[]): FileSpan[] {
+  return spans.map((s) => {
+    const [f, l] = s.pages;
+    if (f === undefined || l === undefined || !Number.isInteger(f) || !Number.isInteger(l) || f < 1 || l < f) {
+      throw new HttpError(502, `Invalid span for ${s.fileId}: [${s.pages.join(", ")}]`);
+    }
+    return { fileId: s.fileId, pages: [f, l] as [number, number] };
+  });
+}
+
+/** Extract the spans' pages, in order, from the SourceFile registry bytes into one PDF. */
+async function extractSpans(app: Application, spans: FileSpan[]): Promise<Buffer> {
+  const loaded = new Map<string, PDFDocument>();
   const out = await PDFDocument.create();
-  const pages = await out.copyPages(src, pageList.map((p) => p - 1));
-  for (const p of pages) out.addPage(p);
+  for (const span of spans) {
+    let src = loaded.get(span.fileId);
+    if (!src) {
+      const sf = (app.files ?? []).find((f) => f.id === span.fileId);
+      if (!sf) throw new HttpError(502, `Span addresses ${span.fileId}, which is not in the file registry`);
+      const stream = await openSourceFileStream(app.id, sf.id, storageExt(sf));
+      if (!stream) throw new HttpError(502, `File ${sf.filename} (${sf.id}) missing from storage`);
+      src = await PDFDocument.load(await streamToBuffer(stream));
+      loaded.set(span.fileId, src);
+    }
+    const [first, last] = span.pages;
+    if (last > src.getPageCount()) {
+      throw new HttpError(502, `File ${span.fileId} has ${src.getPageCount()} pages — cannot extract p.${last}`);
+    }
+    const indices = Array.from({ length: last - first + 1 }, (_, i) => first - 1 + i);
+    const pages = await out.copyPages(src, indices);
+    for (const p of pages) out.addPage(p);
+  }
   return Buffer.from(await out.save());
 }
 
@@ -118,24 +142,20 @@ export async function materializeApproval(app: Application, blockId: string): Pr
     let pageMarkdown: string[] = [];
 
     if (runDoc && run) {
-      const [first, last] = runDoc.segment.pages as [number, number];
-      const packetStream = await openPacketPdfStream(app.id);
-      if (!packetStream) throw new HttpError(502, "Packet PDF missing from storage — cannot extract");
-      pdfBytes = await extractPages(await streamToBuffer(packetStream), [[first, last]]);
+      const spans = normalizeSpans(runDoc.spans);
+      pdfBytes = await extractSpans(app, spans);
       pageMarkdown = await Promise.all(
-        Array.from({ length: last - first + 1 }, (_, i) => fetchPageMarkdown(app.id, run.runId, first + i)),
+        spanPages(spans).map((p) => fetchPageMarkdown(app.id, run.runId, p.fileId, p.page)),
       );
       doc = {
         id, applicationId: app.id, blockId, basename, source: "extract",
-        pages: [first, last], runId: run.runId,
-        ...(app.packet?.sha256 ? { packetSha256: app.packet.sha256 } : {}),
+        spans, runId: run.runId,
         approvedBy, approvedAt,
       };
     } else {
       if (!upload!.filename.toLowerCase().endsWith(".pdf")) {
-        throw new HttpError(502, `Only PDF uploads can be materialized (got ${upload!.filename}) — upload a PDF version or run it through a packet`);
+        throw new HttpError(502, `Only PDF uploads can be materialized (got ${upload!.filename}) — upload a PDF version instead`);
       }
-      // Uploads live id-addressed in the SourceFile registry (phase 2).
       const sf = (app.files ?? []).find((f) => f.id === upload!.fileId);
       if (!sf) throw new HttpError(502, `Upload ${upload!.filename} has no SourceFile registry entry`);
       const uploadStream = await openSourceFileStream(app.id, sf.id, storageExt(sf));
@@ -173,9 +193,9 @@ export async function materializeApproval(app: Application, blockId: string): Pr
 
 /**
  * Materialize ONE document from the per-document approval flow — explicit
- * source (runId + page range), no verdict lookup. Same registry + object
- * store seam as block accepts; supersede is scoped to the SAME pages so
- * sibling documents in a set-block variant stay live.
+ * source (runId + spans), no verdict lookup. Same registry + object store
+ * seam as block accepts; supersede is scoped to the SAME spans so sibling
+ * documents in a set-block variant stay live.
  */
 export async function materializeDocumentApproval(
   app: Application,
@@ -184,11 +204,9 @@ export async function materializeDocumentApproval(
     blockId: string;
     variantId?: string;
     runId: string;
-    pages: [number, number];
-    /** non-adjacent human-accepted merge: every range making up the document */
-    pageRanges?: [number, number][];
+    spans: { fileId: string; pages: number[] }[];
     outcome: "approved" | "approved_incomplete";
-    pageDecisions?: { page: number; decision: string; note?: string }[];
+    pageDecisions?: { fileId: string; page: number; decision: string; note?: string }[];
     decidedBy: string;
     decidedAt: string;
   },
@@ -201,13 +219,11 @@ export async function materializeDocumentApproval(
     const sidecar = await readSidecar(app.id);
     const run = sidecar.runs.find((r) => r.runId === approval.runId);
     if (!run) throw new HttpError(502, `Run ${approval.runId} not found on this application`);
-    const [first, last] = approval.pages;
-    const ranges: [number, number][] = approval.pageRanges?.length
-      ? (approval.pageRanges as [number, number][])
-      : [[first, last]];
-    // the analyzer's document for the FIRST range, if any — scores/flags provenance
+    const spans = normalizeSpans(approval.spans);
+    // the analyzer's document matching the FIRST span, if any — scores/flags provenance
+    const first = spans[0]!;
     const runDoc = run.documents.find(
-      (d) => d.segment.pages[0] === ranges[0]![0] && d.segment.pages[1] === ranges[0]![1],
+      (d) => d.spans[0]?.fileId === first.fileId && d.spans[0]?.pages[0] === first.pages[0] && d.spans[0]?.pages[1] === first.pages[1],
     );
 
     const taken = await liveBasenames(app.id);
@@ -216,20 +232,16 @@ export async function materializeDocumentApproval(
     let basename = `${slug(blockId)}_${slug(String(dateBit))}`;
     for (let seq = 0; taken.has(basename); seq++) basename = `${slug(blockId)}_${slug(String(dateBit))}_${String.fromCharCode(98 + seq)}`;
 
-    const packetStream = await openPacketPdfStream(app.id);
-    if (!packetStream) throw new HttpError(502, "Packet PDF missing from storage — cannot extract");
-    const pdfBytes = await extractPages(await streamToBuffer(packetStream), ranges);
+    const pdfBytes = await extractSpans(app, spans);
     const pageMarkdown = await Promise.all(
-      rangesToPageList(ranges).map((p) => fetchPageMarkdown(app.id, run.runId, p)),
+      spanPages(spans).map((p) => fetchPageMarkdown(app.id, run.runId, p.fileId, p.page)),
     );
 
     const doc: ApprovedDoc = {
       id: `ad-${nanoid(10)}`,
       applicationId: app.id, blockId, basename, source: "extract",
-      pages: [first, last], runId: run.runId,
-      ...(approval.pageRanges?.length ? { pageRanges: ranges } : {}),
+      spans, runId: run.runId,
       ...(approval.variantId ? { variantId: approval.variantId } : {}),
-      ...(app.packet?.sha256 ? { packetSha256: app.packet.sha256 } : {}),
       approvedBy: approval.decidedBy, approvedAt: approval.decidedAt,
     };
 
@@ -253,7 +265,7 @@ export async function materializeDocumentApproval(
 
     await putApprovedObject(app.id, basename, "pdf", pdfBytes);
     await putApprovedObject(app.id, basename, "md", Buffer.from(md, "utf8"));
-    await insertApprovedDoc(doc, { matchPages: [first, last] });
+    await insertApprovedDoc(doc, { matchSpans: spans });
     await setMaterializationError(app.id, blockId, null);
     return doc;
   } catch (err) {

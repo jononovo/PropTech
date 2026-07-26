@@ -9,8 +9,7 @@ import { objectStorageClient } from "./objectStorage";
  * Domain layout for document bytes. This is the ONLY module that knows where
  * bytes live:
  *
- *   <root>/applications/<applicationId>/packet/packet.pdf
- *   <root>/applications/<applicationId>/packet/thumbs/page-<n>.png
+ *   <root>/applications/<applicationId>/files/<fileId><ext>
  *   <root>/applications/<applicationId>/approved/<basename>.pdf|.md
  *   <root>/applications/<applicationId>/runs/<runId>/doc-NN_<slug>.md
  *
@@ -71,9 +70,6 @@ function gcsFile(key: string) {
 }
 
 const appRoot = (applicationId: string): string => `applications/${applicationId}`;
-const packetPdfKey = (applicationId: string): string => `${appRoot(applicationId)}/packet/packet.pdf`;
-const pageThumbnailKey = (applicationId: string, page: number): string =>
-  `${appRoot(applicationId)}/packet/thumbs/page-${page}.png`;
 // Approved registry bytes — flat per application, paired same-basename .pdf/.md
 // (set-blocks master plan, storage option B).
 const approvedKey = (applicationId: string, basename: string, ext: "pdf" | "md"): string =>
@@ -88,42 +84,6 @@ const runDocKey = (applicationId: string, runId: string, filename: string): stri
 // never touch storage.
 const sourceFileKey = (applicationId: string, fileId: string, ext: string): string =>
   `${appRoot(applicationId)}/files/${fileId}${ext}`;
-
-/** Upload the accepted packet PDF from its local staging path. Re-upload overwrites. */
-export async function putPacketPdf(applicationId: string, localPdfPath: string): Promise<void> {
-  const key = packetPdfKey(applicationId);
-  if (USE_DISK) {
-    await diskWrite(key, (dest) => copyFile(localPdfPath, dest));
-    return;
-  }
-  const { bucketName, objectName } = locateInPrivateDir(key);
-  await objectStorageClient
-    .bucket(bucketName)
-    .upload(localPdfPath, { destination: objectName, contentType: "application/pdf" });
-}
-
-/** Upload one pre-flight page thumbnail from its local staging path. */
-export async function putPageThumbnail(applicationId: string, page: number, localPngPath: string): Promise<void> {
-  const key = pageThumbnailKey(applicationId, page);
-  if (USE_DISK) {
-    await diskWrite(key, (dest) => copyFile(localPngPath, dest));
-    return;
-  }
-  const { bucketName, objectName } = locateInPrivateDir(key);
-  await objectStorageClient
-    .bucket(bucketName)
-    .upload(localPngPath, { destination: objectName, contentType: "image/png" });
-}
-
-/** Readable stream of the packet PDF, or undefined when no object exists. */
-export async function openPacketPdfStream(applicationId: string): Promise<Readable | undefined> {
-  return openStream(packetPdfKey(applicationId));
-}
-
-/** Readable stream of one page thumbnail, or undefined when no object exists. */
-export async function openPageThumbnailStream(applicationId: string, page: number): Promise<Readable | undefined> {
-  return openStream(pageThumbnailKey(applicationId, page));
-}
 
 /** Write one approved-registry object (pdf bytes or md sidecar). Overwrite = retry semantics. */
 export async function putApprovedObject(

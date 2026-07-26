@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
-import { pageImageUrl } from '../reviewModel';
 
 /** Center pane pieces — extracted verbatim from ReviewPage (step-0 split). */
 
@@ -28,7 +27,16 @@ export function AllClear({ onAll, onReport }: { onAll: () => void; onReport: () 
   );
 }
 
-export function PageImage({ appId, runId, page }: { appId: string; runId: string; page: number }) {
+export function PageImage({
+  runId,
+  page,
+  imageUrl,
+}: {
+  runId: string;
+  /** global page number (view currency); imageUrl resolves it to (fileId, page) */
+  page: number;
+  imageUrl: (globalPage: number, size?: 'full' | 'strip') => string;
+}) {
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
   useEffect(() => setState('loading'), [page, runId]);
 
@@ -48,7 +56,7 @@ export function PageImage({ appId, runId, page }: { appId: string; runId: string
       ) : (
         <img
           key={`${runId}-${page}`}
-          src={pageImageUrl(appId, runId, page)}
+          src={imageUrl(page)}
           alt={`Page ${page}`}
           data-testid="img-review-page"
           onLoad={() => setState('ok')}

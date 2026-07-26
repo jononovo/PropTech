@@ -5,22 +5,21 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { FileSpan } from './fileSpan';
 import type { MergeResolutionDecidedBy } from './mergeResolutionDecidedBy';
 import type { MergeResolutionDecision } from './mergeResolutionDecision';
 
 /**
- * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:p<f>-<l>|p<f>-<l>" (ranges sorted by first page). Latest decision wins — reversible.
+ * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:<fileId>:p<f>-<l>|<fileId>:p<f>-<l>" (spans sorted by fileId then first page). Latest decision wins — reversible.
  */
 export interface MergeResolution {
   runId: string;
   /**
-     * the two inclusive page ranges the recommendation covers
+     * the two file-qualified spans the recommendation covers
      * @minItems 2
      * @maxItems 2
-     * @items.minItems 2
-     * @items.maxItems 2
      */
-  ranges: number[][];
+  spans: FileSpan[];
   decision: MergeResolutionDecision;
   decidedBy: MergeResolutionDecidedBy;
   decidedAt: string;

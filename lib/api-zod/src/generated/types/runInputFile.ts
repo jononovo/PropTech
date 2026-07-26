@@ -6,11 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PacketStateFilesItem = {
+/**
+ * one file in a run's frozen input set
+ */
+export interface RunInputFile {
+  fileId: string;
+  /** assigned name at kick time (display) */
   filename: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
-};
+  sha256: string;
+  pages: number;
+}

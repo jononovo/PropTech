@@ -6,6 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type SetPacketFileRemovedBody = {
-  removed: boolean;
-};
+export type RunStateState = typeof RunStateState[keyof typeof RunStateState];
+
+
+export const RunStateState = {
+  gated: 'gated',
+  processing: 'processing',
+  report: 'report',
+} as const;

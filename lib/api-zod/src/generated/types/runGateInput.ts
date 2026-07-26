@@ -5,11 +5,11 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
-import type { PacketGateInputDecision } from './packetGateInputDecision';
+import type { RunGateInputDecision } from './runGateInputDecision';
 import type { RunPlan } from './runPlan';
 
-export interface PacketGateInput {
-  decision: PacketGateInputDecision;
+export interface RunGateInput {
+  decision: RunGateInputDecision;
   decidedBy: string;
   plan?: RunPlan;
 }

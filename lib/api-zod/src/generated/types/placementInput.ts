@@ -5,15 +5,11 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { FileSpan } from './fileSpan';
 import type { PlacementInputDecidedBy } from './placementInputDecidedBy';
 
 export interface PlacementInput {
-  /**
-     * inclusive 1-based page range [first, last]
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  span: FileSpan;
   /** document blockId on the pinned template, or the literal "archive" */
   target: string;
   note?: string;

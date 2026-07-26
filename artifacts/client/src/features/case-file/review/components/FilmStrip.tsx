@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Check } from 'lucide-react';
-import { pageImageUrl, type ReviewModel } from '../reviewModel';
+import type { ReviewModel } from '../reviewModel';
 
 /** Bottom filmstrip — extracted verbatim from ReviewPage (step-0 split). */
 
@@ -12,21 +12,19 @@ const stripBar = (band: 'hold' | 'attend' | 'clean') =>
       : 'bg-transparent';
 
 export function FilmStrip({
-  appId,
-  runId,
   mode,
   review,
   pos,
   ack,
   onJump,
+  imageUrl,
 }: {
-  appId: string;
-  runId: string;
   mode: 'priority' | 'all';
   review: ReviewModel;
   pos: number;
   ack: Set<number>;
   onJump: (i: number) => void;
+  imageUrl: (globalPage: number, size?: 'full' | 'strip') => string;
 }) {
   const activeRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
@@ -68,7 +66,7 @@ export function FilmStrip({
           >
             <div className={`absolute top-0 left-0 right-0 h-[3px] z-10 ${stripBar(it.band)}`} />
             <img
-              src={pageImageUrl(appId, runId, it.page, 'strip')}
+              src={imageUrl(it.page, 'strip')}
               alt=""
               loading="lazy"
               className="absolute inset-0 w-full h-full object-cover object-top"

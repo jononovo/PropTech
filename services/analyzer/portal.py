@@ -16,9 +16,10 @@ async def get_application(app_id: str) -> dict:
         return r.json()
 
 
-async def get_packet_pdf(app_id: str) -> bytes:
+async def get_source_file(app_id: str, file_id: str) -> bytes:
+    """One SourceFile's immutable bytes from the registry (file-native runs)."""
     async with _client() as c:
-        r = await c.get(f"/applications/{app_id}/packet/file")
+        r = await c.get(f"/applications/{app_id}/files/{file_id}")
         r.raise_for_status()
         return r.content
 
@@ -30,11 +31,11 @@ async def post_run(app_id: str, run: dict) -> tuple[int, str]:
         return r.status_code, r.text[:500]
 
 
-async def post_run_failed(app_id: str, packet_sha256: str, reason: str) -> int:
-    """Honest failure callback — the packet must never hang in processing."""
+async def post_run_failed(app_id: str, request_id: str, reason: str) -> int:
+    """Honest failure callback — the run must never hang in processing."""
     async with _client() as c:
         r = await c.post(
-            f"/applications/{app_id}/packet/run-failed",
-            json={"reason": reason[:500], "packetSha256": packet_sha256},
+            f"/applications/{app_id}/run/failed",
+            json={"reason": reason[:500], "requestId": request_id},
         )
         return r.status_code

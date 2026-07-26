@@ -12,24 +12,6 @@ from taxonomy import FORM_ID_SIGNALS, TAXONOMY
 
 PAGE_ONE = re.compile(r"page\s*1\s*(of|/)\s*\d+", re.IGNORECASE)
 
-# Span-gluing rule (v0.7): pages the DETERMINISTIC pre-flight flagged as blank or
-# exact-duplicate never join a document span. Formats are owned by the portal's
-# preflight.ts — keep these in sync with its flag strings.
-PF_BLANK = re.compile(r"^p\.(\d+) appears blank$")
-PF_DUP = re.compile(r"^p\.(\d+) exact duplicate of p\.\d+$")
-
-
-def preflight_exclusions(pf_flags: list[str]) -> dict[int, str]:
-    """1-based page -> reason, for pages barred from any span. Deterministic
-    pre-flight flags ONLY (blank / exact-duplicate) — never model judgments;
-    contrast/DPI flags do not exclude. The duplicate's ORIGINAL page stays."""
-    out: dict[int, str] = {}
-    for f in pf_flags:
-        m = PF_BLANK.match(f) or PF_DUP.match(f)
-        if m:
-            out[int(m.group(1))] = f.split(" ", 1)[1]  # "appears blank" / "exact duplicate of p.3"
-    return out
-
 
 def signal_on_page(md: str) -> str | None:
     head = md[:1200]

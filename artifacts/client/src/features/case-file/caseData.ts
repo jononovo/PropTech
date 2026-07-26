@@ -5,6 +5,7 @@ import type {
   Application,
   ApplicationVariant,
   Block,
+  FileSpan,
   ManualPlacement,
   UploadedFile,
   Verdict,
@@ -184,10 +185,12 @@ export function buildCaseModel(
   for (const doc of run?.documents ?? []) docByBlock.set(doc.suggestedBlockId, doc);
 
   const placements = app.manualPlacements ?? [];
-  const overlaps = (a: readonly number[], b: readonly number[]) =>
-    (a[0] ?? 0) <= (b[1] ?? 0) && (b[0] ?? 0) <= (a[1] ?? 0);
+  const overlaps = (a: FileSpan, b: FileSpan) =>
+    a.fileId === b.fileId &&
+    (a.pages[0] ?? 0) <= (b.pages[1] ?? 0) &&
+    (b.pages[0] ?? 0) <= (a.pages[1] ?? 0);
   const unassignedOpen = (run?.unassigned ?? []).filter(
-    (u) => !placements.some((p) => overlaps(p.pages, u.pages)),
+    (u) => !placements.some((p) => overlaps(p.span, u.span)),
   );
 
   // which alternative-group members have anything on file (intake-side presence)
@@ -491,31 +494,33 @@ function sectionDot(reqs: CaseReq[]): CaseSection['dot'] {
 
 function buildAudit(app: Application, run: AnalysisRun | null, reqs: CaseReq[]): AuditEntry[] {
   const entries: AuditEntry[] = [];
-  const packet = app.packet;
+  const files = app.files ?? [];
+  const fileName = (fileId?: string) =>
+    files.find((f) => f.id === fileId)?.filename ?? fileId ?? 'file';
 
-  if (packet) {
-    const uploaded = new Date(packet.uploadedAt);
+  // file-native intake: every source file lands durably at drop, flags at drop
+  for (const f of files) {
+    const when = new Date(f.receivedAt);
     entries.push({
-      when: uploaded,
-      text: `Packet received — ${packet.filename} · ${packet.pages} pages · ${Math.round(packet.sizeBytes / 1024)} KB`,
+      when,
+      text: `File received — ${f.filename}${f.pages ? ` · ${f.pages} pages` : ''} · ${Math.round(f.sizeBytes / 1024)} KB${f.receivedBy ? ` · ${f.receivedBy}` : ''}`,
     });
-    for (const flag of packet.preflight?.flags ?? []) {
-      entries.push({ when: uploaded, text: `Pre-flight: ${flag}` });
+    for (const flag of f.flags ?? []) {
+      entries.push({ when, text: `Pre-flight (${f.filename}${flag.page ? ` p.${flag.page}` : ''}): ${flag.note}` });
     }
-    if (packet.gate) {
-      const when = new Date(packet.gate.decidedAt);
-      const standing = packet.preflight?.flags.length ?? 0;
-      const who = packet.gate.decidedBy ?? 'Staff';
-      if (packet.gate.decision === 'auto') {
-        entries.push({
-          when,
-          text: `Pre-flight clean — processed automatically (${packet.pages} pages, no flags)`,
-        });
-      } else if (packet.gate.decision === 'confirmed') {
-        entries.push({ when, text: `${who} confirmed the gate — full pipeline approved before spend` });
-      } else {
-        entries.push({ when, text: `${who} processed anyway — ${standing} pre-flight flag(s) standing` });
-      }
+  }
+
+  // gate decision on the active set (run state is the live truth)
+  if (app.run?.gate) {
+    const g = app.run.gate;
+    const when = new Date(g.decidedAt);
+    const who = g.decidedBy ?? 'Staff';
+    if (g.decision === 'auto') {
+      entries.push({ when, text: 'Pre-flight clean — processed automatically' });
+    } else if (g.decision === 'confirmed') {
+      entries.push({ when, text: `${who} confirmed the gate — full pipeline approved before spend` });
+    } else {
+      entries.push({ when, text: `${who} processed anyway — pre-flight flag(s) standing` });
     }
   }
 
@@ -523,24 +528,13 @@ function buildAudit(app: Application, run: AnalysisRun | null, reqs: CaseReq[]):
     const when = new Date(run.startedAt);
     entries.push({
       when,
-      text: `Analyzer run — ${run.preflight.pages} pages read, ${run.documents.length} documents filed, ${run.unassigned.length} unassigned`,
+      text: `Analyzer run — ${app.run?.input?.length ?? 0} file(s), ${run.preflight.pages} pages read, ${run.documents.length} documents filed, ${run.unassigned.length} unassigned`,
     });
-    // Fixture-era sidecars carry gate/flag info only on the run. Packet-backed
-    // apps already logged richer entries above — don't repeat them.
-    if (!packet) {
-      if (run.preflight.gate === 'confirmed') {
-        entries.push({ when, text: 'Pre-flight gate confirmed — full pipeline approved before spend' });
-      } else if (run.preflight.gate === 'bypassed') {
-        entries.push({ when, text: 'Pre-flight gate bypassed — processed anyway' });
-      }
-      for (const flag of run.preflight.flags) {
-        entries.push({ when, text: `Pre-flight: ${flag}` });
-      }
-    }
   }
 
   for (const p of app.manualPlacements ?? []) {
-    const range = p.pages[0] === p.pages[1] ? `p. ${p.pages[0]}` : `pp. ${p.pages[0]}–${p.pages[1]}`;
+    const [f, l] = [p.span.pages[0], p.span.pages[1]];
+    const range = `${fileName(p.span.fileId)} ${f === l ? `p. ${f}` : `pp. ${f}–${l}`}`;
     entries.push({
       when: new Date(p.decidedAt),
       text:
@@ -579,10 +573,15 @@ function buildAudit(app: Application, run: AnalysisRun | null, reqs: CaseReq[]):
 
 // ─── misc display helpers ───────────────────────────────────────────────────
 
-export const pageSpan = (doc: AnalysisDocument) => {
-  const [a, b] = doc.segment.pages;
-  return a === b ? `${a}` : `${a}–${b}`;
-};
+/** File-relative page label of a document's spans — "3–5" or "3–5, 1–2" for
+ * cross-file docs. Global numbering lives in the review page index. */
+export const pageSpan = (doc: AnalysisDocument) =>
+  doc.spans
+    .map((s) => {
+      const [a, b] = [s.pages[0], s.pages[1]];
+      return a === b ? `${a}` : `${a}–${b}`;
+    })
+    .join(', ');
 
 export const confidencePct = (doc: AnalysisDocument) => Math.round(doc.confidence * 100);
 

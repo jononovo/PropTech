@@ -7,7 +7,7 @@
  */
 
 /**
- * extract = pages pulled from the packet PDF; copy = direct intake upload copied whole
+ * extract = spans pulled from source files; copy = direct intake upload copied whole
  */
 export type ApprovedDocumentSource = typeof ApprovedDocumentSource[keyof typeof ApprovedDocumentSource];
 

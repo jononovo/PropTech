@@ -6,8 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface PacketThumbnail {
-  page: number;
-  /** Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest). */
-  reason: string;
+export interface RunEstimate {
+  files: number;
+  pages: number;
+  estimateUsd: number;
+  estimateMinutes: number;
 }

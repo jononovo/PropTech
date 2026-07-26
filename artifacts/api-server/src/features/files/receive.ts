@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { nanoid } from "nanoid";
 import { updateApplication, type Application } from "../intake/store";
-import { readPdfInfo, quickFileFlags } from "../packet/preflight";
+import { readPdfInfo, quickFileFlags, type FileFlag } from "./preflight";
 import { putSourceFileBytes } from "../../lib/packetObjectStore";
 import { HttpError } from "../../lib/httpError";
 
@@ -49,7 +49,7 @@ export async function receiveSourceFiles(opts: {
       throw new HttpError(400, `${filename}: not a PDF — the whole drop was rejected, fix and re-drop`);
     }
     let pages: number | undefined;
-    let flags: string[] = [];
+    let flags: FileFlag[] = [];
     if (isPdf) {
       const info = await readPdfInfo(f.tempPath);
       if ("error" in info) throw new HttpError(400, `${filename}: ${info.error}`);

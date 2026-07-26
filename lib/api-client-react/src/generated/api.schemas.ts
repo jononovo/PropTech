@@ -367,7 +367,7 @@ export interface UploadedFile {
   /** audit trail — client IP the upload arrived from */
   uploaderIp?: string;
   /** The SourceFile this upload landed as. */
-  fileId?: string;
+  fileId: string;
 }
 
 export type SourceFileKind = typeof SourceFileKind[keyof typeof SourceFileKind];
@@ -426,6 +426,18 @@ export type SourceFileDerivation = {
 };
 
 /**
+ * Structured deterministic pre-flight flag. fileId is omitted where the file is implicit (SourceFile.flags); page is omitted for whole-file flags. note carries the human-readable sentence.
+ */
+export interface FileFlag {
+  fileId?: string;
+  /** 1-based within the file */
+  page?: number;
+  /** machine code — blank, duplicate, low_dpi, low_contrast, ... */
+  code: string;
+  note: string;
+}
+
+/**
  * One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).
  */
 export interface SourceFile {
@@ -445,8 +457,8 @@ export interface SourceFile {
   /** PDFs only */
   pages?: number;
   sha256?: string;
-  /** per-file deterministic pre-flight flags, computed at drop */
-  flags?: string[];
+  /** per-file deterministic pre-flight flags, computed at drop (fileId implicit) */
+  flags?: FileFlag[];
   /** archived = out of the working view, never deleted (no UI yet — deferred) */
   status: SourceFileStatus;
   receivedAt: string;
@@ -487,111 +499,54 @@ export interface Verdict {
   runId?: string;
 }
 
-export type PacketStateState = typeof PacketStateState[keyof typeof PacketStateState];
+export type RunStateState = typeof RunStateState[keyof typeof RunStateState];
 
 
-export const PacketStateState = {
-  preflight_running: 'preflight_running',
+export const RunStateState = {
   gated: 'gated',
   processing: 'processing',
   report: 'report',
 } as const;
 
 /**
- * Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.
+ * one file in a run's frozen input set
  */
-export interface PacketMetadata {
-  producer?: string;
-  creator?: string;
-  createdAt?: string;
-  modifiedAt?: string;
+export interface RunInputFile {
+  fileId: string;
+  /** assigned name at kick time (display) */
+  filename: string;
+  sha256: string;
+  pages: number;
 }
 
-export interface PacketThumbnail {
-  page: number;
-  /** Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest). */
-  reason: string;
-}
-
-/**
- * Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement ("gate, don't retouch"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.
- */
-export interface PacketPreflight {
-  /** One plain-language line summarising the packet's pre-flight outcome. */
-  verdict: string;
-  /** Plain-language red flags ("p.6 blank", "p.4 duplicate of p.3"). */
-  flags: string[];
-  /** FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only. */
-  estimateUsd: number;
-  estimateMinutes: number;
-  metadata: PacketMetadata;
-  /** 2 worst-scoring pages + 1 best, by deterministic per-page scores. */
-  thumbnails: PacketThumbnail[];
-}
-
-export type PacketGateDecisionDecision = typeof PacketGateDecisionDecision[keyof typeof PacketGateDecisionDecision];
+export type RunGateDecisionDecision = typeof RunGateDecisionDecision[keyof typeof RunGateDecisionDecision];
 
 
-export const PacketGateDecisionDecision = {
+export const RunGateDecisionDecision = {
   auto: 'auto',
   confirmed: 'confirmed',
   bypassed: 'bypassed',
 } as const;
 
-export interface PacketGateDecision {
-  decision: PacketGateDecisionDecision;
+export interface RunGateDecision {
+  decision: RunGateDecisionDecision;
   /** Absent when decision=auto; otherwise the signed-in staff profile. */
   decidedBy?: string;
   decidedAt: string;
 }
 
-export type PacketStateFilesItem = {
-  filename: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
-};
-
 /**
- * Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run's model plan before spend.
+ * Portal-owned run lifecycle over the ACTIVE FILE SET (file-native runs): gated → processing → report, per run request. Files land durably at drop; the gate covers the set, not a blob. Persisted server-side so the gate physically blocks. Auto-proceed is currently suspended: every set gates so staff can pick the run's model plan before spend.
  */
-export interface PacketState {
-  filename: string;
-  sizeBytes: number;
-  pages: number;
-  sha256: string;
-  uploadedAt: string;
-  state: PacketStateState;
-  preflight?: PacketPreflight;
-  gate?: PacketGateDecision;
-  /** Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest. */
+export interface RunState {
+  state: RunStateState;
+  /** minted per kick; guards the failure callback against stale workers */
+  requestId?: string;
+  /** the frozen input set of the in-flight/last run */
+  input?: RunInputFile[];
+  gate?: RunGateDecision;
+  /** Plain-language reason the last analyzer kick failed (reverted to gated). Cleared by the next gate decision or run ingest. */
   lastRunError?: string;
-  /** audit trail — client IP the packet upload arrived from */
-  uploaderIp?: string;
-  /** Multi-file provenance (assembled packets only): each source file's name and its [first,last] span in the packet's global page numbering. Absent on single-PDF uploads. */
-  files?: PacketStateFilesItem[];
-}
-
-export interface PacketManifestFile {
-  id: string;
-  filename: string;
-  sizeBytes: number;
-  pages: number;
-  /** deterministic per-file quality flags (same checks as pre-flight, no model calls) */
-  flags: string[];
-  removed: boolean;
-}
-
-/**
- * Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.
- */
-export interface PacketManifest {
-  files: PacketManifestFile[];
-  createdAt: string;
-  /** set when assemble consumed this manifest (staging bytes are gone) */
-  assembledAt?: string;
 }
 
 export interface TemplateRepinEvent {
@@ -599,6 +554,19 @@ export interface TemplateRepinEvent {
   toVersion: number;
   decidedBy: string;
   decidedAt: string;
+}
+
+/**
+ * The canonical page address: a contiguous, inclusive 1-based page range WITHIN one SourceFile. A span never crosses a file boundary; a document spanning files carries multiple spans.
+ */
+export interface FileSpan {
+  fileId: string;
+  /**
+     * [first, last] inclusive, 1-based within the file
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
 }
 
 /**
@@ -617,7 +585,8 @@ export const PageDecisionDecision = {
  * A per-page pre-step decision inside the document approval flow.
  */
 export interface PageDecision {
-  /** 1-based packet page */
+  fileId: string;
+  /** 1-based within the file */
   page: number;
   /** good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note. */
   decision: PageDecisionDecision;
@@ -653,23 +622,16 @@ export interface DocumentApproval {
   /** analyzer run whose grouping this approval is based on */
   runId: string;
   /**
-     * inclusive 1-based packet page range [first, last]
-     * @minItems 2
-     * @maxItems 2
+     * the approved document's pages as file-qualified spans — ascending within each file, non-overlapping (multi-span = human-accepted merge)
+     * @minItems 1
      */
-  pages: number[];
+  spans: FileSpan[];
   pageDecisions?: PageDecision[];
   outcome: DocumentApprovalOutcome;
   decidedBy: DocumentApprovalDecidedBy;
   decidedAt: string;
   /** registry row created by materialization (approved outcomes only) */
   approvedDocId?: string;
-  /**
-     * For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
 }
 
 export type MergeResolutionDecision = typeof MergeResolutionDecision[keyof typeof MergeResolutionDecision];
@@ -690,18 +652,16 @@ export const MergeResolutionDecidedBy = {
 } as const;
 
 /**
- * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:p<f>-<l>|p<f>-<l>" (ranges sorted by first page). Latest decision wins — reversible.
+ * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:<fileId>:p<f>-<l>|<fileId>:p<f>-<l>" (spans sorted by fileId then first page). Latest decision wins — reversible.
  */
 export interface MergeResolution {
   runId: string;
   /**
-     * the two inclusive page ranges the recommendation covers
+     * the two file-qualified spans the recommendation covers
      * @minItems 2
      * @maxItems 2
-     * @items.minItems 2
-     * @items.maxItems 2
      */
-  ranges: number[][];
+  spans: FileSpan[];
   decision: MergeResolutionDecision;
   decidedBy: MergeResolutionDecidedBy;
   decidedAt: string;
@@ -737,12 +697,7 @@ export const ManualPlacementDecidedBy = {
  * A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.
  */
 export interface ManualPlacement {
-  /**
-     * inclusive 1-based page range [first, last]
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  span: FileSpan;
   /** document blockId on the pinned template, or the literal "archive" */
   target: string;
   note?: string;
@@ -797,8 +752,7 @@ export interface Application {
   projectedClosingDate?: string;
   /** blockId -> latest human verdict */
   verdicts?: ApplicationVerdicts;
-  packet?: PacketState;
-  packetManifest?: PacketManifest;
+  run?: RunState;
   /** SourceFile registry (file-native intake phase 2) — every file that entered this application, append-only in spirit. filename and status are the only mutable fields. */
   files?: SourceFile[];
   template: Template;
@@ -850,7 +804,7 @@ export type VariantShape = VariantShapeInput & {
 };
 
 /**
- * extract = pages pulled from the packet PDF; copy = direct intake upload copied whole
+ * extract = spans pulled from source files; copy = direct intake upload copied whole
  */
 export type ApprovedDocumentSource = typeof ApprovedDocumentSource[keyof typeof ApprovedDocumentSource];
 
@@ -871,23 +825,12 @@ export interface ApprovedDocument {
   variantId?: string;
   /** shared basename of the .pdf/.md pair in the approved store */
   basename: string;
-  /** extract = pages pulled from the packet PDF; copy = direct intake upload copied whole */
+  /** extract = spans pulled from source files; copy = direct intake upload copied whole */
   source: ApprovedDocumentSource;
-  /**
-     * packet page range [first, last] (extract only)
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages?: number[];
+  /** the extracted file-qualified spans, in document order (extract only) */
+  spans?: FileSpan[];
   /** analyzer run the assignment came from (extract only) */
   runId?: string;
-  /**
-     * When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
-  packetSha256?: string;
   /** original upload filename (copy only) */
   sourceFilename?: string;
   approvedBy: string;
@@ -918,19 +861,11 @@ export interface DocumentApprovalInput {
   blockId: string;
   variantId?: string;
   runId: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  /** @minItems 1 */
+  spans: FileSpan[];
   pageDecisions?: PageDecision[];
   outcome: DocumentApprovalInputOutcome;
   decidedBy: DocumentApprovalInputDecidedBy;
-  /**
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
 }
 
 export type MergeResolutionInputDecision = typeof MergeResolutionInputDecision[keyof typeof MergeResolutionInputDecision];
@@ -955,10 +890,8 @@ export interface MergeResolutionInput {
   /**
      * @minItems 2
      * @maxItems 2
-     * @items.minItems 2
-     * @items.maxItems 2
      */
-  ranges: number[][];
+  spans: FileSpan[];
   decision: MergeResolutionInputDecision;
   decidedBy: MergeResolutionInputDecidedBy;
 }
@@ -1033,12 +966,7 @@ export const PlacementInputDecidedBy = {
 } as const;
 
 export interface PlacementInput {
-  /**
-     * inclusive 1-based page range [first, last]
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  span: FileSpan;
   /** document blockId on the pinned template, or the literal "archive" */
   target: string;
   note?: string;
@@ -1046,14 +974,17 @@ export interface PlacementInput {
   runId?: string;
 }
 
-export interface PacketUpload {
-  file: Blob;
+export interface RunEstimate {
+  files: number;
+  pages: number;
+  estimateUsd: number;
+  estimateMinutes: number;
 }
 
-export type PacketGateInputDecision = typeof PacketGateInputDecision[keyof typeof PacketGateInputDecision];
+export type RunGateInputDecision = typeof RunGateInputDecision[keyof typeof RunGateInputDecision];
 
 
-export const PacketGateInputDecision = {
+export const RunGateInputDecision = {
   confirmed: 'confirmed',
   bypassed: 'bypassed',
 } as const;
@@ -1069,8 +1000,8 @@ export interface RunPlan {
   fraudScoring?: boolean;
 }
 
-export interface PacketGateInput {
-  decision: PacketGateInputDecision;
+export interface RunGateInput {
+  decision: RunGateInputDecision;
   decidedBy: string;
   plan?: RunPlan;
 }
@@ -1113,9 +1044,10 @@ export interface ModelOptionsResponse {
   stages: ModelStageOptions[];
 }
 
-export interface PacketRunFailure {
+export interface RunFailure {
   reason: string;
-  packetSha256: string;
+  /** the kick this failure belongs to (stale-worker guard) */
+  requestId: string;
 }
 
 /**
@@ -1126,15 +1058,6 @@ export interface AnalysisCoreFields {
   expiry_date?: string;
   primary_party_name: string;
   issuing_party?: string;
-}
-
-export interface AnalysisSegment {
-  /**
-     * [firstPage, lastPage] within the source packet, 1-based inclusive.
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
 }
 
 export type AnalysisScoresScrutinyTier = typeof AnalysisScoresScrutinyTier[keyof typeof AnalysisScoresScrutinyTier];
@@ -1173,7 +1096,11 @@ export interface AnalysisArtifacts {
 export type AnalysisDocumentExtractionsItem = { [key: string]: unknown };
 
 export interface AnalysisDocument {
-  segment: AnalysisSegment;
+  /**
+     * the document's pages as file-qualified spans, in reading order — ascending, non-overlapping; multiple spans = the analyzer read one document across ranges/files (merge recommendation surface)
+     * @minItems 1
+     */
+  spans: FileSpan[];
   /** Must resolve to a document block in the application's pinned template. */
   suggestedBlockId: string;
   confidence: number;
@@ -1188,11 +1115,7 @@ export interface AnalysisDocument {
 }
 
 export interface AnalysisUnassigned {
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  span: FileSpan;
   description: string;
 }
 
@@ -1206,9 +1129,10 @@ export const AnalysisPreflightGate = {
 } as const;
 
 export interface AnalysisPreflight {
+  /** total pages across the input set */
   pages: number;
-  /** Plain-language pre-flight flags ("p.41–43 below 150 DPI"). */
-  flags: string[];
+  /** structured pre-flight flags across the input set (fileId-qualified) */
+  flags: FileFlag[];
   gate: AnalysisPreflightGate;
 }
 
@@ -1225,12 +1149,8 @@ export interface SatisfactionGroup {
   variantId?: string;
   /** descriptor values the pass read off the documents (keys = the block's descriptorFields) */
   descriptorGuess?: SatisfactionGroupDescriptorGuess;
-  /**
-     * [first,last] of each run document in this pile
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  docPages: number[][];
+  /** each run document in this pile, as its file-qualified spans */
+  docSpans: FileSpan[][];
   /** human sentence on sequence coverage (periods present, holes) */
   coverage?: string;
 }
@@ -1262,6 +1182,8 @@ export type AnalysisRunSatisfaction = {[key: string]: BlockSatisfaction};
 
 export interface AnalysisRun {
   runId: string;
+  /** the frozen file set this run analyzed */
+  input: RunInputFile[];
   startedAt: string;
   pipelineVersion: string;
   /** Total wall time of the run in ms (additive telemetry — the speed axis for engine comparisons). Per-stage timings live in the run store's config.json. */
@@ -1326,14 +1248,6 @@ export const GetApprovedDocFileKind = {
   pdf: 'pdf',
   md: 'md',
 } as const;
-
-export type UploadPacketFilesBody = {
-  files: Blob[];
-};
-
-export type SetPacketFileRemovedBody = {
-  removed: boolean;
-};
 
 export type GetRunPageImageParams = {
 size?: GetRunPageImageSize;

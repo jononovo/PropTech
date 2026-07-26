@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowRight, CheckCircle2, Inbox } from 'lucide-react';
-import { PacketPanel, Dropzone } from '../components/PacketPanel';
+import { FilesPanel, Dropzone } from '../components/FilesPanel';
 import { MissingActions } from '../components/MissingActions';
 import type { CaseModel } from '../caseData';
 import type { Lens } from '../CaseShell';
@@ -22,20 +22,21 @@ export function IntakePage({
   applicationId: string;
   onLens: (lens: Lens, sectionId?: string) => void;
 }) {
-  const packet = model.app.packet;
-  const inDropState = !packet || packet.state === 'preflight_running';
-  const landed = packet?.state === 'report';
+  const run = model.app.run;
+  const hasFiles = (model.app.files ?? []).some((f) => f.status === 'active');
+  const inDropState = !run && !hasFiles;
+  const landed = run?.state === 'report';
 
   // auto-pivot: the moment a run lands while the user is watching processing,
   // hand off straight into the filmstrip review room
   const [, setLocation] = useLocation();
-  const prevPacketState = useRef(packet?.state);
+  const prevRunState = useRef(run?.state);
   useEffect(() => {
-    if (prevPacketState.current === 'processing' && packet?.state === 'report' && model.run) {
+    if (prevRunState.current === 'processing' && run?.state === 'report' && model.run) {
       setLocation(`/applications/${applicationId}/review`);
     }
-    prevPacketState.current = packet?.state;
-  }, [packet?.state, model.run, applicationId, setLocation]);
+    prevRunState.current = run?.state;
+  }, [run?.state, model.run, applicationId, setLocation]);
 
   return (
     <div className="overflow-y-auto h-full px-4 py-6 md:py-10 flex flex-col items-center">
@@ -43,15 +44,15 @@ export function IntakePage({
         {landed && model.run ? (
           <RunLandedCard model={model} applicationId={applicationId} onLens={onLens} />
         ) : (
-          <PacketPanel model={model} applicationId={applicationId} />
+          <FilesPanel model={model} applicationId={applicationId} />
         )}
 
         {inDropState && <ConnectorsRow />}
 
         {landed && (
           <div>
-            <div className="micro-label text-[9.5px] mb-2">replace packet</div>
-            <Dropzone applicationId={applicationId} retry={false} />
+            <div className="micro-label text-[9.5px] mb-2">add more files</div>
+            <Dropzone applicationId={applicationId} />
           </div>
         )}
 

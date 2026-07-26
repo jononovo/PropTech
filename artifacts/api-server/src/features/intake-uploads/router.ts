@@ -9,7 +9,7 @@ import { readApplication, updateApplication, type Application } from "../intake/
 import { extensionAllowed, findBlock, isSafeSegment } from "../intake/blocks";
 import { receiveSourceFiles, sanitizeFilename } from "../files/receive";
 
-type UploadedFileRecord = { filename: string; size: number; uploadedAt: string; variantId?: string; uploaderIp?: string; fileId?: string };
+type UploadedFileRecord = { filename: string; size: number; uploadedAt: string; variantId?: string; uploaderIp?: string; fileId: string };
 
 function param(req: Request, key: string): string | undefined {
   const raw = req.params[key];

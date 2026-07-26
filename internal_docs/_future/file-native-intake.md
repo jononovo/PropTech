@@ -1,5 +1,7 @@
 # File-Native Document Model — technical spec (v1 draft, Jul 26 2026)
 
+> **STATUS Jul 26 2026: SHIPPED, all phases (1–5) + e2e-verified.** `Application.run: RunState` replaced `packet`/`packetManifest`; FileSpan is the canonical address end-to-end (server, analyzer, client); PacketPanel → FilesPanel; old packet-era fixtures deleted (zero back-compat). Note: `run` stays NULL until the first gate decision — the gate card is implied by active files, `state: "gated"` only appears after a failed-run revert. Still open: copy vs move of bytes at approval (default = copy).
+
 Ruling that triggered this (user, Jul 26): **files stay in the form they were
 dropped.** No concatenation, ever. Splits/merges materialize as NEW derived
 files with lineage back to their immutable originals. Uploads and packets are

@@ -11,7 +11,8 @@ import type { PageDecisionDecision } from './pageDecisionDecision';
  * A per-page pre-step decision inside the document approval flow.
  */
 export interface PageDecision {
-  /** 1-based packet page */
+  fileId: string;
+  /** 1-based within the file */
   page: number;
   /** good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags/low scores — the flag stays on the record as a low-level note. */
   decision: PageDecisionDecision;

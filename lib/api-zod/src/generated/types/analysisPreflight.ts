@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AnalysisPreflightGate } from './analysisPreflightGate';
+import type { FileFlag } from './fileFlag';
 
 export interface AnalysisPreflight {
+  /** total pages across the input set */
   pages: number;
-  /** Plain-language pre-flight flags ("p.41–43 below 150 DPI"). */
-  flags: string[];
+  /** structured pre-flight flags across the input set (fileId-qualified) */
+  flags: FileFlag[];
   gate: AnalysisPreflightGate;
 }

@@ -172,7 +172,7 @@ function UnassignedRail({ appId, model, stop }: { appId: string; model: CaseMode
           </select>
         </label>
         <button
-          onClick={() => fileAs(stop.pages, target, targetName, runId)}
+          onClick={() => stop.span && fileAs(stop.span, target, targetName, runId)}
           disabled={!target || isPending}
           data-testid="button-file-here"
           className="btn-primary flex items-center justify-center gap-1.5"
@@ -180,7 +180,7 @@ function UnassignedRail({ appId, model, stop }: { appId: string; model: CaseMode
           <FolderInput className="w-3.5 h-3.5" /> {isPending ? 'Saving…' : 'File here'}
         </button>
         <button
-          onClick={() => archive(stop.pages, runId)}
+          onClick={() => stop.span && archive(stop.span, runId)}
           disabled={isPending}
           data-testid="button-archive-range"
           className="btn-secondary flex items-center justify-center gap-1.5"

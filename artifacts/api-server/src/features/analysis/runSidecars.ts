@@ -4,6 +4,7 @@ import { putRunDocMarkdown } from "../../lib/packetObjectStore";
 
 type AnalysisRun = z.infer<typeof IngestAnalysisRunBody>;
 type RunDocument = AnalysisRun["documents"][number];
+type FileSpan = RunDocument["spans"][number];
 
 /**
  * Analysis-time markdown projections — the intelligence corpus.
@@ -19,8 +20,8 @@ type RunDocument = AnalysisRun["documents"][number];
  * corpus exists for humans, grep, and agents/RAG. Failure to write them is
  * loud (ledger event) but never fails the ingest.
  *
- * NOTE: page numbers are packet-global today; the file-native rework
- * (phase 3) switches them to (fileId, page). Regenerable, so no migration.
+ * File-native: every page is addressed (fileId, in-file page) via FileSpans;
+ * provenance points at the SourceFile registry entries in the run's input.
  */
 
 const yamlStr = (s: string) => JSON.stringify(s);
@@ -28,23 +29,28 @@ const yamlStr = (s: string) => JSON.stringify(s);
 const slug = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "doc";
 
-async function fetchPageMarkdown(applicationId: string, runId: string, page: number): Promise<string> {
+async function fetchPageMarkdown(applicationId: string, runId: string, fileId: string, page: number): Promise<string> {
   const base = process.env["ANALYZER_URL"];
   if (!base) throw new Error("ANALYZER_URL is not configured — analyzer worker unreachable");
-  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/md/${page}`);
-  if (!res.ok) throw new Error(`Analyzer store answered ${res.status} for page ${page} markdown`);
+  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/files/${fileId}/md/${page}`);
+  if (!res.ok) throw new Error(`Analyzer store answered ${res.status} for ${fileId} p.${page} markdown`);
   return res.text();
+}
+
+function spanPages(spans: FileSpan[]): { fileId: string; page: number }[] {
+  return spans.flatMap((s) => {
+    const [f, l] = s.pages as [number, number];
+    return Array.from({ length: l - f + 1 }, (_, i) => ({ fileId: s.fileId, page: f + i }));
+  });
 }
 
 export function buildRunDocMarkdown(opts: {
   applicationId: string;
   run: AnalysisRun;
   doc: RunDocument;
-  packetSha256?: string;
   pageMarkdown: string[];
 }): string {
   const { run, doc } = opts;
-  const [first, last] = doc.segment.pages as [number, number];
   const lines: string[] = ["---"];
   lines.push(`applicationId: ${yamlStr(opts.applicationId)}`);
   lines.push(`runId: ${yamlStr(run.runId)}`);
@@ -52,7 +58,8 @@ export function buildRunDocMarkdown(opts: {
   lines.push(`suggestedBlockId: ${yamlStr(doc.suggestedBlockId)}`);
   lines.push(`suggestedName: ${yamlStr(doc.suggestedName)}`);
   lines.push(`confidence: ${doc.confidence}`);
-  lines.push(`pages: [${first}, ${last}]`);
+  lines.push("spans:");
+  for (const s of doc.spans) lines.push(`  - fileId: ${yamlStr(s.fileId)}`, `    pages: [${s.pages[0]}, ${s.pages[1]}]`);
   lines.push("scores:");
   for (const [k, v] of Object.entries(doc.scores)) {
     lines.push(`  ${k}: ${typeof v === "number" ? v : yamlStr(String(v))}`);
@@ -65,13 +72,20 @@ export function buildRunDocMarkdown(opts: {
   lines.push("coreFields:");
   for (const [k, v] of Object.entries(doc.coreFields)) lines.push(`  ${k}: ${yamlStr(String(v))}`);
   lines.push("derivedFrom:");
-  lines.push(`  sourceKey: ${yamlStr(`applications/${opts.applicationId}/packet/packet.pdf`)}`);
-  if (opts.packetSha256) lines.push(`  packetSha256: ${yamlStr(opts.packetSha256)}`);
+  lines.push("  sources:");
+  const fileIds = [...new Set(doc.spans.map((s) => s.fileId))];
+  for (const fileId of fileIds) {
+    const input = run.input.find((f) => f.fileId === fileId);
+    lines.push(`    - sourceKey: ${yamlStr(`applications/${opts.applicationId}/files/${fileId}`)}`);
+    if (input) lines.push(`      sha256: ${yamlStr(input.sha256)}`, `      filename: ${yamlStr(input.filename)}`);
+  }
   lines.push(`  analyzedAt: ${yamlStr(run.startedAt)}`);
   lines.push("status: analyzer_suggestion # human verdict/approval lives in the registry, not here");
   lines.push("---", "");
+  const pages = spanPages(doc.spans);
   opts.pageMarkdown.forEach((md, i) => {
-    lines.push(`<!-- packet page ${first + i} -->`, md.trimEnd(), "");
+    const p = pages[i]!;
+    lines.push(`<!-- ${p.fileId} p.${p.page} -->`, md.trimEnd(), "");
   });
   return lines.join("\n");
 }
@@ -80,18 +94,13 @@ export function buildRunDocMarkdown(opts: {
  * Write every document projection for a freshly ingested run. Throws on the
  * first failure — caller decides how loud to be (ingest must not roll back).
  */
-export async function writeRunSidecars(
-  applicationId: string,
-  run: AnalysisRun,
-  packetSha256?: string,
-): Promise<number> {
+export async function writeRunSidecars(applicationId: string, run: AnalysisRun): Promise<number> {
   let n = 0;
   for (const doc of run.documents) {
-    const [first, last] = doc.segment.pages as [number, number];
     const pageMarkdown = await Promise.all(
-      Array.from({ length: last - first + 1 }, (_, i) => fetchPageMarkdown(applicationId, run.runId, first + i)),
+      spanPages(doc.spans).map((p) => fetchPageMarkdown(applicationId, run.runId, p.fileId, p.page)),
     );
-    const md = buildRunDocMarkdown({ applicationId, run, doc, pageMarkdown, ...(packetSha256 ? { packetSha256 } : {}) });
+    const md = buildRunDocMarkdown({ applicationId, run, doc, pageMarkdown });
     const filename = `doc-${String(n + 1).padStart(2, "0")}_${slug(doc.suggestedBlockId)}.md`;
     await putRunDocMarkdown(applicationId, run.runId, filename, Buffer.from(md, "utf8"));
     n++;

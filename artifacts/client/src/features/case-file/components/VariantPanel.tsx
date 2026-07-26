@@ -84,7 +84,16 @@ function SatisfactionCard({ sat, blockId }: { sat: BlockSatisfaction; blockId: s
                 ? Object.values(g.descriptorGuess).join(' · ')
                 : g.variantId ?? `pile ${i + 1}`}
               {' — '}
-              {g.docPages.map(([f, l]) => (f === l ? `p.${f}` : `pp.${f}–${l}`)).join(', ')}
+              {g.docSpans
+                .map((spans) =>
+                  spans
+                    .map((s) => {
+                      const [f, l] = [s.pages[0], s.pages[1]];
+                      return f === l ? `p.${f}` : `pp.${f}–${l}`;
+                    })
+                    .join('+'),
+                )
+                .join(', ')}
               {g.coverage ? ` · ${g.coverage}` : ''}
             </div>
           ))}

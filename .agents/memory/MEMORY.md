@@ -1,6 +1,6 @@
 # Memory Index
 
-- [File-native intake](file-native-intake.md) — RULING Jul 26: no concatenation ever; files stay as dropped; spec at internal_docs/_future/file-native-intake.md; retires packet-as-one-PDF.
+- [File-native intake](file-native-intake.md) — ALL phases shipped + tester-verified Jul 26; FileSpan everywhere; gated is IMPLICIT (run null until first decision); old packet fixtures deleted.
 
 - [Sheaf design direction](homium-design-direction.md) — brand=Sheaf (Homium=client); Ops Desk design family; analyzer spec v0.7 FINAL governs the engine.
 - [User interaction](user-interaction.md) — prefers questions as plain chat text, not AskQuestion forms; answers may arrive as revised spec docs from a parallel thread.

@@ -24,8 +24,8 @@ export function TriagePage({
   return (
     <div className="overflow-y-auto h-full px-4 py-6 md:px-8 flex flex-col items-center">
       <div className="w-full max-w-[960px] animate-slide-up pb-16">
-        {/* a re-dropped packet gates again in Intake even while the old report shows */}
-        {model.app.packet && model.app.packet.state !== 'report' && (
+        {/* a new file drop gates again in Intake even while the old report shows */}
+        {model.app.run && model.app.run.state !== 'report' && (
           <button
             onClick={() => onLens('intake')}
             data-testid="link-packet-in-intake"
@@ -33,9 +33,9 @@ export function TriagePage({
           >
             <AlertCircle className="w-3.5 h-3.5 text-[var(--ops-warning-text)] shrink-0 mt-0.5" />
             <span className="text-[12.5px] text-[var(--ops-warning-text)] leading-relaxed">
-              {model.app.packet.state === 'processing'
-                ? 'A new packet is being analyzed — this report updates when the run lands.'
-                : 'A new packet is waiting in Intake — it needs a pre-flight decision.'}{' '}
+              {model.app.run.state === 'processing'
+                ? 'A new file set is being analyzed — this report updates when the run lands.'
+                : 'New files are waiting in Intake — the set needs a pre-flight decision.'}{' '}
               <span className="font-medium">Open Intake →</span>
             </span>
           </button>
@@ -156,7 +156,7 @@ export function TriagePage({
                 <div className="flex flex-col md:flex-row items-start gap-2 md:gap-5 w-full">
                   <div className="w-full md:min-w-[140px] md:w-auto shrink-0">
                     <div className="ops-mono text-[11px] text-[var(--ops-muted)]">
-                      pp. {u.pages[0]}–{u.pages[1]}
+                      pp. {u.span.pages[0]}–{u.span.pages[1]}
                     </div>
                   </div>
                   <div className="text-[12.5px] text-[var(--ops-body-sec)] leading-relaxed border-l-2 md:border-l border-[var(--ops-inner-rule)] md:border-[var(--ops-border)] pl-3 md:pl-4">

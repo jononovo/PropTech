@@ -5,18 +5,14 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { FileSpan } from './fileSpan';
 import type { ManualPlacementDecidedBy } from './manualPlacementDecidedBy';
 
 /**
  * A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.
  */
 export interface ManualPlacement {
-  /**
-     * inclusive 1-based page range [first, last]
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  span: FileSpan;
   /** document blockId on the pinned template, or the literal "archive" */
   target: string;
   note?: string;

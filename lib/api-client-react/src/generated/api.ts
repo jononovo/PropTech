@@ -40,16 +40,15 @@ import type {
   LoginInput,
   MergeResolutionInput,
   ModelOptionsResponse,
-  PacketGateInput,
-  PacketRunFailure,
-  PacketUpload,
   PlacementInput,
   ReceiveFilesBody,
   ReceiveFilesParams,
   ReceiveFilesResponse,
+  RunEstimate,
+  RunFailure,
+  RunGateInput,
   SavedSection,
   SavedSectionInput,
-  SetPacketFileRemovedBody,
   Template,
   TemplateDuplicateInput,
   TemplateInput,
@@ -58,7 +57,6 @@ import type {
   TemplateUpgradeInput,
   UpdateSourceFileBody,
   UploadDocumentParams,
-  UploadPacketFilesBody,
   UploadedFile,
   User,
   VariantShape,
@@ -2834,390 +2832,21 @@ export const useIngestAnalysisRun = <TError = ErrorType<ApiMessage>,
       return useMutation(getIngestAnalysisRunMutationOptions(options));
     }
 
-export const getUploadPacketUrl = (applicationId: string,) => {
+export const getGetRunEstimateUrl = (applicationId: string,) => {
 
 
 
 
-  return `/api/applications/${applicationId}/packet`
+  return `/api/applications/${applicationId}/run/estimate`
 }
 
 /**
- * First staged state of the C2 intake flow (analyzer spec §3). Stores the PDF and runs the deterministic pre-flight (file validity, page count, metadata snapshot, per-page blank/contrast/duplicate/embedded-image-DPI checks — no model calls, no image enhancement). Invalid or encrypted PDFs are rejected with 400 and not stored. Outcome: state=gated awaiting a human gate decision, or — when the auto rule passes (fewer than 20 pages AND zero red flags) — the gate records decision=auto and the analyzer is kicked ASYNCHRONOUSLY: the response returns state=processing and the run lands later through the ingest endpoint, which flips the state to report. Re-uploading replaces the packet and re-runs pre-flight; prior analysis runs remain in the sidecar (append-only, latest-run-wins). The pre-flight report is stored on the application as audit-trail material. The cost estimate covers the FULL pipeline (parse + judge + deep scans) and is staff-facing.
- * @summary Upload the full document packet; deterministic pre-flight runs immediately
+ * Informed consent before spend — full-pipeline estimate (parse + judge + deep scans) over every active PDF SourceFile. Recomputed live; nothing is stored. Staff-facing only.
+ * @summary Cost/time estimate for analyzing the CURRENT active file set
  */
-export const uploadPacket = async (applicationId: string,
-    packetUpload: PacketUpload, options?: RequestInit): Promise<Application> => {
-    const formData = new FormData();
-formData.append(`file`, packetUpload.file);
+export const getRunEstimate = async (applicationId: string, options?: RequestInit): Promise<RunEstimate> => {
 
-  return customFetch<Application>(getUploadPacketUrl(applicationId),
-  {
-    ...options,
-    method: 'POST'
-    ,
-    body: formData
-  }
-);}
-
-
-
-
-
-export const getUploadPacketMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacket>>, TError,{applicationId: string;data: BodyType<PacketUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof uploadPacket>>, TError,{applicationId: string;data: BodyType<PacketUpload>}, TContext> => {
-
-const mutationKey = ['uploadPacket'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadPacket>>, {applicationId: string;data: BodyType<PacketUpload>}> = (props) => {
-          const {applicationId,data} = props ?? {};
-
-          return  uploadPacket(applicationId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UploadPacketMutationResult = NonNullable<Awaited<ReturnType<typeof uploadPacket>>>
-    export type UploadPacketMutationBody = BodyType<PacketUpload>
-    export type UploadPacketMutationError = ErrorType<ApiMessage>
-
-    /**
- * @summary Upload the full document packet; deterministic pre-flight runs immediately
- */
-export const useUploadPacket = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacket>>, TError,{applicationId: string;data: BodyType<PacketUpload>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof uploadPacket>>,
-        TError,
-        {applicationId: string;data: BodyType<PacketUpload>},
-        TContext
-      > => {
-      return useMutation(getUploadPacketMutationOptions(options));
-    }
-
-export const getUploadPacketFilesUrl = (applicationId: string,) => {
-
-
-
-
-  return `/api/applications/${applicationId}/packet/files`
-}
-
-/**
- * Phase 5 (multi-file intake v1). Accepts up to 25 PDFs in one drop and builds a MANIFEST before any analysis: per file — name, size, page count, and the same deterministic quality flags pre-flight uses (no model calls). Each file can then be removed from the manifest (X) before assembly; assemble concatenates the kept files into ONE packet PDF that flows through the existing pre-flight → gate → run pipeline unchanged (global page addressing). Re-posting replaces the whole manifest. Refused (409) while an analyzer run is mid-flight. Removed = gone at assemble time; there is no defer queue in v1 — re-upload later instead.
- * @summary Multi-file intake — stage several PDFs and get a reviewable manifest
- */
-export const uploadPacketFiles = async (applicationId: string,
-    uploadPacketFilesBody: UploadPacketFilesBody, options?: RequestInit): Promise<Application> => {
-    const formData = new FormData();
-uploadPacketFilesBody.files.forEach(value => formData.append(`files`, value));
-
-  return customFetch<Application>(getUploadPacketFilesUrl(applicationId),
-  {
-    ...options,
-    method: 'POST'
-    ,
-    body: formData
-  }
-);}
-
-
-
-
-
-export const getUploadPacketFilesMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacketFiles>>, TError,{applicationId: string;data: BodyType<UploadPacketFilesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof uploadPacketFiles>>, TError,{applicationId: string;data: BodyType<UploadPacketFilesBody>}, TContext> => {
-
-const mutationKey = ['uploadPacketFiles'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadPacketFiles>>, {applicationId: string;data: BodyType<UploadPacketFilesBody>}> = (props) => {
-          const {applicationId,data} = props ?? {};
-
-          return  uploadPacketFiles(applicationId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UploadPacketFilesMutationResult = NonNullable<Awaited<ReturnType<typeof uploadPacketFiles>>>
-    export type UploadPacketFilesMutationBody = BodyType<UploadPacketFilesBody>
-    export type UploadPacketFilesMutationError = ErrorType<ApiMessage>
-
-    /**
- * @summary Multi-file intake — stage several PDFs and get a reviewable manifest
- */
-export const useUploadPacketFiles = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacketFiles>>, TError,{applicationId: string;data: BodyType<UploadPacketFilesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof uploadPacketFiles>>,
-        TError,
-        {applicationId: string;data: BodyType<UploadPacketFilesBody>},
-        TContext
-      > => {
-      return useMutation(getUploadPacketFilesMutationOptions(options));
-    }
-
-export const getSetPacketFileRemovedUrl = (applicationId: string,
-    fileId: string,) => {
-
-
-
-
-  return `/api/applications/${applicationId}/packet/files/${fileId}`
-}
-
-/**
- * @summary Toggle a manifest file's removed state (the X — reversible until assemble)
- */
-export const setPacketFileRemoved = async (applicationId: string,
-    fileId: string,
-    setPacketFileRemovedBody: SetPacketFileRemovedBody, options?: RequestInit): Promise<Application> => {
-
-  return customFetch<Application>(getSetPacketFileRemovedUrl(applicationId,fileId),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(setPacketFileRemovedBody)
-  }
-);}
-
-
-
-
-
-export const getSetPacketFileRemovedMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPacketFileRemoved>>, TError,{applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof setPacketFileRemoved>>, TError,{applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}, TContext> => {
-
-const mutationKey = ['setPacketFileRemoved'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setPacketFileRemoved>>, {applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}> = (props) => {
-          const {applicationId,fileId,data} = props ?? {};
-
-          return  setPacketFileRemoved(applicationId,fileId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SetPacketFileRemovedMutationResult = NonNullable<Awaited<ReturnType<typeof setPacketFileRemoved>>>
-    export type SetPacketFileRemovedMutationBody = BodyType<SetPacketFileRemovedBody>
-    export type SetPacketFileRemovedMutationError = ErrorType<ApiMessage>
-
-    /**
- * @summary Toggle a manifest file's removed state (the X — reversible until assemble)
- */
-export const useSetPacketFileRemoved = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPacketFileRemoved>>, TError,{applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof setPacketFileRemoved>>,
-        TError,
-        {applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>},
-        TContext
-      > => {
-      return useMutation(getSetPacketFileRemovedMutationOptions(options));
-    }
-
-export const getAssemblePacketUrl = (applicationId: string,) => {
-
-
-
-
-  return `/api/applications/${applicationId}/packet/assemble`
-}
-
-/**
- * Assembles the manifest's kept (non-removed) files, in manifest order, into a single packet PDF and pushes it through the exact single-packet path (pre-flight, gated state, gate decision, analyzer). packet.files records each source file's global page span for provenance. At least one kept file required.
- * @summary Concatenate the kept manifest files into ONE packet and run pre-flight
- */
-export const assemblePacket = async (applicationId: string, options?: RequestInit): Promise<Application> => {
-
-  return customFetch<Application>(getAssemblePacketUrl(applicationId),
-  {
-    ...options,
-    method: 'POST'
-
-
-  }
-);}
-
-
-
-
-
-export const getAssemblePacketMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assemblePacket>>, TError,{applicationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof assemblePacket>>, TError,{applicationId: string}, TContext> => {
-
-const mutationKey = ['assemblePacket'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assemblePacket>>, {applicationId: string}> = (props) => {
-          const {applicationId} = props ?? {};
-
-          return  assemblePacket(applicationId,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type AssemblePacketMutationResult = NonNullable<Awaited<ReturnType<typeof assemblePacket>>>
-
-    export type AssemblePacketMutationError = ErrorType<ApiMessage>
-
-    /**
- * @summary Concatenate the kept manifest files into ONE packet and run pre-flight
- */
-export const useAssemblePacket = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assemblePacket>>, TError,{applicationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof assemblePacket>>,
-        TError,
-        {applicationId: string},
-        TContext
-      > => {
-      return useMutation(getAssemblePacketMutationOptions(options));
-    }
-
-export const getDecidePacketGateUrl = (applicationId: string,) => {
-
-
-
-
-  return `/api/applications/${applicationId}/packet/gate`
-}
-
-/**
- * Valid only while packet.state=gated (409 otherwise). decision=confirmed ("Process") requires zero red flags; decision=bypassed ("Process anyway") requires at least one — the human explicitly overrides the flags. Decision, decider and time are stored for the audit trail, then the analyzer worker is kicked ASYNCHRONOUSLY: the response returns state=processing and the run lands later through the ingest endpoint (which flips the state to report). If the analyzer fails mid-run it calls the run-failed callback and the packet reverts to gated with lastRunError set — never a silent hang. Nothing proceeds past the gate without this call or the auto rule.
- * @summary Decide the pre-flight gate — the gate genuinely blocks
- */
-export const decidePacketGate = async (applicationId: string,
-    packetGateInput: PacketGateInput, options?: RequestInit): Promise<Application> => {
-
-  return customFetch<Application>(getDecidePacketGateUrl(applicationId),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(packetGateInput)
-  }
-);}
-
-
-
-
-
-export const getDecidePacketGateMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decidePacketGate>>, TError,{applicationId: string;data: BodyType<PacketGateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof decidePacketGate>>, TError,{applicationId: string;data: BodyType<PacketGateInput>}, TContext> => {
-
-const mutationKey = ['decidePacketGate'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decidePacketGate>>, {applicationId: string;data: BodyType<PacketGateInput>}> = (props) => {
-          const {applicationId,data} = props ?? {};
-
-          return  decidePacketGate(applicationId,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type DecidePacketGateMutationResult = NonNullable<Awaited<ReturnType<typeof decidePacketGate>>>
-    export type DecidePacketGateMutationBody = BodyType<PacketGateInput>
-    export type DecidePacketGateMutationError = ErrorType<ApiMessage>
-
-    /**
- * @summary Decide the pre-flight gate — the gate genuinely blocks
- */
-export const useDecidePacketGate = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decidePacketGate>>, TError,{applicationId: string;data: BodyType<PacketGateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof decidePacketGate>>,
-        TError,
-        {applicationId: string;data: BodyType<PacketGateInput>},
-        TContext
-      > => {
-      return useMutation(getDecidePacketGateMutationOptions(options));
-    }
-
-export const getGetPacketFileUrl = (applicationId: string,) => {
-
-
-
-
-  return `/api/applications/${applicationId}/packet/file`
-}
-
-/**
- * Streams the uploaded packet exactly as stored (no enhancement — "gate, don't retouch"). Consumed by the analyzer worker at run start; also lets staff pull the original. 404 until a packet has been uploaded.
- * @summary The stored packet PDF — the analyzer's input surface
- */
-export const getPacketFile = async (applicationId: string, options?: RequestInit): Promise<Blob> => {
-
-  return customFetch<Blob>(getGetPacketFileUrl(applicationId),
+  return customFetch<RunEstimate>(getGetRunEstimateUrl(applicationId),
   {
     ...options,
     method: 'GET'
@@ -3230,45 +2859,45 @@ export const getPacketFile = async (applicationId: string, options?: RequestInit
 
 
 
-export const getGetPacketFileQueryKey = (applicationId: string,) => {
+export const getGetRunEstimateQueryKey = (applicationId: string,) => {
     return [
-    `/api/applications/${applicationId}/packet/file`
+    `/api/applications/${applicationId}/run/estimate`
     ] as const;
     }
 
 
-export const getGetPacketFileQueryOptions = <TData = Awaited<ReturnType<typeof getPacketFile>>, TError = ErrorType<ApiMessage>>(applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetRunEstimateQueryOptions = <TData = Awaited<ReturnType<typeof getRunEstimate>>, TError = ErrorType<ApiMessage>>(applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunEstimate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetPacketFileQueryKey(applicationId);
+  const queryKey =  queryOptions?.queryKey ?? getGetRunEstimateQueryKey(applicationId);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPacketFile>>> = ({ signal }) => getPacketFile(applicationId, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRunEstimate>>> = ({ signal }) => getRunEstimate(applicationId, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPacketFile>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRunEstimate>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type GetPacketFileQueryResult = NonNullable<Awaited<ReturnType<typeof getPacketFile>>>
-export type GetPacketFileQueryError = ErrorType<ApiMessage>
+export type GetRunEstimateQueryResult = NonNullable<Awaited<ReturnType<typeof getRunEstimate>>>
+export type GetRunEstimateQueryError = ErrorType<ApiMessage>
 
 
 /**
- * @summary The stored packet PDF — the analyzer's input surface
+ * @summary Cost/time estimate for analyzing the CURRENT active file set
  */
 
-export function useGetPacketFile<TData = Awaited<ReturnType<typeof getPacketFile>>, TError = ErrorType<ApiMessage>>(
- applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketFile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export function useGetRunEstimate<TData = Awaited<ReturnType<typeof getRunEstimate>>, TError = ErrorType<ApiMessage>>(
+ applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunEstimate>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetPacketFileQueryOptions(applicationId,options)
+  const queryOptions = getGetRunEstimateQueryOptions(applicationId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -3281,27 +2910,27 @@ export function useGetPacketFile<TData = Awaited<ReturnType<typeof getPacketFile
 
 
 
-export const getReportPacketRunFailureUrl = (applicationId: string,) => {
+export const getDecideRunGateUrl = (applicationId: string,) => {
 
 
 
 
-  return `/api/applications/${applicationId}/packet/run-failed`
+  return `/api/applications/${applicationId}/run/gate`
 }
 
 /**
- * Called by the analyzer worker when a kicked run cannot complete (backend failure, timeout, unreadable packet). Guarded flip — only reverts when the packet is still processing AND packetSha256 matches, so a stale worker can never clobber a newer packet. Reverts state to gated, clears the gate decision, and records lastRunError for the staff UI. 409 when the guard does not match (nothing reverted).
- * @summary Analyzer failure callback — honest revert, never a silent hang
+ * File-native runs: the gate covers a set of files, not a blob. Valid only while no run is processing (409 otherwise) and at least one active PDF SourceFile exists (400 otherwise). decision=confirmed ("Process") or bypassed ("Skip checks"); an optional per-run model plan travels with it. The server freezes the input set (fileId + sha256 + pages), mints a requestId, flips run.state to processing, and kicks the analyzer worker. Kick failure reverts to gated with lastRunError set — never a silent hang.
+ * @summary The staff gate decision — kicks the analyzer on the ACTIVE FILE SET
  */
-export const reportPacketRunFailure = async (applicationId: string,
-    packetRunFailure: PacketRunFailure, options?: RequestInit): Promise<Application> => {
+export const decideRunGate = async (applicationId: string,
+    runGateInput: RunGateInput, options?: RequestInit): Promise<Application> => {
 
-  return customFetch<Application>(getReportPacketRunFailureUrl(applicationId),
+  return customFetch<Application>(getDecideRunGateUrl(applicationId),
   {
     ...options,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(packetRunFailure)
+    body: JSON.stringify(runGateInput)
   }
 );}
 
@@ -3309,11 +2938,11 @@ export const reportPacketRunFailure = async (applicationId: string,
 
 
 
-export const getReportPacketRunFailureMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPacketRunFailure>>, TError,{applicationId: string;data: BodyType<PacketRunFailure>}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof reportPacketRunFailure>>, TError,{applicationId: string;data: BodyType<PacketRunFailure>}, TContext> => {
+export const getDecideRunGateMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideRunGate>>, TError,{applicationId: string;data: BodyType<RunGateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideRunGate>>, TError,{applicationId: string;data: BodyType<RunGateInput>}, TContext> => {
 
-const mutationKey = ['reportPacketRunFailure'];
+const mutationKey = ['decideRunGate'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -3323,10 +2952,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportPacketRunFailure>>, {applicationId: string;data: BodyType<PacketRunFailure>}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideRunGate>>, {applicationId: string;data: BodyType<RunGateInput>}> = (props) => {
           const {applicationId,data} = props ?? {};
 
-          return  reportPacketRunFailure(applicationId,data,requestOptions)
+          return  decideRunGate(applicationId,data,requestOptions)
         }
 
 
@@ -3336,45 +2965,45 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type ReportPacketRunFailureMutationResult = NonNullable<Awaited<ReturnType<typeof reportPacketRunFailure>>>
-    export type ReportPacketRunFailureMutationBody = BodyType<PacketRunFailure>
-    export type ReportPacketRunFailureMutationError = ErrorType<ApiMessage>
+    export type DecideRunGateMutationResult = NonNullable<Awaited<ReturnType<typeof decideRunGate>>>
+    export type DecideRunGateMutationBody = BodyType<RunGateInput>
+    export type DecideRunGateMutationError = ErrorType<ApiMessage>
 
     /**
- * @summary Analyzer failure callback — honest revert, never a silent hang
+ * @summary The staff gate decision — kicks the analyzer on the ACTIVE FILE SET
  */
-export const useReportPacketRunFailure = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportPacketRunFailure>>, TError,{applicationId: string;data: BodyType<PacketRunFailure>}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useDecideRunGate = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideRunGate>>, TError,{applicationId: string;data: BodyType<RunGateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof reportPacketRunFailure>>,
+        Awaited<ReturnType<typeof decideRunGate>>,
         TError,
-        {applicationId: string;data: BodyType<PacketRunFailure>},
+        {applicationId: string;data: BodyType<RunGateInput>},
         TContext
       > => {
-      return useMutation(getReportPacketRunFailureMutationOptions(options));
+      return useMutation(getDecideRunGateMutationOptions(options));
     }
 
-export const getGetPacketThumbnailUrl = (applicationId: string,
-    page: number,) => {
+export const getReportRunFailureUrl = (applicationId: string,) => {
 
 
 
 
-  return `/api/applications/${applicationId}/packet/thumbnails/${page}`
+  return `/api/applications/${applicationId}/run/failed`
 }
 
 /**
- * @summary Pre-flight thumbnail PNG (2 worst pages + 1 best, deterministic scores)
+ * Called by the analyzer worker when a kicked run cannot complete. Guarded flip — only reverts when run.state=processing AND requestId matches the in-flight kick, so a stale worker can never clobber a newer run. Reverts to gated, clears the gate decision, records lastRunError. 409 when the guard does not match (nothing reverted).
+ * @summary Analyzer failure callback — honest revert, never a silent hang
  */
-export const getPacketThumbnail = async (applicationId: string,
-    page: number, options?: RequestInit): Promise<Blob> => {
+export const reportRunFailure = async (applicationId: string,
+    runFailure: RunFailure, options?: RequestInit): Promise<Application> => {
 
-  return customFetch<Blob>(getGetPacketThumbnailUrl(applicationId,page),
+  return customFetch<Application>(getReportRunFailureUrl(applicationId),
   {
     ...options,
-    method: 'GET'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(runFailure)
   }
 );}
 
@@ -3382,59 +3011,50 @@ export const getPacketThumbnail = async (applicationId: string,
 
 
 
-export const getGetPacketThumbnailQueryKey = (applicationId: string,
-    page: number,) => {
-    return [
-    `/api/applications/${applicationId}/packet/thumbnails/${page}`
-    ] as const;
-    }
+export const getReportRunFailureMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportRunFailure>>, TError,{applicationId: string;data: BodyType<RunFailure>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reportRunFailure>>, TError,{applicationId: string;data: BodyType<RunFailure>}, TContext> => {
 
-
-export const getGetPacketThumbnailQueryOptions = <TData = Awaited<ReturnType<typeof getPacketThumbnail>>, TError = ErrorType<ApiMessage>>(applicationId: string,
-    page: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketThumbnail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetPacketThumbnailQueryKey(applicationId,page);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPacketThumbnail>>> = ({ signal }) => getPacketThumbnail(applicationId,page, { signal, ...requestOptions });
+const mutationKey = ['reportRunFailure'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
 
 
 
 
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reportRunFailure>>, {applicationId: string;data: BodyType<RunFailure>}> = (props) => {
+          const {applicationId,data} = props ?? {};
 
-   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && page !== null && page !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPacketThumbnail>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetPacketThumbnailQueryResult = NonNullable<Awaited<ReturnType<typeof getPacketThumbnail>>>
-export type GetPacketThumbnailQueryError = ErrorType<ApiMessage>
+          return  reportRunFailure(applicationId,data,requestOptions)
+        }
 
 
-/**
- * @summary Pre-flight thumbnail PNG (2 worst pages + 1 best, deterministic scores)
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReportRunFailureMutationResult = NonNullable<Awaited<ReturnType<typeof reportRunFailure>>>
+    export type ReportRunFailureMutationBody = BodyType<RunFailure>
+    export type ReportRunFailureMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Analyzer failure callback — honest revert, never a silent hang
  */
-
-export function useGetPacketThumbnail<TData = Awaited<ReturnType<typeof getPacketThumbnail>>, TError = ErrorType<ApiMessage>>(
- applicationId: string,
-    page: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPacketThumbnail>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetPacketThumbnailQueryOptions(applicationId,page,options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
+export const useReportRunFailure = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reportRunFailure>>, TError,{applicationId: string;data: BodyType<RunFailure>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reportRunFailure>>,
+        TError,
+        {applicationId: string;data: BodyType<RunFailure>},
+        TContext
+      > => {
+      return useMutation(getReportRunFailureMutationOptions(options));
+    }
 
 export const getRecordVerdictUrl = (applicationId: string,
     blockId: string,) => {
@@ -3513,6 +3133,7 @@ export const useRecordVerdict = <TError = ErrorType<ApiMessage>,
 
 export const getGetRunPageImageUrl = (applicationId: string,
     runId: string,
+    fileId: string,
     page: number,
     params?: GetRunPageImageParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -3526,19 +3147,20 @@ export const getGetRunPageImageUrl = (applicationId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/runs/${runId}/pages/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/runs/${runId}/pages/${page}`
+  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/runs/${runId}/files/${fileId}/pages/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/runs/${runId}/files/${fileId}/pages/${page}`
 }
 
 /**
- * Proxied from the analyzer worker's run store. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Run artifacts are immutable — responses cache aggressively.
- * @summary Full-page PNG render from a landed analyzer run (filmstrip review)
+ * Proxied from the analyzer worker's run store. Pages are addressed (fileId, page) — 1-based within the file; global packet numbering is dead. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Run artifacts are immutable — responses cache aggressively.
+ * @summary Full-page PNG render from a landed analyzer run (file-qualified)
  */
 export const getRunPageImage = async (applicationId: string,
     runId: string,
+    fileId: string,
     page: number,
     params?: GetRunPageImageParams, options?: RequestInit): Promise<Blob> => {
 
-  return customFetch<Blob>(getGetRunPageImageUrl(applicationId,runId,page,params),
+  return customFetch<Blob>(getGetRunPageImageUrl(applicationId,runId,fileId,page,params),
   {
     ...options,
     method: 'GET'
@@ -3553,33 +3175,35 @@ export const getRunPageImage = async (applicationId: string,
 
 export const getGetRunPageImageQueryKey = (applicationId: string,
     runId: string,
+    fileId: string,
     page: number,
     params?: GetRunPageImageParams,) => {
     return [
-    `/api/applications/${applicationId}/runs/${runId}/pages/${page}`, ...(params ? [params] : [])
+    `/api/applications/${applicationId}/runs/${runId}/files/${fileId}/pages/${page}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
 export const getGetRunPageImageQueryOptions = <TData = Awaited<ReturnType<typeof getRunPageImage>>, TError = ErrorType<ApiMessage>>(applicationId: string,
     runId: string,
+    fileId: string,
     page: number,
     params?: GetRunPageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetRunPageImageQueryKey(applicationId,runId,page,params);
+  const queryKey =  queryOptions?.queryKey ?? getGetRunPageImageQueryKey(applicationId,runId,fileId,page,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRunPageImage>>> = ({ signal }) => getRunPageImage(applicationId,runId,page,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRunPageImage>>> = ({ signal }) => getRunPageImage(applicationId,runId,fileId,page,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && runId !== null && runId !== undefined && page !== null && page !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && runId !== null && runId !== undefined && fileId !== null && fileId !== undefined && page !== null && page !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData> & { queryKey: QueryKey }
 }
 
 export type GetRunPageImageQueryResult = NonNullable<Awaited<ReturnType<typeof getRunPageImage>>>
@@ -3587,18 +3211,19 @@ export type GetRunPageImageQueryError = ErrorType<ApiMessage>
 
 
 /**
- * @summary Full-page PNG render from a landed analyzer run (filmstrip review)
+ * @summary Full-page PNG render from a landed analyzer run (file-qualified)
  */
 
 export function useGetRunPageImage<TData = Awaited<ReturnType<typeof getRunPageImage>>, TError = ErrorType<ApiMessage>>(
  applicationId: string,
     runId: string,
+    fileId: string,
     page: number,
     params?: GetRunPageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetRunPageImageQueryOptions(applicationId,runId,page,params,options)
+  const queryOptions = getGetRunPageImageQueryOptions(applicationId,runId,fileId,page,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

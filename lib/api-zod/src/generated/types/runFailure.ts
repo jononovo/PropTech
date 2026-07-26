@@ -6,11 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface AnalysisSegment {
-  /**
-     * [firstPage, lastPage] within the source packet, 1-based inclusive.
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+export interface RunFailure {
+  reason: string;
+  /** the kick this failure belongs to (stale-worker guard) */
+  requestId: string;
 }

@@ -5,7 +5,7 @@ import {
   getGetApplicationQueryKey,
   getListApplicationsQueryKey,
   getListTemplatesQueryKey,
-  useDecidePacketGate,
+  useDecideRunGate,
   useGetAnalysis,
   useGetApplication,
   useRecordPlacement,
@@ -16,10 +16,9 @@ import {
   useUpdateApplication,
   useUpgradeTemplateVersion,
   useUploadDocument,
-  useUploadPacket,
-  useUploadPacketFiles,
-  useSetPacketFileRemoved,
-  useAssemblePacket,
+  useReceiveFiles,
+  useUpdateSourceFile,
+  type FileSpan,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '../auth/ProfileContext';
@@ -120,32 +119,34 @@ export function usePlacementActions(applicationId: string) {
     },
   });
 
-  const rangeText = (pages: [number, number]) =>
-    pages[0] === pages[1] ? `p. ${pages[0]}` : `pp. ${pages[0]}–${pages[1]}`;
+  const rangeText = (span: FileSpan) =>
+    span.pages[0] === span.pages[1]
+      ? `p. ${span.pages[0]}`
+      : `pp. ${span.pages[0]}–${span.pages[1]}`;
 
-  const fileAs = (pages: [number, number], blockId: string, blockName: string, runId?: string) =>
+  const fileAs = (span: FileSpan, blockId: string, blockName: string, runId?: string) =>
     mutation.mutate(
       {
         applicationId,
-        data: { pages, target: blockId, decidedBy: profile.role, ...(runId ? { runId } : {}) },
+        data: { span, target: blockId, decidedBy: profile.role, ...(runId ? { runId } : {}) },
       },
       {
         onSuccess: () =>
           toast({
-            description: `Filed ${rangeText(pages)} as ${blockName} — the analyzer treats this as ground truth.`,
+            description: `Filed ${rangeText(span)} as ${blockName} — the analyzer treats this as ground truth.`,
           }),
       },
     );
 
-  const archive = (pages: [number, number], runId?: string) =>
+  const archive = (span: FileSpan, runId?: string) =>
     mutation.mutate(
       {
         applicationId,
-        data: { pages, target: 'archive', decidedBy: profile.role, ...(runId ? { runId } : {}) },
+        data: { span, target: 'archive', decidedBy: profile.role, ...(runId ? { runId } : {}) },
       },
       {
         onSuccess: () =>
-          toast({ description: `Archived ${rangeText(pages)} — kept on file, off the checklist.` }),
+          toast({ description: `Archived ${rangeText(span)} — kept on file, off the checklist.` }),
       },
     );
 
@@ -220,11 +221,11 @@ export function useTemplateUpgrade(applicationId: string) {
 }
 
 /**
- * Packet upload + gate decision. Upload runs the server-side pre-flight
- * synchronously; the response alone tells us whether the packet gated or
- * auto-proceeded — the card that renders IS the feedback, so no success toast.
+ * File-native intake actions: drop files (they land durably as immutable
+ * SourceFiles, pre-flight runs at drop) + decide the run gate over the ACTIVE
+ * FILE SET. No packet, no assemble — the file list IS the working state.
  */
-export function usePacketActions(applicationId: string) {
+export function useIntakeActions(applicationId: string) {
   const queryClient = useQueryClient();
   const { profile } = useProfile();
   const { toast } = useToast();
@@ -235,14 +236,19 @@ export function usePacketActions(applicationId: string) {
     queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
   };
 
-  const upload = useUploadPacket({
-    // Invalidate on error too: a 502 means the server reverted the packet to
-    // gated, a 409 means another request advanced it — refetch either way so
-    // the UI shows the server's real state, not a stale one.
-    mutation: { onSuccess: invalidate, onError: invalidate },
+  // Invalidate on error too: the server may have reverted the run to gated,
+  // or another request advanced it — refetch so the UI shows real state.
+  const receive = useReceiveFiles({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => {
+        invalidate();
+        toast({ description: `Drop rejected — ${errText(err)}` });
+      },
+    },
   });
 
-  const gate = useDecidePacketGate({
+  const gate = useDecideRunGate({
     mutation: {
       onSuccess: invalidate,
       onError: (err: unknown) => {
@@ -252,29 +258,16 @@ export function usePacketActions(applicationId: string) {
     },
   });
 
-  const uploadPacket = (file: File) => upload.mutate({ applicationId, data: { file } });
+  const rename = useUpdateSourceFile({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => toast({ description: `Rename not saved — ${errText(err)}` }),
+    },
+  });
 
-  // multi-file intake (Phase 5): drop → manifest → per-file X → assemble
-  const uploadFiles = useUploadPacketFiles({ mutation: { onSuccess: invalidate, onError: invalidate } });
-  const setFileRemoved = useSetPacketFileRemoved({
-    mutation: {
-      onSuccess: invalidate,
-      onError: (err: unknown) => toast({ description: `Not saved — ${errText(err)}` }),
-    },
-  });
-  const assemble = useAssemblePacket({
-    mutation: {
-      onSuccess: invalidate,
-      onError: (err: unknown) => {
-        invalidate();
-        toast({ description: `Assemble failed — ${errText(err)}` });
-      },
-    },
-  });
-  const uploadPacketFiles = (files: File[]) => uploadFiles.mutate({ applicationId, data: { files } });
-  const toggleFileRemoved = (fileId: string, removed: boolean) =>
-    setFileRemoved.mutate({ applicationId, fileId, data: { removed } });
-  const assemblePacket = () => assemble.mutate({ applicationId });
+  const dropFiles = (files: File[]) => receive.mutate({ applicationId, data: { files } });
+  const renameFile = (fileId: string, filename: string) =>
+    rename.mutate({ applicationId, fileId, data: { filename } });
 
   const decide = (
     decision: 'confirmed' | 'bypassed',
@@ -293,18 +286,7 @@ export function usePacketActions(applicationId: string) {
       },
     );
 
-  return {
-    uploadPacket,
-    decide,
-    upload,
-    gate,
-    uploadPacketFiles,
-    uploadFiles,
-    toggleFileRemoved,
-    setFileRemoved,
-    assemblePacket,
-    assemble,
-  };
+  return { dropFiles, receive, decide, gate, renameFile, rename };
 }
 
 /** Retry approval materialization after a loud failure (worker/storage). */

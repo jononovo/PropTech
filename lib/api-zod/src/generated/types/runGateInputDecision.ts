@@ -6,11 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type PacketGateDecisionDecision = typeof PacketGateDecisionDecision[keyof typeof PacketGateDecisionDecision];
+export type RunGateInputDecision = typeof RunGateInputDecision[keyof typeof RunGateInputDecision];
 
 
-export const PacketGateDecisionDecision = {
-  auto: 'auto',
+export const RunGateInputDecision = {
   confirmed: 'confirmed',
   bypassed: 'bypassed',
 } as const;

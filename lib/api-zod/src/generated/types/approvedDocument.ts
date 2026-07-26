@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ApprovedDocumentSource } from './approvedDocumentSource';
+import type { FileSpan } from './fileSpan';
 
 /**
  * One approved, materialized document — the unit of the approved registry. Bytes live flat at approved/<applicationId>/<basename>.pdf + .md; this is the row that makes them findable. Append-only; re-acceptance supersedes (supersededBy), never deletes.
@@ -18,23 +19,12 @@ export interface ApprovedDocument {
   variantId?: string;
   /** shared basename of the .pdf/.md pair in the approved store */
   basename: string;
-  /** extract = pages pulled from the packet PDF; copy = direct intake upload copied whole */
+  /** extract = spans pulled from source files; copy = direct intake upload copied whole */
   source: ApprovedDocumentSource;
-  /**
-     * packet page range [first, last] (extract only)
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages?: number[];
+  /** the extracted file-qualified spans, in document order (extract only) */
+  spans?: FileSpan[];
   /** analyzer run the assignment came from (extract only) */
   runId?: string;
-  /**
-     * When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
-  packetSha256?: string;
   /** original upload filename (copy only) */
   sourceFilename?: string;
   approvedBy: string;

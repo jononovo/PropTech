@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, CheckCircle2, Flag, ImageOff, Link as LinkIcon, X } from 'lucide-react';
-import { pageImageUrl } from '../reviewModel';
+import type { FileSpan } from '@workspace/api-client-react';
 import type { DocGroup, MergeDecision, PageDecisionValue } from './docGroups';
 
 /**
@@ -29,8 +29,6 @@ const NEUTRAL = {
 };
 
 export function DocGroupsStrip({
-  appId,
-  runId,
   groups,
   activePage,
   selectedGroupId,
@@ -41,9 +39,8 @@ export function DocGroupsStrip({
   onDecide,
   onResolveMerge,
   onQuickApprove,
+  imageUrl,
 }: {
-  appId: string;
-  runId: string;
   groups: DocGroup[];
   activePage: number;
   selectedGroupId: string | null;
@@ -52,8 +49,10 @@ export function DocGroupsStrip({
   onPageClick: (page: number) => void;
   onGroupSelect: (id: string) => void;
   onDecide: (groupId: string, page: number, value: PageDecisionValue) => void;
-  onResolveMerge: (ranges: [number, number][], decision: MergeDecision) => void;
+  /** the two groups' file-qualified spans, in pair order */
+  onResolveMerge: (spans: FileSpan[], decision: MergeDecision) => void;
   onQuickApprove: (group: DocGroup) => void;
+  imageUrl: (globalPage: number, size?: 'full' | 'strip') => string;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -70,7 +69,7 @@ export function DocGroupsStrip({
         const mergeState: MergeDecision | 'pending' | null = partner
           ? (g.mergeKey ? mergeRes[g.mergeKey]?.decision : undefined) ?? 'pending'
           : null;
-        const pairRanges: [number, number][] | null = partner ? [g.pages, partner.pages] : null;
+        const pairSpans: FileSpan[] | null = partner ? [...g.spans, ...partner.spans] : null;
         const partnerAdjacent =
           !!partner && (g.pages[1] + 1 === partner.pages[0] || partner.pages[1] + 1 === g.pages[0]);
         const next = groups[i + 1];
@@ -164,8 +163,7 @@ export function DocGroupsStrip({
                 {g.pageList.map((p) => (
                   <StripThumb
                     key={p}
-                    appId={appId}
-                    runId={runId}
+                    src={imageUrl(p, 'strip')}
                     page={p}
                     active={p === activePage && !selectedGroupId}
                     decision={decisions[g.id]?.[p]}
@@ -183,7 +181,7 @@ export function DocGroupsStrip({
                   state={mergeState!}
                   partnerLabel={`pp. ${partner.pages[0]}–${partner.pages[1]}`}
                   onJump={() => onGroupSelect(partner.id)}
-                  onResolve={(d) => onResolveMerge(pairRanges!, d)}
+                  onResolve={(d) => onResolveMerge(pairSpans!, d)}
                   testid={`button-merge-hop-${g.pages[0]}`}
                 />
               )}
@@ -195,8 +193,8 @@ export function DocGroupsStrip({
                 side="between"
                 state={mergeState!}
                 partnerLabel="adjacent"
-                onJump={() => onResolveMerge(pairRanges!, 'merged')}
-                onResolve={(d) => onResolveMerge(pairRanges!, d)}
+                onJump={() => onResolveMerge(pairSpans!, 'merged')}
+                onResolve={(d) => onResolveMerge(pairSpans!, d)}
                 testid={`button-link-${g.pages[1]}`}
               />
             )}
@@ -292,8 +290,7 @@ function MergeIcon({
 }
 
 function StripThumb({
-  appId,
-  runId,
+  src,
   page,
   active,
   decision,
@@ -301,8 +298,7 @@ function StripThumb({
   onClick,
   onDecide,
 }: {
-  appId: string;
-  runId: string;
+  src: string;
   page: number;
   active: boolean;
   decision?: PageDecisionValue;
@@ -331,7 +327,7 @@ function StripThumb({
         </div>
       ) : (
         <img
-          src={pageImageUrl(appId, runId, page, 'strip')}
+          src={src}
           alt=""
           loading="lazy"
           onError={() => setBroken(true)}

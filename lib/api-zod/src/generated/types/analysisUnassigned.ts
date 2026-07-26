@@ -5,12 +5,9 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { FileSpan } from './fileSpan';
 
 export interface AnalysisUnassigned {
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
+  span: FileSpan;
   description: string;
 }

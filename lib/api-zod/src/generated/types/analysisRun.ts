@@ -10,9 +10,12 @@ import type { AnalysisPreflight } from './analysisPreflight';
 import type { AnalysisRunArtifactsProduced } from './analysisRunArtifactsProduced';
 import type { AnalysisRunSatisfaction } from './analysisRunSatisfaction';
 import type { AnalysisUnassigned } from './analysisUnassigned';
+import type { RunInputFile } from './runInputFile';
 
 export interface AnalysisRun {
   runId: string;
+  /** the frozen file set this run analyzed */
+  input: RunInputFile[];
   startedAt: string;
   pipelineVersion: string;
   /** Total wall time of the run in ms (additive telemetry — the speed axis for engine comparisons). Per-stage timings live in the run store's config.json. */

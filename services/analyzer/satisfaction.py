@@ -68,7 +68,7 @@ async def satisfaction_pass(app: dict, blocks_by_id: dict[str, dict], documents:
         block_view = {k: block[k] for k in ("name", "docType", "arity", "variantConfig", "analysisNote")
                       if k in block}
         docs_view = [{
-            "pages": d["segment"]["pages"],
+            "spans": d["spans"],
             "suggestedName": d["suggestedName"],
             "coreFields": d["coreFields"],
             "flags": d["flags"],

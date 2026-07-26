@@ -75,13 +75,14 @@ function ApprovedDocRow({
   // the decision trail knows whether this row was approved incomplete
   const approval = (model.app.documentApprovals ?? []).find((a) => a.approvedDocId === doc.id);
   const incomplete = approval?.outcome === 'approved_incomplete';
-  const pagesText = doc.pageRanges?.length
-    ? doc.pageRanges.map(([f, l]) => (f === l ? `p. ${f}` : `pp. ${f}–${l}`)).join(' + ')
-    : doc.pages
-      ? doc.pages[0] === doc.pages[1]
-        ? `p. ${doc.pages[0]}`
-        : `pp. ${doc.pages[0]}–${doc.pages[1]}`
-      : null;
+  const pagesText = doc.spans?.length
+    ? doc.spans
+        .map((s) => {
+          const [f, l] = [s.pages[0], s.pages[1]];
+          return f === l ? `p. ${f}` : `pp. ${f}–${l}`;
+        })
+        .join(' + ')
+    : null;
 
   return (
     <div

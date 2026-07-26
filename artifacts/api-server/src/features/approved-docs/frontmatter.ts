@@ -20,7 +20,7 @@ export function buildSidecarMarkdown(opts: {
   /** document-flow provenance — outcome + the per-page pre-step decisions */
   approval?: {
     outcome: "approved" | "approved_incomplete";
-    pageDecisions?: { page: number; decision: string; note?: string }[];
+    pageDecisions?: { fileId: string; page: number; decision: string; note?: string }[];
   };
   pageMarkdown: string[]; // one entry per page, in order (empty for copy)
 }): string {
@@ -47,10 +47,12 @@ export function buildSidecarMarkdown(opts: {
   }
   lines.push("derivedFrom:");
   if (doc.source === "extract") {
-    lines.push(`  sourceKey: ${yamlStr(`applications/${doc.applicationId}/packet/packet.pdf`)}`);
-    lines.push(`  pages: [${(doc.pages ?? []).join(", ")}]`);
+    lines.push("  spans:");
+    for (const s of doc.spans ?? []) {
+      lines.push(`    - sourceKey: ${yamlStr(`applications/${doc.applicationId}/files/${s.fileId}`)}`);
+      lines.push(`      pages: [${s.pages.join(", ")}]`);
+    }
     if (doc.runId) lines.push(`  runId: ${yamlStr(doc.runId)}`);
-    if (doc.packetSha256) lines.push(`  packetSha256: ${yamlStr(doc.packetSha256)}`);
   } else {
     lines.push(`  sourceKey: ${yamlStr(`applications/${doc.applicationId}/uploads/${doc.blockId}/${doc.sourceFilename ?? ""}`)}`);
   }
@@ -62,7 +64,8 @@ export function buildSidecarMarkdown(opts: {
     if (opts.approval.pageDecisions && opts.approval.pageDecisions.length > 0) {
       lines.push("pageDecisions:");
       for (const d of opts.approval.pageDecisions) {
-        lines.push(`  - page: ${d.page}`);
+        lines.push(`  - fileId: ${yamlStr(d.fileId)}`);
+        lines.push(`    page: ${d.page}`);
         lines.push(`    decision: ${yamlStr(d.decision)}`);
         if (d.note) lines.push(`    note: ${yamlStr(d.note)}`);
       }
@@ -75,9 +78,13 @@ export function buildSidecarMarkdown(opts: {
   if (doc.source === "copy") {
     lines.push("_Direct intake upload — no analyzer text available for this document._");
   } else {
+    const pages = (doc.spans ?? []).flatMap((s) => {
+      const [f, l] = s.pages as [number, number];
+      return Array.from({ length: l - f + 1 }, (_, i) => ({ fileId: s.fileId, page: f + i }));
+    });
     opts.pageMarkdown.forEach((md, i) => {
-      const page = (doc.pages?.[0] ?? 1) + i;
-      lines.push(`<!-- packet page ${page} -->`, md.trimEnd(), "");
+      const p = pages[i];
+      lines.push(p ? `<!-- ${p.fileId} p.${p.page} -->` : "<!-- page -->", md.trimEnd(), "");
     });
   }
   return lines.join("\n");

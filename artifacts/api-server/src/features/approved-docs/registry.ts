@@ -42,13 +42,13 @@ export async function liveBasenames(applicationId: string): Promise<Set<string>>
  * Default (block accept, single blocks): one live approved document per
  * block(+variant) slot — all live rows for the slot are superseded.
  *
- * Document flow (`matchPages`): a variant legitimately holds MANY documents
- * (Jan + Feb statements), so only a re-approval of the SAME pages supersedes;
+ * Document flow (`matchSpans`): a variant legitimately holds MANY documents
+ * (Jan + Feb statements), so only a re-approval of the SAME spans supersedes;
  * sibling documents in the slot stay live.
  */
 export async function insertApprovedDoc(
   doc: ApprovedDoc,
-  opts?: { matchPages?: [number, number] },
+  opts?: { matchSpans?: { fileId: string; pages: [number, number] }[] },
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const conditions = [
@@ -59,17 +59,19 @@ export async function insertApprovedDoc(
         ? eq(approvedDocumentsTable.variantId, doc.variantId)
         : isNull(approvedDocumentsTable.variantId),
     ];
-    if (opts?.matchPages) {
-      // pages live inside the jsonb doc — pull the slot's live rows and match in JS
+    if (opts?.matchSpans) {
+      // spans live inside the jsonb doc — pull the slot's live rows and match in JS
       const live = await tx
         .select({ id: approvedDocumentsTable.id, data: approvedDocumentsTable.data })
         .from(approvedDocumentsTable)
         .where(and(...conditions));
-      const [first, last] = opts.matchPages;
+      const key = (spans: { fileId: string; pages: number[] }[]) =>
+        spans.map((s) => `${s.fileId}:${s.pages[0]}-${s.pages[1]}`).join("|");
+      const wanted = key(opts.matchSpans);
       const ids = live
         .filter((r) => {
-          const p = (r.data as ApprovedDoc).pages;
-          return Array.isArray(p) && p[0] === first && p[1] === last;
+          const s = (r.data as ApprovedDoc).spans;
+          return Array.isArray(s) && key(s) === wanted;
         })
         .map((r) => r.id);
       for (const rowId of ids) {

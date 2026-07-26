@@ -7,6 +7,7 @@
  */
 import type { DocumentApprovalDecidedBy } from './documentApprovalDecidedBy';
 import type { DocumentApprovalOutcome } from './documentApprovalOutcome';
+import type { FileSpan } from './fileSpan';
 import type { PageDecision } from './pageDecision';
 
 /**
@@ -20,21 +21,14 @@ export interface DocumentApproval {
   /** analyzer run whose grouping this approval is based on */
   runId: string;
   /**
-     * inclusive 1-based packet page range [first, last]
-     * @minItems 2
-     * @maxItems 2
+     * the approved document's pages as file-qualified spans — ascending within each file, non-overlapping (multi-span = human-accepted merge)
+     * @minItems 1
      */
-  pages: number[];
+  spans: FileSpan[];
   pageDecisions?: PageDecision[];
   outcome: DocumentApprovalOutcome;
   decidedBy: DocumentApprovalDecidedBy;
   decidedAt: string;
   /** registry row created by materialization (approved outcomes only) */
   approvedDocId?: string;
-  /**
-     * For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.
-     * @items.minItems 2
-     * @items.maxItems 2
-     */
-  pageRanges?: number[][];
 }

@@ -46,7 +46,14 @@ export async function readPdfInfo(pdfPath: string): Promise<PdfInfo | { error: s
     if (createdAt) info.createdAt = createdAt;
     if (modifiedAt) info.modifiedAt = modifiedAt;
     return info;
-  } catch {
+  } catch (err) {
+    // Distinguish "your file is bad" from "our tooling is broken" — an
+    // environment problem must never be blamed on the uploader's file.
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      console.error("[preflight] pdfinfo binary not found — poppler missing from this environment");
+      return { error: "Pre-flight tooling unavailable on the server (pdfinfo missing) — this is an environment problem, not your file." };
+    }
+    console.error("[preflight] pdfinfo failed:", err instanceof Error ? err.message : err);
     return { error: "Not a valid PDF — pre-flight could not open it." };
   }
 }

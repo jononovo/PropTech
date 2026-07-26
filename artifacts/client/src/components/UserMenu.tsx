@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { FileStack, FolderKanban, LayoutDashboard, LogOut } from 'lucide-react';
+import { FileStack, FolderKanban, LayoutDashboard, LogOut, Settings } from 'lucide-react';
 import { useProfile } from '@/features/auth/ProfileContext';
 
 /** Mockup panel: anchored dropdown on desktop, full-width sheet under the 52px header on mobile. */
@@ -11,6 +11,7 @@ const NAV = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard, testid: 'link-menu-dashboard' },
   { label: 'Applications', href: '/applications', icon: FolderKanban, testid: 'link-menu-applications' },
   { label: 'Templates', href: '/templates', icon: FileStack, testid: 'link-menu-templates' },
+  { label: 'Settings', href: '/settings', icon: Settings, testid: 'link-menu-settings' },
 ] as const;
 
 /**

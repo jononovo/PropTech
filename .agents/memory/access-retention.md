@@ -18,3 +18,8 @@ Policy doc: `internal_docs/retention.md`. Server code: `features/access/` (matri
 ## Gotchas
 - users.role truth: marcus=Manager, dana/priya=Underwriter, ron=Originator (memory previously said Marcus was Underwriter — wrong).
 - Public sample packets for testing live in `test-assets/public-samples/` (URLA filled example, 3 bank statements, 2 W-2s, 2 pay stubs) with SOURCES.md.
+
+## Section-level permissions (Jul 26 2026)
+- Access matrix display moved to /settings (UserMenu link); case-header AccessMatrixButton deleted. Shared `RoleAccessGrid` (client/src/components) renders every roles×rights surface — read-only (settings) or editable via optional onToggle (template-editor section panel).
+- Template section "Who adds" (upload) is ENFORCED server-side on POST .../uploads/:blockId — validateUploadTarget resolves block→section (findSectionOfBlock/sectionAllowsUpload in intake/blocks.ts), 403 when the requester's role lacks upload. "Who sees" (view) is still declared-only — no filtering anywhere yet.
+- Gotcha: service identity (x-sheaf-service) has no res.locals.profile role → would 403 on the uploads route; worker never calls it today. /apply runs under the signed-in ops role until a real borrower identity exists.

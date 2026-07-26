@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, GripVertical, MoreHorizontal } from "lucide-
 import type { Section, Template } from "@workspace/api-client-react";
 import type { TemplateAction } from "../state/templateActions";
 import { SubsectionGroup } from "./SubsectionGroup";
+import { RoleAccessGrid } from "@/components/RoleAccessGrid";
 
 const OWNERS: Section["owner"][] = ["Applicant", "Originator", "Escrow", "Homium"];
 
@@ -161,30 +162,34 @@ export function SectionCard({
       </div>
 
       {permsOpen && (
-        <div className="bg-[#F8FAFC] border-y border-[#E2E8F0] px-4 py-3 flex items-center mb-5 overflow-x-auto -ml-7 z-10 relative">
-          <div className="text-[9.5px] font-semibold text-[#64748B] uppercase tracking-[0.08em] mr-8 shrink-0">Who sees · Who adds</div>
-          <div className="flex items-center gap-8 flex-1">
-            {section.permissions.map((perm) => (
-              <div key={perm.role} className="flex flex-col gap-2 shrink-0">
-                <div className="text-[11px] font-medium text-[#0F172A]">{perm.role}</div>
-                <div className="flex items-center gap-3">
-                  {(["view", "upload"] as const).map((field) => (
-                    <div key={field} className="flex items-center gap-1.5">
-                      <span className="font-mono text-[9px] text-[#64748B] uppercase tracking-wider">{field}</span>
-                      <button
-                        disabled={readOnly}
-                        onClick={() => dispatch({ type: "SET_PERMISSION", sectionId: section.id, role: perm.role, field, value: !perm[field] })}
-                        data-testid={`perm-${section.id}-${perm.role}-${field}`}
-                        className={`w-6 h-[14px] rounded-[7px] relative transition-colors ${perm[field] ? "bg-[#1D4ED8]" : "bg-[#CBD5E1]"} ${readOnly ? "cursor-default" : "cursor-pointer"}`}
-                      >
-                        <div className={`absolute top-[2px] left-[2px] w-[10px] h-[10px] bg-white rounded-full transition-transform ${perm[field] ? "translate-x-[10px]" : ""}`} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+        <div
+          data-testid={`section-${section.id}-permissions-panel`}
+          className="bg-white border border-[#E2E8F0] shadow-[0_8px_24px_rgba(15,23,42,0.12)] rounded-[6px] p-4 mb-5 max-w-[340px] z-10 relative"
+        >
+          <div className="text-[9.5px] font-semibold text-[#64748B] uppercase tracking-[0.08em] mb-3">
+            Who sees · Who adds
           </div>
+          <RoleAccessGrid
+            rights={["view", "upload"]}
+            rows={section.permissions.map((perm) => ({
+              role: perm.role,
+              abbr: perm.role.slice(0, 2).toUpperCase(),
+              granted: { view: perm.view, upload: perm.upload },
+            }))}
+            {...(!readOnly && {
+              onToggle: (role: string, right: string, value: boolean) =>
+                dispatch({
+                  type: "SET_PERMISSION",
+                  sectionId: section.id,
+                  role,
+                  field: right as "view" | "upload",
+                  value,
+                }),
+            })}
+          />
+          <p className="mt-3 pt-2 text-[10px] leading-snug text-[#64748B] border-t border-[#F1F5F9]">
+            Upload is enforced on every solicited upload; a dark chip grants the right.
+          </p>
         </div>
       )}
 

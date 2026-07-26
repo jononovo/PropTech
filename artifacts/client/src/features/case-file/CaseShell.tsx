@@ -7,7 +7,6 @@ import { fmt } from './caseData';
 import type { CaseModel } from './caseData';
 import { useClosingDate, useTemplateUpgrade } from './useCaseFile';
 import { AgentPanel } from './components/AgentPanel';
-import { AccessMatrixButton } from './components/AccessMatrixButton';
 
 export type Lens = 'intake' | 'triage' | 'workfile' | 'timeline' | 'register' | 'ledger';
 
@@ -183,7 +182,6 @@ export function CaseShell({
           <Sparkles className="w-4 h-4" />
         </button>
 
-        <AccessMatrixButton />
         <UserMenu />
       </header>
 

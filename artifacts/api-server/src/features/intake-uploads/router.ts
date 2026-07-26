@@ -6,7 +6,7 @@ import { UploadDocumentResponse } from "@workspace/api-zod";
 import { HttpError, isHttpError } from "../../lib/httpError";
 import { clientIp } from "../../lib/clientIp";
 import { readApplication, updateApplication, type Application } from "../intake/store";
-import { extensionAllowed, findBlock, isSafeSegment } from "../intake/blocks";
+import { extensionAllowed, findBlock, findSectionOfBlock, isSafeSegment, sectionAllowsUpload } from "../intake/blocks";
 import { receiveSourceFiles, sanitizeFilename } from "../files/receive";
 
 type UploadedFileRecord = { filename: string; size: number; uploadedAt: string; variantId?: string; uploaderIp?: string; fileId: string };
@@ -38,6 +38,14 @@ async function validateUploadTarget(req: Request, res: Response, next: NextFunct
   const block = findBlock(app, blockId);
   if (!block || block.kind !== "document") {
     res.status(400).json({ error: "Block is not a document block on this application's template" });
+    return;
+  }
+  // Section-level "Who adds" from the pinned template — enforced, not decorative.
+  // Role identity comes from the access middleware (res.locals.profile).
+  const role = (res.locals["profile"] as { role?: string } | undefined)?.role;
+  const section = findSectionOfBlock(app, blockId);
+  if (!section || !role || !sectionAllowsUpload(section, role)) {
+    res.status(403).json({ error: `${role ?? "This role"} cannot upload to section "${section?.name ?? blockId}" (template permissions)` });
     return;
   }
   contexts.set(req, { app, blockId });

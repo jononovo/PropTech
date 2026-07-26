@@ -12,6 +12,7 @@ import { IntakeForm } from './features/intake/IntakeForm';
 import { CaseFilePage } from './features/case-file/CaseFilePage';
 import { ReviewPage } from './features/case-file/review/ReviewPage';
 import { LoginPage } from './features/auth/LoginPage';
+import { SettingsPage } from './features/settings/SettingsPage';
 import { ProfileProvider, useProfileState } from './features/auth/ProfileContext';
 
 const queryClient = new QueryClient();
@@ -40,6 +41,13 @@ function Router() {
       </Route>
       <Route path="/applications/:id/:lens?">
         {(params) => <CaseFilePage id={params.id} lens={params.lens} />}
+      </Route>
+      <Route path="/settings">
+        {() => (
+          <AppShell active="settings">
+            <SettingsPage />
+          </AppShell>
+        )}
       </Route>
       <Route path="/templates">
         {() => (

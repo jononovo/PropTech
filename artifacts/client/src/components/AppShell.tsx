@@ -8,7 +8,8 @@ const TABS = [
   { key: "templates", label: "Templates", href: "/templates" },
 ] as const;
 
-export type ShellTab = (typeof TABS)[number]["key"];
+// "settings" lives in the user menu, not the tab strip — no tab highlights.
+export type ShellTab = (typeof TABS)[number]["key"] | "settings";
 
 export function AppShell({ active, children }: { active: ShellTab; children: ReactNode }) {
   return (

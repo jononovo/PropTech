@@ -1622,6 +1622,9 @@ components:
         sizeBytes: { type: integer }
         pages: { type: integer, description: "PDFs only" }
         sha256: { type: string }
+        convertedFrom:
+          type: string
+          description: original image filename when a jpg/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs
         flags:
           type: array
           description: per-file deterministic pre-flight flags, computed at drop (fileId implicit)

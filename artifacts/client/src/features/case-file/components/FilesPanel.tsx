@@ -65,9 +65,9 @@ export function Dropzone({ applicationId, compact = false }: { applicationId: st
   const take = (list: FileList | File[] | null | undefined) => {
     const files = Array.from(list ?? []);
     if (files.length === 0) return;
-    const bad = files.find((f) => !(f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
+    const bad = files.find((f) => !/\.(pdf|jpe?g|png)$/i.test(f.name));
     if (bad) {
-      toast({ description: `${bad.name} is not a PDF — the drop was not accepted.` });
+      toast({ description: `${bad.name} is not a PDF or image (jpg/png) — the drop was not accepted.` });
       return;
     }
     dropFiles(files);
@@ -123,11 +123,11 @@ export function Dropzone({ applicationId, compact = false }: { applicationId: st
           Files stay exactly as dropped — nothing is stitched together. Every file lands durably,
           pre-flight runs instantly, and no money is spent before the gate decision.
         </p>
-        <div className="micro-label text-[9.5px] mt-3">PDF only · one or many · click or drag</div>
+        <div className="micro-label text-[9.5px] mt-3">PDF · JPG · PNG · one or many · click or drag</div>
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf,.pdf"
+          accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png"
           multiple
           className="hidden"
           data-testid="input-intake-files"

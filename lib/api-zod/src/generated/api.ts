@@ -718,6 +718,7 @@ export const CreateApplicationResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -938,6 +939,7 @@ export const GetApplicationResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -1163,6 +1165,7 @@ export const UpdateApplicationResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -1389,6 +1392,7 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -1614,6 +1618,7 @@ export const SaveFieldValuesResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -1843,6 +1848,7 @@ export const ReceiveFilesResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -1915,6 +1921,7 @@ export const ReceiveFilesResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -2157,6 +2164,7 @@ export const UpdateSourceFileResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -2494,6 +2502,7 @@ export const RecordMergeResolutionResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -2739,6 +2748,7 @@ export const RecordDocumentApprovalResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -3369,6 +3379,7 @@ export const DecideRunGateResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -3595,6 +3606,7 @@ export const ReportRunFailureResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -3827,6 +3839,7 @@ export const RecordVerdictResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),
@@ -4081,6 +4094,7 @@ export const RecordPlacementResponse = zod.object({
   "sizeBytes": zod.number(),
   "pages": zod.number().optional().describe('PDFs only'),
   "sha256": zod.string().optional(),
+  "convertedFrom": zod.string().optional().describe('original image filename when a jpg\/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs'),
   "flags": zod.array(zod.object({
   "fileId": zod.string().optional(),
   "page": zod.number().optional().describe('1-based within the file'),

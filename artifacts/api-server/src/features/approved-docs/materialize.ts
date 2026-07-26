@@ -168,11 +168,13 @@ export async function materializeApproval(app: Application, blockId: string): Pr
         approvedBy, approvedAt,
       };
     } else {
-      if (!upload!.filename.toLowerCase().endsWith(".pdf")) {
-        throw new HttpError(502, `Only PDF uploads can be materialized (got ${upload!.filename}) — upload a PDF version instead`);
-      }
       const sf = (app.files ?? []).find((f) => f.id === upload!.fileId);
       if (!sf) throw new HttpError(502, `Upload ${upload!.filename} has no SourceFile registry entry`);
+      // Gate on the stored bytes (images are converted to PDF at the receive
+      // seam), never on the display filename.
+      if (storageExt(sf) !== ".pdf") {
+        throw new HttpError(502, `Only PDF uploads can be materialized (got ${sf.filename}) — upload a PDF version instead`);
+      }
       const uploadStream = await openSourceFileStream(app.storageFolder, sf.id, storageExt(sf));
       if (!uploadStream) throw new HttpError(502, `Upload ${upload!.filename} missing from storage`);
       pdfBytes = await streamToBuffer(uploadStream);

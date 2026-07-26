@@ -31,6 +31,8 @@ export interface SourceFile {
   /** PDFs only */
   pages?: number;
   sha256?: string;
+  /** original image filename when a jpg/png was wrapped into a single-page PDF at the receive seam; absent for native PDFs */
+  convertedFrom?: string;
   /** per-file deterministic pre-flight flags, computed at drop (fileId implicit) */
   flags?: FileFlag[];
   /** archived = out of the working view, never deleted (no UI yet — deferred) */

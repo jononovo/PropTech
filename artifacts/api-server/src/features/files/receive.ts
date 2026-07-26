@@ -3,7 +3,9 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { nanoid } from "nanoid";
 import { updateApplication, type Application } from "../intake/store";
+import { writeFileSync } from "node:fs";
 import { readPdfInfo, quickFileFlags, type FileFlag } from "./preflight";
+import { CONVERTIBLE_IMAGE_RE, imageToPdf } from "./imageToPdf";
 import { putSourceFileBytes } from "../../lib/packetObjectStore";
 import { HttpError } from "../../lib/httpError";
 
@@ -43,10 +45,26 @@ export async function receiveSourceFiles(opts: {
   // 1) validate + measure everything before any state lands
   const minted: SourceFile[] = [];
   for (const f of opts.files) {
-    const filename = sanitizeFilename(f.originalname);
+    let filename = sanitizeFilename(f.originalname);
+    let convertedFrom: string | undefined;
+    // Images become one single-page PDF each, right here at the seam — the
+    // rest of the pipeline only ever sees PDFs.
+    if (CONVERTIBLE_IMAGE_RE.test(filename)) {
+      let pdf: Buffer;
+      try {
+        pdf = await imageToPdf(readFileSync(f.tempPath), filename);
+      } catch {
+        throw new HttpError(400, `${filename}: could not read the image — the whole drop was rejected, fix and re-drop`);
+      }
+      writeFileSync(f.tempPath, pdf);
+      f.sizeBytes = pdf.length;
+      f.mimetype = "application/pdf";
+      convertedFrom = filename;
+      filename = filename.replace(CONVERTIBLE_IMAGE_RE, ".pdf");
+    }
     const isPdf = filename.toLowerCase().endsWith(".pdf");
     if (opts.requirePdf && !isPdf) {
-      throw new HttpError(400, `${filename}: not a PDF — the whole drop was rejected, fix and re-drop`);
+      throw new HttpError(400, `${filename}: not a PDF or image (jpg/png) — the whole drop was rejected, fix and re-drop`);
     }
     let pages: number | undefined;
     let flags: FileFlag[] = [];
@@ -68,6 +86,7 @@ export async function receiveSourceFiles(opts: {
       sizeBytes: f.sizeBytes,
       ...(pages !== undefined ? { pages } : {}),
       sha256: createHash("sha256").update(readFileSync(f.tempPath)).digest("hex"),
+      ...(convertedFrom ? { convertedFrom } : {}),
       flags,
       status: "active",
       receivedAt: new Date().toISOString(),

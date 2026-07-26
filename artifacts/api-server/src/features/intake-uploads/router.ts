@@ -111,9 +111,11 @@ router.post(
       });
       const sf = files[0]!;
 
+      // The minted SourceFile is the source of truth — images were converted
+      // to single-page PDFs at the receive seam (filename/size differ then).
       const record: UploadedFileRecord = {
-        filename,
-        size: req.file.size,
+        filename: sf.filename,
+        size: sf.sizeBytes,
         uploadedAt: sf.receivedAt,
         fileId: sf.id,
         ...(variantId ? { variantId } : {}),

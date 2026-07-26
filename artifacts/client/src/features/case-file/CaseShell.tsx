@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks, ScrollText } from 'lucide-react';
+import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks, MoreVertical, ScrollText } from 'lucide-react';
 import { useListTemplates } from '@workspace/api-client-react';
 import { PANEL, UserMenu } from '@/components/UserMenu';
 import { fmt } from './caseData';
@@ -15,7 +15,6 @@ const LENSES: { key: Lens; label: string; icon: typeof Inbox }[] = [
   { key: 'workfile', label: 'Workfile', icon: FolderOpen },
   { key: 'timeline', label: 'Timeline', icon: History },
   { key: 'register', label: 'Register', icon: ListChecks },
-  { key: 'ledger', label: 'Ledger', icon: ScrollText },
 ];
 
 /**
@@ -38,6 +37,7 @@ export function CaseShell({
 }) {
   const { app } = model;
   const [caseOpen, setCaseOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -126,6 +126,43 @@ export function CaseShell({
             );
           })}
         </nav>
+
+        {/* overflow — rare tools live here, out of the daily tab row */}
+        <div className="relative shrink-0">
+          {moreOpen && <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />}
+          <button
+            onClick={() => setMoreOpen((o) => !o)}
+            data-testid="button-case-overflow"
+            aria-label="More"
+            title="More"
+            className={`relative z-50 w-8 h-9 md:h-8 flex items-center justify-center rounded-[4px] transition-colors ${
+              lens === 'ledger'
+                ? 'text-[var(--ops-accent)] bg-[var(--ops-accent-wash)]'
+                : 'text-[var(--ops-muted)] hover:bg-[var(--ops-inner-rule)] hover:text-[var(--ops-ink)]'
+            }`}
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+          {moreOpen && (
+            <div className={`${PANEL} right-0 left-auto w-[200px]`} data-testid="menu-case-overflow">
+              <button
+                onClick={() => {
+                  onLens('ledger');
+                  setMoreOpen(false);
+                }}
+                data-testid="menu-item-ledger"
+                className={`w-full flex items-center gap-2 px-4 py-2.5 text-[12px] font-medium text-left transition-colors ${
+                  lens === 'ledger'
+                    ? 'text-[var(--ops-accent)]'
+                    : 'text-[var(--ops-muted)] hover:text-[var(--ops-ink)] hover:bg-[var(--ops-inset)]'
+                }`}
+              >
+                <ScrollText className="w-[13px] h-[13px]" strokeWidth={2} />
+                Activity ledger
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="hidden md:block h-5 w-px bg-[var(--ops-border)] shrink-0" />
 

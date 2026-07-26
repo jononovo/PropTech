@@ -4,6 +4,7 @@ import { updateApplication } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
 import { readSidecar } from "../analysis/store";
 import { HttpError, isHttpError } from "../../lib/httpError";
+import { clientIp } from "../../lib/clientIp";
 import { mergeResolutionKey } from "./mergeKey";
 
 /**
@@ -50,8 +51,14 @@ router.post("/applications/:applicationId/merge-resolutions", async (req, res): 
     return;
   }
   try {
-    const app = await updateApplication(id!, (app) => {
+    const app = await updateApplication(id!, (app, emit) => {
       const key = mergeResolutionKey(body.runId, ranges);
+      emit({
+        actor: { kind: "user", name: body.decidedBy, ip: clientIp(req) },
+        action: `merge.${body.decision}`,
+        target: { type: "run", id: body.runId },
+        detail: { ranges },
+      });
       app.mergeResolutions = {
         ...(app.mergeResolutions ?? {}),
         [key]: {

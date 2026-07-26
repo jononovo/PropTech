@@ -13,6 +13,43 @@ export interface ApiMessage {
   error: string;
 }
 
+export type ApplicationEventActorKind = typeof ApplicationEventActorKind[keyof typeof ApplicationEventActorKind];
+
+
+export const ApplicationEventActorKind = {
+  user: 'user',
+  system: 'system',
+} as const;
+
+export type ApplicationEventActor = {
+  kind: ApplicationEventActorKind;
+  name?: string;
+  ip?: string;
+};
+
+export type ApplicationEventTarget = {
+  type: string;
+  id?: string;
+  label?: string;
+};
+
+export type ApplicationEventDetail = { [key: string]: unknown };
+
+/**
+ * One ledger row — append-only, written with the state change it records.
+ */
+export interface ApplicationEvent {
+  seq: number;
+  at: string;
+  actor: ApplicationEventActor;
+  /** noun.verb, e.g. file.uploaded, gate.confirmed, verdict.accepted */
+  action: string;
+  target?: ApplicationEventTarget;
+  detail?: ApplicationEventDetail;
+}
+
+export type ListApplicationEventsResponse = ApplicationEvent[];
+
 export type ExpiryRuleKind = typeof ExpiryRuleKind[keyof typeof ExpiryRuleKind];
 
 

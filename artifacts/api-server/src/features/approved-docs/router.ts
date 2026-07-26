@@ -4,6 +4,7 @@ import { RecordDocumentApprovalBody, type DocumentApproval } from "@workspace/ap
 import { readApplication, updateApplication } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
 import { HttpError, isHttpError } from "../../lib/httpError";
+import { clientIp } from "../../lib/clientIp";
 import { openApprovedObjectStream } from "../../lib/packetObjectStore";
 import { findApprovedDoc, listApprovedDocs } from "./registry";
 import { materializeApproval, materializeDocumentApproval } from "./materialize";
@@ -55,7 +56,7 @@ router.post("/applications/:applicationId/document-approvals", async (req, res):
     decidedAt: new Date().toISOString(),
   };
   try {
-    const app = await updateApplication(id!, (app) => {
+    const app = await updateApplication(id!, (app, emit) => {
       const block = findBlock(app, body.blockId);
       if (!block || block.kind !== "document") {
         throw new HttpError(400, "Block is not a document block on this application's template");
@@ -86,6 +87,16 @@ router.post("/applications/:applicationId/document-approvals", async (req, res):
       }
       // append-only decision trail, newest first
       app.documentApprovals = [approval, ...(app.documentApprovals ?? [])];
+      emit({
+        actor: { kind: "user", name: body.decidedBy, ip: clientIp(req) },
+        action: `document.${approval.outcome}`,
+        target: { type: "block", id: body.blockId, label: block.name },
+        detail: {
+          pages: approval.pages,
+          ...(body.variantId ? { variantId: body.variantId } : {}),
+          runId: body.runId,
+        },
+      });
       return app;
     });
     if (!app) {

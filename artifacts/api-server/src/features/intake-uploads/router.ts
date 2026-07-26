@@ -103,12 +103,18 @@ router.post(
       ...(clientIp(req) ? { uploaderIp: clientIp(req) } : {}),
     };
     // Atomic append — no clobbering of concurrent writes to other parts of the app.
-    const app = await updateApplication(ctx.app.id, (app) => {
+    const app = await updateApplication(ctx.app.id, (app, emit) => {
       const files = ((app.uploads[ctx.blockId] ?? []) as UploadedFileRecord[]).filter(
         (f) => f.filename !== record.filename,
       );
       files.push(record);
       app.uploads[ctx.blockId] = files;
+      emit({
+        actor: { kind: "user", ip: clientIp(req) },
+        action: "file.uploaded",
+        target: { type: "file", label: record.filename },
+        detail: { blockId: ctx.blockId, size: record.size, ...(variantId ? { variantId } : {}) },
+      });
       return app;
     });
     if (!app) {
@@ -132,12 +138,18 @@ router.delete(
     }
     const filename = sanitizeFilename(param(req, "filename") ?? "");
     try {
-      const app = await updateApplication(id, (app) => {
+      const app = await updateApplication(id, (app, emit) => {
         const files = (app.uploads[blockId] ?? []) as UploadedFileRecord[];
         if (!files.some((f) => f.filename === filename)) {
           throw new HttpError(404, "File not found");
         }
         app.uploads[blockId] = files.filter((f) => f.filename !== filename);
+        emit({
+          actor: { kind: "user", ip: clientIp(req) },
+          action: "file.deleted",
+          target: { type: "file", label: filename },
+          detail: { blockId },
+        });
         return app;
       });
       if (!app) {

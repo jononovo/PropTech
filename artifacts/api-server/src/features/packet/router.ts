@@ -90,11 +90,16 @@ async function kickAnalyzer(
 
 /** Guarded revert processing→gated after a failed kick/run — only OUR packet (sha) flips. */
 async function revertToGated(appId: string, sha256: string, reason: string): Promise<void> {
-  await updateApplication(appId, (a) => {
+  await updateApplication(appId, (a, emit) => {
     if (a.packet?.state === "processing" && a.packet.sha256 === sha256) {
       const reverted: PacketState = { ...a.packet, state: "gated", lastRunError: reason.slice(0, 500) };
       delete reverted.gate;
       a.packet = reverted;
+      emit({
+        actor: { kind: "system" },
+        action: "run.failed",
+        detail: { reason: reason.slice(0, 200) },
+      });
     }
     return a;
   });
@@ -222,7 +227,7 @@ export async function acceptPacketPdf(opts: {
 
     // Spec §3 auto rule remains SUSPENDED: every packet gates for a model plan.
     packet.state = "gated";
-    result = await updateApplication(appId, (a) => {
+    result = await updateApplication(appId, (a, emit) => {
       if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
         throw new HttpError(409, "This upload was superseded by a newer upload");
       }
@@ -230,6 +235,16 @@ export async function acceptPacketPdf(opts: {
       if (opts.consumeManifest && a.packetManifest) {
         a.packetManifest = { ...a.packetManifest, assembledAt: new Date().toISOString() };
       }
+      emit({
+        actor: { kind: "user", ...(opts.uploaderIp ? { ip: opts.uploaderIp } : {}) },
+        action: "packet.received",
+        target: { type: "file", label: opts.originalName },
+        detail: {
+          pages: opts.info.pages,
+          sizeBytes: opts.sizeBytes,
+          redFlags: packet.preflight?.flags.length ?? 0,
+        },
+      });
       return a;
     });
     if (!result) throw new HttpError(404, "Application not found");
@@ -317,7 +332,7 @@ router.post("/applications/:applicationId/packet/gate", validateTarget, async (r
   // 409, never a double run. Holds across server instances, not just this one.
   let decided: Application | undefined;
   try {
-    decided = await updateApplication(ctx.app.id, (app) => {
+    decided = await updateApplication(ctx.app.id, (app, emit) => {
       if (!app.packet) {
         throw new HttpError(404, "No packet uploaded for this application");
       }
@@ -340,6 +355,11 @@ router.post("/applications/:applicationId/packet/gate", validateTarget, async (r
       };
       delete next.lastRunError;
       app.packet = next;
+      emit({
+        actor: { kind: "user", name: parsed.data.decidedBy, ip: clientIp(req) },
+        action: `gate.${parsed.data.decision}`,
+        detail: { redFlags: flags.length },
+      });
       return app;
     });
   } catch (err) {

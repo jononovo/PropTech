@@ -14,6 +14,8 @@ import { HttpError, isHttpError } from "../../lib/httpError";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
 import { appendRun, readSidecar } from "./store";
+import { appendEvent } from "../ledger/store";
+import { clientIp } from "../../lib/clientIp";
 import { materializeApproval } from "../approved-docs/materialize";
 
 const router: IRouter = Router();
@@ -72,6 +74,13 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
   // Asynchronous completion of the packet choreography: a landed run flips the
   // packet processing→report and clears lastRunError. State-guarded — uploads
   // are 409-blocked during processing, so the processing packet IS this run's.
+  await appendEvent({
+    applicationId: id,
+    actor: { kind: "system" },
+    action: "run.ingested",
+    target: { type: "run", id: parsed.data.runId },
+    detail: { documents: parsed.data.documents.length },
+  });
   await updateApplication(id, (app) => {
     if (app.packet?.state === "processing") {
       const next: NonNullable<Application["packet"]> = { ...app.packet, state: "report" };
@@ -96,7 +105,7 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
     return;
   }
   try {
-    const app = await updateApplication(id, (app) => {
+    const app = await updateApplication(id, (app, emit) => {
       const block = findBlock(app, blockId);
       if (!block || block.kind !== "document") {
         throw new HttpError(400, "Block is not a document block on this application's template");
@@ -114,6 +123,12 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
         ...(parsed.data.runId !== undefined ? { runId: parsed.data.runId } : {}),
       };
       app.verdicts = { ...(app.verdicts ?? {}), [blockId]: verdict };
+      emit({
+        actor: { kind: "user", name: parsed.data.decidedBy, ip: clientIp(req) },
+        action: `verdict.${parsed.data.verdict}`,
+        target: { type: "block", id: blockId, label: block.name },
+        ...(parsed.data.note ? { detail: { note: parsed.data.note } } : {}),
+      });
       return app;
     });
     if (!app) {
@@ -216,7 +231,7 @@ router.post("/applications/:applicationId/placements", async (req, res): Promise
     return;
   }
   try {
-    const app = await updateApplication(id, (app) => {
+    const app = await updateApplication(id, (app, emit) => {
       if (app.packet?.pages && last > app.packet.pages) {
         throw new HttpError(400, `Page range exceeds the ${app.packet.pages}-page packet`);
       }
@@ -238,6 +253,12 @@ router.post("/applications/:applicationId/placements", async (req, res): Promise
         (p) => (p.pages[1] ?? 0) < first || (p.pages[0] ?? 0) > last,
       );
       app.manualPlacements = [...keep, placement];
+      emit({
+        actor: { kind: "user", name: parsed.data.decidedBy, ip: clientIp(req) },
+        action: "placement.recorded",
+        target: { type: "block", id: parsed.data.target },
+        detail: { pages: [first, last] },
+      });
       return app;
     });
     if (!app) {

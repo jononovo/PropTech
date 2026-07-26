@@ -23,6 +23,8 @@ import {
   type Application,
 } from "./store";
 import { findBlock, isSafeSegment } from "./blocks";
+import { appendEvent } from "../ledger/store";
+import { clientIp } from "../../lib/clientIp";
 
 const router: IRouter = Router();
 
@@ -61,6 +63,12 @@ router.post("/applications", async (req, res): Promise<void> => {
     template: tpl,
   };
   await insertApplication(app);
+  await appendEvent({
+    applicationId: app.id,
+    actor: { kind: "user", ip: clientIp(req) },
+    action: "application.created",
+    detail: { applicantName: app.applicantName, family: app.family, version: app.version },
+  });
   res.status(201).json(CreateApplicationResponse.parse(app));
 });
 
@@ -84,12 +92,18 @@ router.patch("/applications/:applicationId", async (req, res): Promise<void> => 
     return;
   }
   const app = id
-    ? await updateApplication(id, (app) => {
+    ? await updateApplication(id, (app, emit) => {
         // projectedClosingDate is portal-owned (analyzer spec §8): string sets, null clears.
         if (parsed.data.projectedClosingDate === null) {
           delete app.projectedClosingDate;
+          emit({ actor: { kind: "user", ip: clientIp(req) }, action: "closing-date.cleared" });
         } else if (parsed.data.projectedClosingDate !== undefined) {
           app.projectedClosingDate = parsed.data.projectedClosingDate;
+          emit({
+            actor: { kind: "user", ip: clientIp(req) },
+            action: "closing-date.set",
+            detail: { date: parsed.data.projectedClosingDate },
+          });
         }
         return app;
       })
@@ -116,12 +130,17 @@ router.put("/applications/:applicationId/fields/:blockId", async (req, res): Pro
     return;
   }
   try {
-    const app = await updateApplication(id, (app) => {
+    const app = await updateApplication(id, (app, emit) => {
       const block = findBlock(app, blockId);
       if (!block || block.kind !== "fields") {
         throw new HttpError(400, "Block is not a field-group block on this application's template");
       }
       app.fieldValues[blockId] = parsed.data.values;
+      emit({
+        actor: { kind: "user", ip: clientIp(req) },
+        action: "fields.saved",
+        target: { type: "block", id: blockId, label: block.name },
+      });
       return app;
     });
     if (!app) {
@@ -151,7 +170,7 @@ router.post("/applications/:applicationId/template-version", async (req, res): P
   }
   try {
     const app = id
-      ? await updateApplication(id, async (app) => {
+      ? await updateApplication(id, async (app, emit) => {
           const { targetVersion, decidedBy } = parsed.data;
           if (targetVersion <= app.version) {
             throw new HttpError(
@@ -187,6 +206,11 @@ router.post("/applications/:applicationId/template-version", async (req, res): P
           ];
           app.version = targetVersion;
           app.template = tpl;
+          emit({
+            actor: { kind: "user", name: decidedBy, ip: clientIp(req) },
+            action: "template.repinned",
+            detail: { fromVersion: app.templateHistory.at(-1)?.fromVersion, toVersion: targetVersion },
+          });
           return app;
         })
       : undefined;

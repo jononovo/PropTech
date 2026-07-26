@@ -2363,6 +2363,33 @@ export const ListModelOptionsResponse = zod.object({
 
 
 /**
+ * Newest first. Every state change (uploads, gate decisions, verdicts, approvals, run ingests, template repins…) writes one row in the same transaction as the change. Rows are never updated or deleted.
+ * @summary Append-only event ledger for one application
+ */
+export const ListApplicationEventsParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const ListApplicationEventsResponseItem = zod.object({
+  "seq": zod.number(),
+  "at": zod.string(),
+  "actor": zod.object({
+  "kind": zod.enum(['user', 'system']),
+  "name": zod.string().optional(),
+  "ip": zod.string().optional()
+}),
+  "action": zod.string().describe('noun.verb, e.g. file.uploaded, gate.confirmed, verdict.accepted'),
+  "target": zod.object({
+  "type": zod.string(),
+  "id": zod.string().optional(),
+  "label": zod.string().optional()
+}).optional(),
+  "detail": zod.record(zod.string(), zod.unknown()).optional()
+}).describe('One ledger row — append-only, written with the state change it records.')
+export const ListApplicationEventsResponse = zod.array(ListApplicationEventsResponseItem)
+
+
+/**
  * Returns an empty shell (latestRunId null, runs []) when no run has been ingested yet.
  * @summary Analyzer sidecar for an application
  */

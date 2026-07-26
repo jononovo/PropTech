@@ -7,10 +7,11 @@ import { TriagePage } from './lenses/TriagePage';
 import { WorkfilePage } from './lenses/WorkfilePage';
 import { TimelinePage } from './lenses/TimelinePage';
 import { RegisterPage } from './lenses/RegisterPage';
+import { LedgerPage } from './lenses/LedgerPage';
 import { useCaseFile } from './useCaseFile';
 import './case-file.css';
 
-const LENSES: Lens[] = ['intake', 'triage', 'workfile', 'timeline', 'register'];
+const LENSES: Lens[] = ['intake', 'triage', 'workfile', 'timeline', 'register', 'ledger'];
 
 export function CaseFilePage({ id, lens }: { id: string; lens?: string }) {
   const [, setLocation] = useLocation();
@@ -61,6 +62,7 @@ export function CaseFilePage({ id, lens }: { id: string; lens?: string }) {
           )}
           {activeLens === 'timeline' && <TimelinePage model={model} onLens={goLens} />}
           {activeLens === 'register' && <RegisterPage model={model} applicationId={id} onLens={goLens} />}
+          {activeLens === 'ledger' && <LedgerPage applicationId={id} />}
         </CaseShell>
       )}
     </div>

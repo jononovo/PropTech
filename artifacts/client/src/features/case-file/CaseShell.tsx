@@ -1,13 +1,13 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks } from 'lucide-react';
+import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks, ScrollText } from 'lucide-react';
 import { useListTemplates } from '@workspace/api-client-react';
 import { PANEL, UserMenu } from '@/components/UserMenu';
 import { fmt } from './caseData';
 import type { CaseModel } from './caseData';
 import { useClosingDate, useTemplateUpgrade } from './useCaseFile';
 
-export type Lens = 'intake' | 'triage' | 'workfile' | 'timeline' | 'register';
+export type Lens = 'intake' | 'triage' | 'workfile' | 'timeline' | 'register' | 'ledger';
 
 const LENSES: { key: Lens; label: string; icon: typeof Inbox }[] = [
   { key: 'intake', label: 'Intake', icon: Inbox },
@@ -15,6 +15,7 @@ const LENSES: { key: Lens; label: string; icon: typeof Inbox }[] = [
   { key: 'workfile', label: 'Workfile', icon: FolderOpen },
   { key: 'timeline', label: 'Timeline', icon: History },
   { key: 'register', label: 'Register', icon: ListChecks },
+  { key: 'ledger', label: 'Ledger', icon: ScrollText },
 ];
 
 /**

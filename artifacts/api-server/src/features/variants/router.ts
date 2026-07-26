@@ -4,6 +4,7 @@ import { AddVariantBody, AddVariantResponse } from "@workspace/api-zod";
 import { HttpError, isHttpError } from "../../lib/httpError";
 import { updateApplication, type Application } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
+import { clientIp } from "../../lib/clientIp";
 
 /**
  * Variants of a set block on ONE application. The template declares the
@@ -78,11 +79,17 @@ router.post("/applications/:applicationId/blocks/:blockId/variants", async (req,
   }
   try {
     let created: VariantRecord | undefined;
-    const app = await updateApplication(id, (app) => {
+    const app = await updateApplication(id, (app, emit) => {
       created = buildVariant(app, blockId, parsed.data.descriptor as Record<string, string>);
       const variants = (app.variants ?? {}) as Record<string, VariantRecord[]>;
       variants[blockId] = [...(variants[blockId] ?? []), created];
       app.variants = variants;
+      emit({
+        actor: { kind: "user", ip: clientIp(req) },
+        action: "variant.added",
+        target: { type: "variant", id: created.id, label: created.label },
+        detail: { blockId },
+      });
       return app;
     });
     if (!app || !created) {
@@ -108,16 +115,23 @@ router.delete("/applications/:applicationId/blocks/:blockId/variants/:variantId"
     return;
   }
   try {
-    const app = await updateApplication(id, (app) => {
+    const app = await updateApplication(id, (app, emit) => {
       const variants = (app.variants ?? {}) as Record<string, VariantRecord[]>;
       const list = variants[blockId] ?? [];
-      if (!list.some((v) => v.id === variantId)) throw new HttpError(404, "Variant not found");
+      const existing = list.find((v) => v.id === variantId);
+      if (!existing) throw new HttpError(404, "Variant not found");
       const tagged = (app.uploads[blockId] ?? []).filter((f) => (f as { variantId?: string }).variantId === variantId);
       if (tagged.length > 0) {
         throw new HttpError(409, `${tagged.length} upload(s) still tagged to this variant — delete or untag them first`);
       }
       variants[blockId] = list.filter((v) => v.id !== variantId);
       app.variants = variants;
+      emit({
+        actor: { kind: "user", ip: clientIp(req) },
+        action: "variant.deleted",
+        target: { type: "variant", id: variantId, label: existing.label },
+        detail: { blockId },
+      });
       return app;
     });
     if (!app) {

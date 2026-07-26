@@ -2,6 +2,11 @@ import { z } from "zod";
 import { asc, eq, sql } from "drizzle-orm";
 import { db, applicationsTable } from "@workspace/db";
 import type { GetApplicationResponse, ListApplicationsResponseItem } from "@workspace/api-zod";
+import { appendEventsTx, type LedgerEventInput } from "../ledger/store";
+
+/** Ledger hook handed to updateApplication's mutate: events queued here commit
+ * in the SAME transaction as the document update (ledger feature README). */
+export type EmitEvent = (e: Omit<LedgerEventInput, "applicationId">) => void;
 
 export type Application = z.infer<typeof GetApplicationResponse>;
 export type ApplicationSummary = z.infer<typeof ListApplicationsResponseItem>;
@@ -37,7 +42,7 @@ export async function insertApplication(app: Application): Promise<void> {
  */
 export async function updateApplication(
   id: string,
-  mutate: (app: Application) => Application | Promise<Application>,
+  mutate: (app: Application, emit: EmitEvent) => Application | Promise<Application>,
 ): Promise<Application | undefined> {
   return db.transaction(async (tx) => {
     const rows = await tx
@@ -47,8 +52,13 @@ export async function updateApplication(
       .for("update")
       .limit(1);
     if (!rows[0]) return undefined;
-    const next = await mutate(rows[0].data as Application);
+    const events: LedgerEventInput[] = [];
+    const emit: EmitEvent = (e) => {
+      events.push({ ...e, applicationId: id });
+    };
+    const next = await mutate(rows[0].data as Application, emit);
     await tx.update(applicationsTable).set({ data: next }).where(eq(applicationsTable.id, id));
+    await appendEventsTx(tx, events);
     return next;
   });
 }

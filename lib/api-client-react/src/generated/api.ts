@@ -36,6 +36,7 @@ import type {
   GetApprovedDocFileParams,
   GetRunPageImageParams,
   HealthStatus,
+  ListApplicationEventsResponse,
   LoginInput,
   MergeResolutionInput,
   ModelOptionsResponse,
@@ -2346,6 +2347,84 @@ export function useListModelOptions<TData = Awaited<ReturnType<typeof listModelO
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListModelOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListApplicationEventsUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/events`
+}
+
+/**
+ * Newest first. Every state change (uploads, gate decisions, verdicts, approvals, run ingests, template repins…) writes one row in the same transaction as the change. Rows are never updated or deleted.
+ * @summary Append-only event ledger for one application
+ */
+export const listApplicationEvents = async (applicationId: string, options?: RequestInit): Promise<ListApplicationEventsResponse> => {
+
+  return customFetch<ListApplicationEventsResponse>(getListApplicationEventsUrl(applicationId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListApplicationEventsQueryKey = (applicationId: string,) => {
+    return [
+    `/api/applications/${applicationId}/events`
+    ] as const;
+    }
+
+
+export const getListApplicationEventsQueryOptions = <TData = Awaited<ReturnType<typeof listApplicationEvents>>, TError = ErrorType<ApiMessage>>(applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApplicationEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListApplicationEventsQueryKey(applicationId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listApplicationEvents>>> = ({ signal }) => listApplicationEvents(applicationId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listApplicationEvents>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListApplicationEventsQueryResult = NonNullable<Awaited<ReturnType<typeof listApplicationEvents>>>
+export type ListApplicationEventsQueryError = ErrorType<ApiMessage>
+
+
+/**
+ * @summary Append-only event ledger for one application
+ */
+
+export function useListApplicationEvents<TData = Awaited<ReturnType<typeof listApplicationEvents>>, TError = ErrorType<ApiMessage>>(
+ applicationId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listApplicationEvents>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListApplicationEventsQueryOptions(applicationId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

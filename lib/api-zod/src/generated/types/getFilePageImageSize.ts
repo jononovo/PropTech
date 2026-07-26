@@ -5,8 +5,11 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
-import type { GetRunPageImageSize } from './getRunPageImageSize';
 
-export type GetRunPageImageParams = {
-size?: GetRunPageImageSize;
-};
+export type GetFilePageImageSize = typeof GetFilePageImageSize[keyof typeof GetFilePageImageSize];
+
+
+export const GetFilePageImageSize = {
+  full: 'full',
+  strip: 'strip',
+} as const;

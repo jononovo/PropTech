@@ -2968,6 +2968,7 @@ export const GetAnalysisResponse = zod.object({
   "latestRunId": zod.union([zod.string(),zod.null()]),
   "runs": zod.array(zod.object({
   "runId": zod.string(),
+  "requestId": zod.string().optional().describe('The gate kick this run answers (stale-worker guard at ingest: the processing→report flip only happens when this matches the application\'s current run.requestId).\n'),
   "input": zod.array(zod.object({
   "fileId": zod.string(),
   "filename": zod.string().describe('assigned name at kick time (display)'),
@@ -3074,6 +3075,7 @@ export const ingestAnalysisRunBodySatisfactionGroupsItemDocSpansItemItemPagesMax
 
 export const IngestAnalysisRunBody = zod.object({
   "runId": zod.string(),
+  "requestId": zod.string().optional().describe('The gate kick this run answers (stale-worker guard at ingest: the processing→report flip only happens when this matches the application\'s current run.requestId).\n'),
   "input": zod.array(zod.object({
   "fileId": zod.string(),
   "filename": zod.string().describe('assigned name at kick time (display)'),
@@ -3173,6 +3175,7 @@ export const IngestAnalysisRunResponse = zod.object({
   "latestRunId": zod.union([zod.string(),zod.null()]),
   "runs": zod.array(zod.object({
   "runId": zod.string(),
+  "requestId": zod.string().optional().describe('The gate kick this run answers (stale-worker guard at ingest: the processing→report flip only happens when this matches the application\'s current run.requestId).\n'),
   "input": zod.array(zod.object({
   "fileId": zod.string(),
   "filename": zod.string().describe('assigned name at kick time (display)'),
@@ -3964,21 +3967,20 @@ export const RecordVerdictResponse = zod.object({
 
 
 /**
- * Proxied from the analyzer worker's run store. Pages are addressed (fileId, page) — 1-based within the file; global packet numbering is dead. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Run artifacts are immutable — responses cache aggressively.
- * @summary Full-page PNG render from a landed analyzer run (file-qualified)
+ * Proxied from the analyzer worker's store. Pages are addressed (fileId, page) — 1-based within the file. Files are immutable, so a render never changes and survives across (delta) runs. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Responses cache aggressively.
+ * @summary Full-page PNG render for a source file (file-keyed, run-independent)
  */
-export const GetRunPageImageParams = zod.object({
+export const GetFilePageImageParams = zod.object({
   "applicationId": zod.coerce.string(),
-  "runId": zod.coerce.string(),
   "fileId": zod.coerce.string(),
   "page": zod.coerce.number()
 })
 
-export const GetRunPageImageQueryParams = zod.object({
+export const GetFilePageImageQueryParams = zod.object({
   "size": zod.enum(['full', 'strip']).optional()
 })
 
-export const GetRunPageImageResponse = zod.unknown()
+export const GetFilePageImageResponse = zod.unknown()
 
 
 /**

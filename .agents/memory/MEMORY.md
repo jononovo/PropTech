@@ -1,5 +1,7 @@
 # Memory Index
 
+- [Incremental runs](incremental-runs.md) — delta runs union into latest run blob at ingest ("latest run = whole truth"); worker store & page URLs are file-keyed; merge keys have no runId.
+
 - [File-native intake](file-native-intake.md) — ALL phases shipped + tester-verified Jul 26; FileSpan everywhere; gated is IMPLICIT (run null until first decision); old packet fixtures deleted.
 
 - [Sheaf design direction](homium-design-direction.md) — brand=Sheaf (Homium=client); Ops Desk design family; analyzer spec v0.7 FINAL governs the engine.

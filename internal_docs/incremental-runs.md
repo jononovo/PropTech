@@ -1,3 +1,5 @@
+> SHIPPED 2026-07-26 — implemented as planned, plus: satisfaction entries for mixed old/new blocks omitted at union; ingest requestId correlation; covered set computed inside the gate tx; worker md/elements also file-keyed.
+
 # Incremental (delta) analyzer runs — technical plan
 
 Problem: after a run lands, more files can be dropped (they land durably, pre-flight runs)

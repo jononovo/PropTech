@@ -73,16 +73,16 @@ def _make_strip(src: Path, dest: Path) -> None:
         im.convert("RGB").resize((_STRIP_WIDTH, h)).save(dest, "PNG", optimize=True)
 
 
-@app.get("/store/{application_id}/{run_id}/files/{file_id}/pages/{page}")
-def run_page_image(application_id: str, run_id: str, file_id: str, page: int, size: str = "full") -> FileResponse:
-    """Page render for a landed run (filmstrip review), addressed (fileId,
-    in-file page). pdftoppm zero-pads filenames to the file's page-count
-    width, so we probe the paddings."""
-    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(run_id) and _SAFE_SEG.match(file_id)):
+@app.get("/store/{application_id}/files/{file_id}/pages/{page}")
+def file_page_image(application_id: str, file_id: str, page: int, size: str = "full") -> FileResponse:
+    """Page render, addressed (fileId, in-file page). File-keyed — files are
+    immutable, so a render is run-independent. pdftoppm zero-pads filenames
+    to the file's page-count width, so we probe the paddings."""
+    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(file_id)):
         raise HTTPException(status_code=400, detail="Invalid path segment")
     if page < 1 or size not in ("full", "strip"):
         raise HTTPException(status_code=400, detail="Invalid page or size")
-    pages_dir = Path(config.STORE_DIR) / application_id / run_id / "files" / file_id / "pages"
+    pages_dir = Path(config.STORE_DIR) / application_id / "files" / file_id / "pages"
     src = next(
         (c for c in (pages_dir / f"p-{page:0{w}d}.png" for w in (1, 2, 3, 4)) if c.exists()),
         None,
@@ -97,30 +97,33 @@ def run_page_image(application_id: str, run_id: str, file_id: str, page: int, si
     return FileResponse(strip, media_type="image/png")
 
 
-@app.get("/store/{application_id}/{run_id}/files/{file_id}/md/{page}")
-def run_page_markdown(application_id: str, run_id: str, file_id: str, page: int) -> FileResponse:
-    """Per-(file, page) parse markdown for a landed run — fetched by the portal
-    at approval time to build the approved document's .md sidecar."""
-    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(run_id) and _SAFE_SEG.match(file_id)):
+@app.get("/store/{application_id}/files/{file_id}/md/{page}")
+def file_page_markdown(application_id: str, file_id: str, page: int) -> FileResponse:
+    """Per-(file, page) parse markdown — fetched by the portal at approval time
+    to build the approved document's .md sidecar. File-keyed: each file is
+    parsed exactly once (by the run that covered it), so the parse is
+    run-independent."""
+    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(file_id)):
         raise HTTPException(status_code=400, detail="Invalid path segment")
     if page < 1:
         raise HTTPException(status_code=400, detail="Invalid page")
-    src = Path(config.STORE_DIR) / application_id / run_id / "files" / file_id / "md" / f"p{page}.md"
+    src = Path(config.STORE_DIR) / application_id / "files" / file_id / "md" / f"p{page}.md"
     if not src.exists():
         raise HTTPException(status_code=404, detail="Page markdown not found")
     return FileResponse(src, media_type="text/markdown")
 
 
-@app.get("/store/{application_id}/{run_id}/files/{file_id}/elements/{page}")
-def run_page_elements(application_id: str, run_id: str, file_id: str, page: int) -> FileResponse:
+@app.get("/store/{application_id}/files/{file_id}/elements/{page}")
+def file_page_elements(application_id: str, file_id: str, page: int) -> FileResponse:
     """Per-(file, page) layout-elements JSON (typed blocks + bboxes + page
     dimensions, written by both parse engines) — fetched by the portal at
-    ingest to project the durable citation-geometry corpus into App Storage."""
-    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(run_id) and _SAFE_SEG.match(file_id)):
+    ingest to project the durable citation-geometry corpus into App Storage.
+    File-keyed: each file is parsed exactly once, so this is run-independent."""
+    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(file_id)):
         raise HTTPException(status_code=400, detail="Invalid path segment")
     if page < 1:
         raise HTTPException(status_code=400, detail="Invalid page")
-    src = Path(config.STORE_DIR) / application_id / run_id / "files" / file_id / "elements" / f"p{page}.json"
+    src = Path(config.STORE_DIR) / application_id / "files" / file_id / "elements" / f"p{page}.json"
     if not src.exists():
         raise HTTPException(status_code=404, detail="Page elements not found")
     return FileResponse(src, media_type="application/json")

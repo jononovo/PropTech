@@ -213,25 +213,23 @@ export function buildReviewModel(model: CaseModel): ReviewModel | null {
   return { totalPages: index.total, index, stops, cells, openCount: stops.filter((s) => !s.resolved).length };
 }
 
-/** Real page renders from the analyzer's run store, proxied by the API —
- * addressed (fileId, in-file page). */
+/** Real page renders from the analyzer's store, proxied by the API —
+ * addressed (fileId, in-file page); file-keyed, run-independent. */
 export const pageImageUrl = (
   applicationId: string,
-  runId: string,
   fileId: string,
   page: number,
   size: 'full' | 'strip' = 'full',
 ) =>
-  `/api/applications/${applicationId}/runs/${runId}/files/${fileId}/pages/${page}${size === 'strip' ? '?size=strip' : ''}`;
+  `/api/applications/${applicationId}/files/${fileId}/pages/${page}${size === 'strip' ? '?size=strip' : ''}`;
 
 /** Global-page image URL via the run's page index. */
 export const globalPageImageUrl = (
   applicationId: string,
-  runId: string,
   index: PageIndex,
   globalPage: number,
   size: 'full' | 'strip' = 'full',
 ) => {
   const rp = index.at(globalPage);
-  return rp ? pageImageUrl(applicationId, runId, rp.fileId, rp.page, size) : '';
+  return rp ? pageImageUrl(applicationId, rp.fileId, rp.page, size) : '';
 };

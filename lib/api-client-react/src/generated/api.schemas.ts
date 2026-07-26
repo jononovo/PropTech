@@ -1184,6 +1184,8 @@ export type AnalysisRunSatisfaction = {[key: string]: BlockSatisfaction};
 
 export interface AnalysisRun {
   runId: string;
+  /** The gate kick this run answers (stale-worker guard at ingest: the processing→report flip only happens when this matches the application's current run.requestId). */
+  requestId?: string;
   /** the frozen file set this run analyzed */
   input: RunInputFile[];
   startedAt: string;
@@ -1251,14 +1253,14 @@ export const GetApprovedDocFileKind = {
   md: 'md',
 } as const;
 
-export type GetRunPageImageParams = {
-size?: GetRunPageImageSize;
+export type GetFilePageImageParams = {
+size?: GetFilePageImageSize;
 };
 
-export type GetRunPageImageSize = typeof GetRunPageImageSize[keyof typeof GetRunPageImageSize];
+export type GetFilePageImageSize = typeof GetFilePageImageSize[keyof typeof GetFilePageImageSize];
 
 
-export const GetRunPageImageSize = {
+export const GetFilePageImageSize = {
   full: 'full',
   strip: 'strip',
 } as const;

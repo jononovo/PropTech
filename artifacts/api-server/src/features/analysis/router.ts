@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
+import type { z } from "zod";
 import { Router, type IRouter } from "express";
 import {
   GetAnalysisResponse,
@@ -23,6 +24,79 @@ const router: IRouter = Router();
 
 function paramStr(raw: string | string[] | undefined): string | undefined {
   return Array.isArray(raw) ? raw[0] : raw;
+}
+
+type AnalysisRun = z.infer<typeof IngestAnalysisRunBody>;
+
+/**
+ * Delta-run union — the "latest run = whole truth" invariant. A delta run
+ * analyzes only files not covered by the previous run; at ingest we union the
+ * previous run's results for untouched files into the new blob, so every read
+ * path (review, triage, qa-agent, sidecars) keeps consuming ONLY the latest
+ * run with zero changes. Files are immutable, so carrying results forward is
+ * always sound.
+ */
+function unionWithPrevious(prev: AnalysisRun | undefined, next: AnalysisRun): AnalysisRun {
+  if (!prev) return next;
+  const nextIds = new Set(next.input.map((f) => f.fileId));
+  const carriedInput = prev.input.filter((f) => !nextIds.has(f.fileId));
+  if (carriedInput.length === 0) return next; // full re-run — nothing to carry
+  const carriedIds = new Set(carriedInput.map((f) => f.fileId));
+  const input = [...carriedInput, ...next.input]; // receipt order: covered files first
+  return {
+    ...next,
+    input,
+    documents: [
+      ...prev.documents.filter((d) => d.spans.every((s) => carriedIds.has(s.fileId))),
+      ...next.documents,
+    ],
+    unassigned: [
+      ...prev.unassigned.filter((u) => carriedIds.has(u.span.fileId)),
+      ...next.unassigned,
+    ],
+    preflight: {
+      pages: input.reduce((n, f) => n + f.pages, 0),
+      flags: [
+        ...prev.preflight.flags.filter((f) => f.fileId !== undefined && carriedIds.has(f.fileId)),
+        ...next.preflight.flags,
+      ],
+      gate: next.preflight.gate,
+    },
+    // Satisfaction is a per-block read over that run's OWN documents, so a
+    // delta run's entry for a block that also has carried documents is
+    // partial-context — omit those (absent is a legal state) instead of
+    // letting either partial view masquerade as the whole truth.
+    ...(prev.satisfaction || next.satisfaction
+      ? {
+          satisfaction: (() => {
+            const carriedBlocks = new Set(
+              prev.documents
+                .filter((d) => d.spans.every((s) => carriedIds.has(s.fileId)))
+                .map((d) => d.suggestedBlockId),
+            );
+            const newBlocks = new Set(next.documents.map((d) => d.suggestedBlockId));
+            const merged: NonNullable<AnalysisRun["satisfaction"]> = {};
+            for (const [blockId, s] of Object.entries(prev.satisfaction ?? {})) {
+              if (!newBlocks.has(blockId)) merged[blockId] = s;
+            }
+            for (const [blockId, s] of Object.entries(next.satisfaction ?? {})) {
+              if (!carriedBlocks.has(blockId)) merged[blockId] = s;
+            }
+            return merged;
+          })(),
+        }
+      : {}),
+    ...(prev.artifactsProduced || next.artifactsProduced
+      ? {
+          artifactsProduced: {
+            md: (prev.artifactsProduced?.md ?? true) && (next.artifactsProduced?.md ?? true),
+            elements:
+              (prev.artifactsProduced?.elements ?? false) || (next.artifactsProduced?.elements ?? false),
+            crops: (prev.artifactsProduced?.crops ?? false) || (next.artifactsProduced?.crops ?? false),
+          },
+        }
+      : {}),
+  };
 }
 
 router.get("/applications/:applicationId/analysis", async (req, res): Promise<void> => {
@@ -87,9 +161,12 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
       return;
     }
   }
-  const result = await appendRun(id, parsed.data);
+  // Union delta runs at ingest — the persisted blob is always the whole truth.
+  const previous = (await readSidecar(id)).runs.at(-1);
+  const run = unionWithPrevious(previous, parsed.data);
+  const result = await appendRun(id, run);
   if (result === "duplicate") {
-    res.status(409).json({ error: `runId "${parsed.data.runId}" already ingested` });
+    res.status(409).json({ error: `runId "${run.runId}" already ingested` });
     return;
   }
   // Asynchronous completion of the packet choreography: a landed run flips the
@@ -99,21 +176,21 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
     applicationId: id,
     actor: { kind: "system" },
     action: "run.ingested",
-    target: { type: "run", id: parsed.data.runId },
-    detail: { documents: parsed.data.documents.length },
+    target: { type: "run", id: run.runId },
+    detail: { documents: run.documents.length },
   });
   // Markdown projections into App Storage (intelligence corpus). Regenerable,
   // so a failure is loud (ledger) but never fails the ingest.
   try {
-    await writeRunSidecars(id, app.storageFolder, parsed.data);
+    await writeRunSidecars(id, app.storageFolder, run);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[analysis] run sidecar write failed for ${id}/${parsed.data.runId}: ${message}`);
+    console.error(`[analysis] run sidecar write failed for ${id}/${run.runId}: ${message}`);
     await appendEvent({
       applicationId: id,
       actor: { kind: "system" },
       action: "run.sidecars_failed",
-      target: { type: "run", id: parsed.data.runId },
+      target: { type: "run", id: run.runId },
       detail: { message },
     });
   }
@@ -121,20 +198,23 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
   // bbox source for Q&A agent citations. Same regenerable semantics: loud
   // ledger event on failure, never fails the ingest.
   try {
-    await writeRunElements(id, app.storageFolder, parsed.data);
+    await writeRunElements(id, app.storageFolder, run);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[analysis] run elements write failed for ${id}/${parsed.data.runId}: ${message}`);
+    console.error(`[analysis] run elements write failed for ${id}/${run.runId}: ${message}`);
     await appendEvent({
       applicationId: id,
       actor: { kind: "system" },
       action: "run.elements_failed",
-      target: { type: "run", id: parsed.data.runId },
+      target: { type: "run", id: run.runId },
       detail: { message },
     });
   }
   await updateApplication(id, (app) => {
-    if (app.run?.state === "processing") {
+    // requestId correlation (stale-worker guard): only the kick this run
+    // answers may flip processing→report — a late run from a superseded kick
+    // still persists (append-only) but never clobbers a newer run's state.
+    if (app.run?.state === "processing" && (run.requestId === undefined || app.run.requestId === run.requestId)) {
       const next: NonNullable<Application["run"]> = { ...app.run, state: "report" };
       delete next.lastRunError;
       app.run = next;
@@ -214,15 +294,15 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
 
 /**
  * Page renders for the filmstrip review room — proxied from the analyzer
- * worker's run store (the API never grows its own copy of run artifacts).
- * Run artifacts are immutable, so responses cache aggressively.
+ * worker's store (the API never grows its own copy). Renders are keyed by
+ * FILE, not run: files are immutable, so a render never changes and the
+ * thumbnails survive across (delta) runs. Responses cache aggressively.
  */
-router.get("/applications/:applicationId/runs/:runId/files/:fileId/pages/:page", async (req, res): Promise<void> => {
+router.get("/applications/:applicationId/files/:fileId/pages/:page", async (req, res): Promise<void> => {
   const id = paramStr(req.params["applicationId"]);
-  const runId = paramStr(req.params["runId"]);
   const fileId = paramStr(req.params["fileId"]);
-  if (!isSafeSegment(id) || !isSafeSegment(runId) || !isSafeSegment(fileId)) {
-    res.status(400).json({ error: "Invalid application, run or file id" });
+  if (!isSafeSegment(id) || !isSafeSegment(fileId)) {
+    res.status(400).json({ error: "Invalid application or file id" });
     return;
   }
   const page = Number.parseInt(paramStr(req.params["page"]) ?? "", 10);
@@ -238,7 +318,7 @@ router.get("/applications/:applicationId/runs/:runId/files/:fileId/pages/:page",
   }
   let upstream;
   try {
-    upstream = await fetch(`${base.replace(/\/$/, "")}/store/${id}/${runId}/files/${fileId}/pages/${page}?size=${size}`, {
+    upstream = await fetch(`${base.replace(/\/$/, "")}/store/${id}/files/${fileId}/pages/${page}?size=${size}`, {
       signal: AbortSignal.timeout(20000),
     });
   } catch (err) {

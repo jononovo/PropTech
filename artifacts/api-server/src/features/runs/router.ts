@@ -13,6 +13,7 @@ import { readApplication, updateApplication, type Application } from "../intake/
 import { isSafeSegment } from "../intake/blocks";
 import { estimateRun } from "../files/preflight";
 import { storageExt } from "../files/receive";
+import { readSidecar } from "../analysis/store";
 
 type RunState = NonNullable<Application["run"]>;
 type RunInputFile = NonNullable<RunState["input"]>[number];
@@ -59,6 +60,16 @@ export function activeInputFiles(app: Application): SourceFile[] {
       f.pages > 0 &&
       typeof f.sha256 === "string",
   );
+}
+
+/**
+ * FileIds already covered by the latest landed run. Delta runs union into the
+ * blob at ingest, so the latest run's input IS the cumulative covered set.
+ * A gate over the active set minus this = the delta the analyzer must read.
+ */
+async function coveredFileIds(applicationId: string): Promise<Set<string>> {
+  const latest = (await readSidecar(applicationId)).runs.at(-1);
+  return new Set((latest?.input ?? []).map((f) => f.fileId));
 }
 
 function toRunInput(files: SourceFile[]): RunInputFile[] {
@@ -121,7 +132,8 @@ const router: IRouter = Router();
 
 router.get("/applications/:applicationId/run/estimate", validateTarget, async (req, res): Promise<void> => {
   const ctx = contexts.get(req)!;
-  const files = activeInputFiles(ctx.app);
+  const covered = await coveredFileIds(ctx.app.id);
+  const files = activeInputFiles(ctx.app).filter((f) => !covered.has(f.id));
   const pages = files.reduce((n, f) => n + (f.pages ?? 0), 0);
   const { usd, minutes } = estimateRun(pages);
   res.json(
@@ -143,13 +155,24 @@ router.post("/applications/:applicationId/run/gate", validateTarget, async (req,
   const requestId = `rr-${nanoid(10)}`;
   let decided: Application | undefined;
   try {
-    decided = await updateApplication(ctx.app.id, (app, emit) => {
+    decided = await updateApplication(ctx.app.id, async (app, emit) => {
       if (app.run?.state === "processing") {
         throw new HttpError(409, "Analyzer is already running — wait for the run to land");
       }
-      const files = activeInputFiles(app);
+      // Covered set read INSIDE the row-locked tx: an ingest landing between
+      // gate calls can't leave us with a stale covered set (no double-analysis).
+      const covered = await coveredFileIds(app.id);
+      // Delta gate: only files the latest landed run has not covered. Files
+      // are immutable, so covered files never need re-reading; after a run
+      // lands, new drops re-open the gate over just the new files.
+      const files = activeInputFiles(app).filter((f) => !covered.has(f.id));
       if (files.length === 0) {
-        throw new HttpError(409, "No analyzable files on this application — drop at least one PDF first");
+        throw new HttpError(
+          409,
+          covered.size > 0
+            ? "Nothing new to analyze — every active file is covered by the latest run"
+            : "No analyzable files on this application — drop at least one PDF first",
+        );
       }
       const flags = setFlags(files);
       // Spec §3: "Process" (confirmed) only when clean; "Process anyway" (bypassed) is an
@@ -188,7 +211,8 @@ router.post("/applications/:applicationId/run/gate", validateTarget, async (req,
   // Analyzer kick OUTSIDE the transaction — the persisted processing state is
   // what blocks competing mutations while the run is in flight.
   try {
-    const kicked = activeInputFiles(decided);
+    const inputIds = new Set(decided.run.input.map((f) => f.fileId));
+    const kicked = activeInputFiles(decided).filter((f) => inputIds.has(f.id));
     await kickAnalyzer({
       applicationId: decided.id,
       requestId,

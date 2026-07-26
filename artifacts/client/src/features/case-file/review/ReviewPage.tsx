@@ -121,7 +121,7 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
   // global page numbers are the room's view currency; the index resolves them
   // back to (fileId, in-file page) for image URLs and submissions
   const imageUrl = (p: number, size?: 'full' | 'strip') =>
-    globalPageImageUrl(id, run.runId, review.index, p, size);
+    globalPageImageUrl(id, review.index, p, size);
 
   // ── document-approval layer ────────────────────────────────────────────────
   const approval = useDocApproval(id, review.index);

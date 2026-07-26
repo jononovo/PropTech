@@ -16,15 +16,15 @@ export type MergeDecision = 'merged' | 'dismissed';
 /**
  * Canonical key for a merge recommendation — MUST stay in lockstep with the
  * server's features/merge-resolutions/mergeKey.ts:
- * "<runId>:<fileId>:p<f>-<l>|<fileId>:p<f>-<l>", spans sorted by fileId then
- * first page. Resolutions persist on the application under this key, so the
- * gate and the audit trail survive refreshes.
+ * "<fileId>:p<f>-<l>|<fileId>:p<f>-<l>", spans sorted by fileId then first
+ * page. No runId: files are immutable, so spans identify the recommendation
+ * across runs and resolutions survive later (delta) runs.
  */
-export const mergeResolutionKey = (runId: string, spans: FileSpan[]) => {
+export const mergeResolutionKey = (spans: FileSpan[]) => {
   const sorted = [...spans].sort((a, b) =>
     a.fileId === b.fileId ? (a.pages[0] ?? 0) - (b.pages[0] ?? 0) : a.fileId.localeCompare(b.fileId),
   );
-  return `${runId}:${sorted.map((s) => `${s.fileId}:p${s.pages[0]}-${s.pages[1]}`).join('|')}`;
+  return sorted.map((s) => `${s.fileId}:p${s.pages[0]}-${s.pages[1]}`).join('|');
 };
 
 const sameSpans = (a: FileSpan[], b: FileSpan[]) =>
@@ -150,7 +150,7 @@ export function buildDocGroups(
     for (let i = 0; i < list.length - 1; i++) {
       const a = list[i]!;
       const b = list[i + 1]!;
-      const key = mergeResolutionKey(run.runId, [...a.spans, ...b.spans]);
+      const key = mergeResolutionKey([...a.spans, ...b.spans]);
       if (mergeResolutions[key]?.decision === 'merged') {
         const spans = sortSpans([...a.spans, ...b.spans]);
         const combined: DocGroup = {

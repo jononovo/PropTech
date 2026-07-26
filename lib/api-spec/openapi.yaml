@@ -1084,24 +1084,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
-  /applications/{applicationId}/runs/{runId}/files/{fileId}/pages/{page}:
+  /applications/{applicationId}/files/{fileId}/pages/{page}:
     get:
-      operationId: getRunPageImage
+      operationId: getFilePageImage
       tags: [analysis]
-      summary: Full-page PNG render from a landed analyzer run (file-qualified)
+      summary: Full-page PNG render for a source file (file-keyed, run-independent)
       description: >
-        Proxied from the analyzer worker's run store. Pages are addressed
-        (fileId, page) — 1-based within the file; global packet numbering is
-        dead. size=strip returns a cached 320px-wide thumbnail for the
-        filmstrip; size=full returns the render at analyzer DPI. Run artifacts
-        are immutable — responses cache aggressively.
+        Proxied from the analyzer worker's store. Pages are addressed
+        (fileId, page) — 1-based within the file. Files are immutable, so a
+        render never changes and survives across (delta) runs. size=strip
+        returns a cached 320px-wide thumbnail for the filmstrip; size=full
+        returns the render at analyzer DPI. Responses cache aggressively.
       parameters:
         - $ref: "#/components/parameters/ApplicationId"
-        - name: runId
-          in: path
-          required: true
-          schema:
-            type: string
         - name: fileId
           in: path
           required: true
@@ -2304,6 +2299,12 @@ components:
       required: [runId, startedAt, pipelineVersion, input, preflight, documents, unassigned, whisper]
       properties:
         runId: { type: string }
+        requestId:
+          type: string
+          description: >
+            The gate kick this run answers (stale-worker guard at ingest: the
+            processing→report flip only happens when this matches the
+            application's current run.requestId).
         input:
           type: array
           description: the frozen file set this run analyzed

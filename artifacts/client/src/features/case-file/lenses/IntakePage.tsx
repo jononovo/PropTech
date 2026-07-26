@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowRight, CheckCircle2, Inbox } from 'lucide-react';
-import { FilesPanel, Dropzone } from '../components/FilesPanel';
+import { FilesPanel, Dropzone, deltaFiles } from '../components/FilesPanel';
 import { MissingActions } from '../components/MissingActions';
 import type { CaseModel } from '../caseData';
 import type { Lens } from '../CaseShell';
@@ -41,15 +41,16 @@ export function IntakePage({
   return (
     <div className="overflow-y-auto h-full px-4 py-6 md:py-10 flex flex-col items-center">
       <div className="w-full max-w-[720px] animate-fade-in flex flex-col gap-6 pb-16">
-        {landed && model.run ? (
-          <RunLandedCard model={model} applicationId={applicationId} onLens={onLens} />
-        ) : (
+        {landed && model.run && <RunLandedCard model={model} applicationId={applicationId} onLens={onLens} />}
+        {/* In report state FilesPanel renders the delta gate when new files
+            landed after the run — otherwise nothing (the card above owns it). */}
+        {(!landed || !model.run || deltaFiles(model).length > 0) && (
           <FilesPanel model={model} applicationId={applicationId} />
         )}
 
         {inDropState && <ConnectorsRow />}
 
-        {landed && (
+        {landed && deltaFiles(model).length === 0 && (
           <div>
             <div className="micro-label text-[9.5px] mb-2">add more files</div>
             <Dropzone applicationId={applicationId} />

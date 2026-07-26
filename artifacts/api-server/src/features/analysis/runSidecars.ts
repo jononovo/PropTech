@@ -29,18 +29,18 @@ const yamlStr = (s: string) => JSON.stringify(s);
 const slug = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "doc";
 
-async function fetchPageMarkdown(applicationId: string, runId: string, fileId: string, page: number): Promise<string> {
+async function fetchPageMarkdown(applicationId: string, fileId: string, page: number): Promise<string> {
   const base = process.env["ANALYZER_URL"];
   if (!base) throw new Error("ANALYZER_URL is not configured — analyzer worker unreachable");
-  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/files/${fileId}/md/${page}`);
+  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/files/${fileId}/md/${page}`);
   if (!res.ok) throw new Error(`Analyzer store answered ${res.status} for ${fileId} p.${page} markdown`);
   return res.text();
 }
 
-async function fetchPageElements(applicationId: string, runId: string, fileId: string, page: number): Promise<Buffer> {
+async function fetchPageElements(applicationId: string, fileId: string, page: number): Promise<Buffer> {
   const base = process.env["ANALYZER_URL"];
   if (!base) throw new Error("ANALYZER_URL is not configured — analyzer worker unreachable");
-  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/files/${fileId}/elements/${page}`);
+  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/files/${fileId}/elements/${page}`);
   if (!res.ok) throw new Error(`Analyzer store answered ${res.status} for ${fileId} p.${page} elements`);
   return Buffer.from(await res.arrayBuffer());
 }
@@ -55,7 +55,7 @@ export async function writeRunElements(applicationId: string, storageFolder: str
   let count = 0;
   for (const input of run.input) {
     for (let page = 1; page <= input.pages; page++) {
-      const bytes = await fetchPageElements(applicationId, run.runId, input.fileId, page);
+      const bytes = await fetchPageElements(applicationId, input.fileId, page);
       await putRunElementsJson(storageFolder, run.runId, input.fileId, page, bytes);
       count++;
     }
@@ -125,7 +125,7 @@ export async function writeRunSidecars(applicationId: string, storageFolder: str
   let n = 0;
   for (const doc of run.documents) {
     const pageMarkdown = await Promise.all(
-      spanPages(doc.spans).map((p) => fetchPageMarkdown(applicationId, run.runId, p.fileId, p.page)),
+      spanPages(doc.spans).map((p) => fetchPageMarkdown(applicationId, p.fileId, p.page)),
     );
     const md = buildRunDocMarkdown({ applicationId, storageFolder, run, doc, pageMarkdown });
     const filename = `doc-${String(n + 1).padStart(2, "0")}_${slug(doc.suggestedBlockId)}.md`;

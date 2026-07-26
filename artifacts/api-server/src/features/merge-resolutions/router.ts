@@ -53,7 +53,7 @@ router.post("/applications/:applicationId/merge-resolutions", async (req, res): 
   }
   try {
     const app = await updateApplication(id!, (app, emit) => {
-      const key = mergeResolutionKey(body.runId, spans);
+      const key = mergeResolutionKey(spans);
       emit({
         actor: { kind: "user", name: body.decidedBy, ip: clientIp(req) },
         action: `merge.${body.decision}`,

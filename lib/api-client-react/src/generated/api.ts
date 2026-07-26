@@ -34,7 +34,7 @@ import type {
   DocumentUpload,
   FieldValues,
   GetApprovedDocFileParams,
-  GetRunPageImageParams,
+  GetFilePageImageParams,
   HealthStatus,
   ListApplicationEventsResponse,
   LoginInput,
@@ -3131,11 +3131,10 @@ export const useRecordVerdict = <TError = ErrorType<ApiMessage>,
       return useMutation(getRecordVerdictMutationOptions(options));
     }
 
-export const getGetRunPageImageUrl = (applicationId: string,
-    runId: string,
+export const getGetFilePageImageUrl = (applicationId: string,
     fileId: string,
     page: number,
-    params?: GetRunPageImageParams,) => {
+    params?: GetFilePageImageParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -3147,20 +3146,19 @@ export const getGetRunPageImageUrl = (applicationId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/runs/${runId}/files/${fileId}/pages/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/runs/${runId}/files/${fileId}/pages/${page}`
+  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/files/${fileId}/pages/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/files/${fileId}/pages/${page}`
 }
 
 /**
- * Proxied from the analyzer worker's run store. Pages are addressed (fileId, page) — 1-based within the file; global packet numbering is dead. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Run artifacts are immutable — responses cache aggressively.
- * @summary Full-page PNG render from a landed analyzer run (file-qualified)
+ * Proxied from the analyzer worker's store. Pages are addressed (fileId, page) — 1-based within the file. Files are immutable, so a render never changes and survives across (delta) runs. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Responses cache aggressively.
+ * @summary Full-page PNG render for a source file (file-keyed, run-independent)
  */
-export const getRunPageImage = async (applicationId: string,
-    runId: string,
+export const getFilePageImage = async (applicationId: string,
     fileId: string,
     page: number,
-    params?: GetRunPageImageParams, options?: RequestInit): Promise<Blob> => {
+    params?: GetFilePageImageParams, options?: RequestInit): Promise<Blob> => {
 
-  return customFetch<Blob>(getGetRunPageImageUrl(applicationId,runId,fileId,page,params),
+  return customFetch<Blob>(getGetFilePageImageUrl(applicationId,fileId,page,params),
   {
     ...options,
     method: 'GET'
@@ -3173,57 +3171,54 @@ export const getRunPageImage = async (applicationId: string,
 
 
 
-export const getGetRunPageImageQueryKey = (applicationId: string,
-    runId: string,
+export const getGetFilePageImageQueryKey = (applicationId: string,
     fileId: string,
     page: number,
-    params?: GetRunPageImageParams,) => {
+    params?: GetFilePageImageParams,) => {
     return [
-    `/api/applications/${applicationId}/runs/${runId}/files/${fileId}/pages/${page}`, ...(params ? [params] : [])
+    `/api/applications/${applicationId}/files/${fileId}/pages/${page}`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetRunPageImageQueryOptions = <TData = Awaited<ReturnType<typeof getRunPageImage>>, TError = ErrorType<ApiMessage>>(applicationId: string,
-    runId: string,
+export const getGetFilePageImageQueryOptions = <TData = Awaited<ReturnType<typeof getFilePageImage>>, TError = ErrorType<ApiMessage>>(applicationId: string,
     fileId: string,
     page: number,
-    params?: GetRunPageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+    params?: GetFilePageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFilePageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetRunPageImageQueryKey(applicationId,runId,fileId,page,params);
+  const queryKey =  queryOptions?.queryKey ?? getGetFilePageImageQueryKey(applicationId,fileId,page,params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRunPageImage>>> = ({ signal }) => getRunPageImage(applicationId,runId,fileId,page,params, { signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFilePageImage>>> = ({ signal }) => getFilePageImage(applicationId,fileId,page,params, { signal, ...requestOptions });
 
 
 
 
 
-   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && runId !== null && runId !== undefined && fileId !== null && fileId !== undefined && page !== null && page !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData> & { queryKey: QueryKey }
+   return  { queryKey, queryFn, enabled: applicationId !== null && applicationId !== undefined && fileId !== null && fileId !== undefined && page !== null && page !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFilePageImage>>, TError, TData> & { queryKey: QueryKey }
 }
 
-export type GetRunPageImageQueryResult = NonNullable<Awaited<ReturnType<typeof getRunPageImage>>>
-export type GetRunPageImageQueryError = ErrorType<ApiMessage>
+export type GetFilePageImageQueryResult = NonNullable<Awaited<ReturnType<typeof getFilePageImage>>>
+export type GetFilePageImageQueryError = ErrorType<ApiMessage>
 
 
 /**
- * @summary Full-page PNG render from a landed analyzer run (file-qualified)
+ * @summary Full-page PNG render for a source file (file-keyed, run-independent)
  */
 
-export function useGetRunPageImage<TData = Awaited<ReturnType<typeof getRunPageImage>>, TError = ErrorType<ApiMessage>>(
+export function useGetFilePageImage<TData = Awaited<ReturnType<typeof getFilePageImage>>, TError = ErrorType<ApiMessage>>(
  applicationId: string,
-    runId: string,
     fileId: string,
     page: number,
-    params?: GetRunPageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRunPageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+    params?: GetFilePageImageParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFilePageImage>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetRunPageImageQueryOptions(applicationId,runId,fileId,page,params,options)
+  const queryOptions = getGetFilePageImageQueryOptions(applicationId,fileId,page,params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

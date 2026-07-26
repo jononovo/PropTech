@@ -112,13 +112,18 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
         pdf_path.write_bytes(await portal.get_source_file(app_id, file_id))
 
         t = time.monotonic()
-        pngs = await render_pages(str(pdf_path), str(fdir / "pages"))
+        # Page renders are keyed by FILE, not run: files are immutable, so a
+        # render never changes — and thumbnails survive across (delta) runs.
+        pngs = await render_pages(str(pdf_path), str(Path(config.STORE_DIR) / app_id / "files" / file_id / "pages"))
         timings["renderMs"] += int((time.monotonic() - t) * 1000)
         if len(pngs) != f.get("pages"):
             raise RuntimeError(f"{f.get('filename', file_id)}: rendered {len(pngs)} pages, "
                                f"registry says {f.get('pages')}")
         t = time.monotonic()
-        mds = await parse_document(pngs, str(fdir / "md"), plan.parse, str(pdf_path))
+        # md/elements are file-keyed like the page renders: each file is parsed
+        # exactly once (by the run that covers it), so the parse is run-independent
+        # and stays fetchable after later delta runs.
+        mds = await parse_document(pngs, str(Path(config.STORE_DIR) / app_id / "files" / file_id / "md"), plan.parse, str(pdf_path))
         timings["parseMs"] += int((time.monotonic() - t) * 1000)
 
         file_starts.add(len(sheet))
@@ -220,10 +225,11 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
             "extractions": [],
             "artifacts": {
                 "judge": f"{ref}/{judge_rel}",
-                "md": f"{ref}/files/{file_id}/md/p{span['pages'][0]}.md",
+                "md": f"store://{app_id}/files/{file_id}/md/p{span['pages'][0]}.md",
                 # pdftoppm zero-pads to the FILE's page-count width — the URIs
-                # must reference the files as they exist on disk.
-                "pageRenders": [f"{ref}/files/{file_id}/pages/p-{n:0{pad}d}.png"
+                # must reference the files as they exist on disk. Renders are
+                # file-keyed (run-independent).
+                "pageRenders": [f"store://{app_id}/files/{file_id}/pages/p-{n:0{pad}d}.png"
                                 for n in range(span["pages"][0], span["pages"][1] + 1)],
                 "crops": [],
             },
@@ -251,10 +257,12 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
     whisper.extend(sat_whispers)
 
     timings["totalMs"] = int((time.monotonic() - t_run) * 1000)
-    elements_dir = store / "elements"
+    files_root = Path(config.STORE_DIR) / app_id / "files"
     artifacts_produced = {
         "md": True,
-        "elements": elements_dir.is_dir() and any(elements_dir.iterdir()),
+        "elements": any((files_root / f["fileId"] / "elements").is_dir()
+                        and any((files_root / f["fileId"] / "elements").iterdir())
+                        for f in input_files),
         "crops": False,
     }
     run_config["timings"] = timings
@@ -263,6 +271,7 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
 
     run = {
         "runId": run_id,
+        "requestId": request_id,
         "startedAt": now.isoformat().replace("+00:00", "Z"),
         "pipelineVersion": plan.pipeline_version(),
         "fraudScoring": plan.fraud_scoring,

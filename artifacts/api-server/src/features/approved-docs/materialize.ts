@@ -36,10 +36,10 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-async function fetchPageMarkdown(applicationId: string, runId: string, fileId: string, page: number): Promise<string> {
+async function fetchPageMarkdown(applicationId: string, fileId: string, page: number): Promise<string> {
   const base = process.env["ANALYZER_URL"];
   if (!base) throw new HttpError(502, "ANALYZER_URL is not configured — analyzer worker unreachable");
-  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/${runId}/files/${fileId}/md/${page}`).catch((err) => {
+  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/files/${fileId}/md/${page}`).catch((err) => {
     throw new HttpError(502, `Analyzer worker unreachable: ${err instanceof Error ? err.message : String(err)}`);
   });
   if (!res.ok) throw new HttpError(502, `Analyzer store answered ${res.status} for ${fileId} p.${page} markdown`);
@@ -145,7 +145,7 @@ export async function materializeApproval(app: Application, blockId: string): Pr
       const spans = normalizeSpans(runDoc.spans);
       pdfBytes = await extractSpans(app, spans);
       pageMarkdown = await Promise.all(
-        spanPages(spans).map((p) => fetchPageMarkdown(app.id, run.runId, p.fileId, p.page)),
+        spanPages(spans).map((p) => fetchPageMarkdown(app.id, p.fileId, p.page)),
       );
       doc = {
         id, applicationId: app.id, blockId, basename, source: "extract",
@@ -234,7 +234,7 @@ export async function materializeDocumentApproval(
 
     const pdfBytes = await extractSpans(app, spans);
     const pageMarkdown = await Promise.all(
-      spanPages(spans).map((p) => fetchPageMarkdown(app.id, run.runId, p.fileId, p.page)),
+      spanPages(spans).map((p) => fetchPageMarkdown(app.id, p.fileId, p.page)),
     );
 
     const doc: ApprovedDoc = {

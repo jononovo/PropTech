@@ -37,19 +37,22 @@ export function FilesPanel({ model, applicationId }: { model: CaseModel; applica
     return () => clearInterval(t);
   }, [run?.state, applicationId, queryClient]);
 
-  if (run?.state === 'report') return null;
   if (run?.state === 'processing') return <ProcessingCard input={run.input ?? []} />;
-  // gated is implied: active files waiting + no run in flight (run stays null
-  // until the first gate decision; a failed run reverts to explicit 'gated')
-  if (activeFiles(model).length > 0) return <GateCard model={model} applicationId={applicationId} />;
+  // Delta gate: files not covered by the latest landed run. Before the first
+  // run that's every active file; after a run lands, new drops re-open the
+  // gate over just the new files (the analyzer unions results at ingest).
+  if (deltaFiles(model).length > 0) return <GateCard model={model} applicationId={applicationId} />;
+  if (run?.state === 'report') return null;
   return <Dropzone applicationId={applicationId} />;
 }
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : 'upload failed — try again');
 
-/** Active files on the application — the working set every run analyzes. */
-const activeFiles = (model: CaseModel): SourceFile[] =>
-  (model.app.files ?? []).filter((f) => f.status === 'active');
+/** Active files not yet covered by the latest landed run — what the next run reads. */
+export const deltaFiles = (model: CaseModel): SourceFile[] => {
+  const covered = new Set((model.run?.input ?? []).map((f) => f.fileId));
+  return (model.app.files ?? []).filter((f) => f.status === 'active' && !covered.has(f.id));
+};
 
 // ─── dropzone — files land durably, no packet ────────────────────────────────
 
@@ -233,7 +236,8 @@ function RunPlanPicker({
 }
 
 function GateCard({ model, applicationId }: { model: CaseModel; applicationId: string }) {
-  const files = activeFiles(model);
+  const files = deltaFiles(model);
+  const isDelta = (model.run?.input?.length ?? 0) > 0;
   const run = model.app.run;
   const { decide, gate } = useIntakeActions(applicationId);
   const { profile } = useProfile();
@@ -281,7 +285,7 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
     >
       <div className="px-5 md:px-6 py-4 border-b border-[var(--ops-border)] flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-semibold text-[15.5px] text-[var(--ops-ink)]">
-          Pre-flight report — {files.length} {files.length === 1 ? 'file' : 'files'} · {totalPages} pages
+          Pre-flight report — {files.length} {isDelta ? 'new ' : ''}{files.length === 1 ? 'file' : 'files'} · {totalPages} pages
         </h2>
         <span className="micro-label text-[9.5px]">deterministic checks · no AI spend yet</span>
       </div>
@@ -386,7 +390,7 @@ function GateCard({ model, applicationId }: { model: CaseModel; applicationId: s
               data-testid="button-process-files"
               className="btn-primary"
             >
-              {gate.isPending ? 'Starting…' : `Process ${files.length} ${files.length === 1 ? 'file' : 'files'}${est ? ` — $${est.estimateUsd.toFixed(2)}` : ''}`}
+              {gate.isPending ? 'Starting…' : `Process ${files.length} ${isDelta ? 'new ' : ''}${files.length === 1 ? 'file' : 'files'}${est ? ` — $${est.estimateUsd.toFixed(2)}` : ''}`}
             </button>
           )}
         </div>

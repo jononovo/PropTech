@@ -31,6 +31,20 @@ Tool ladder (cheapest first):
 3. **Grep** — regex/keyword search across the markdown corpus for this
    application only.
 4. **Read** — fetch a whole sidecar/page markdown when grep hits need context.
+5. **Act** (RULED IN Jul 26 2026 — this is NOT a read-only agent). Mutating
+   tools, granted one capability at a time as authority is extended:
+   rename/archive a file, approve a document, kick a re-scan, apply a
+   field value, copy/move corpus objects, invoke registered application
+   functions. Contract for EVERY write tool:
+   - **Approval-gated**: the tool call pauses and renders an approve/decline
+     card in chat; nothing mutates until a human approves (AI SDK 7 tool
+     approvals). Reads never gate.
+   - **Portal-only**: executes through the existing feature endpoints/stores —
+     never direct SQL or bucket writes. Same validation, same invariants.
+   - **Ledgered**: actor kind `agent` (+ approving user) on every event, so
+     the case ledger reads "agent renamed X — approved by Marcus".
+   - **Narrow schema**: one tool per capability with strict Zod input; no
+     generic "execute" tool, ever.
 
 **Vectors are a measured retrofit ONLY if grep recall demonstrably fails on
 real packets. Not before.** (Decision researched Jul 2026; grep-based agentic
@@ -52,9 +66,16 @@ list — appended per turn; bodies fetched via the read tool, never inlined),
 walk. Evaluated eve itself Jul 26 2026 and ruled it OUT for this agent: it is
 a standalone agent runtime (durable workflow sessions, sandboxes, channels,
 HITL) with first-class frontends for Next/Nuxt/SvelteKit only — on our
-Express+Vite stack it adds a second runtime for features we don't need, and
-it's weeks old. Revisit eve for any future STANDALONE agent (e.g. Slack-facing
-cross-application bot) — that's its sweet spot.
+Express+Vite stack it adds a second runtime to operate. Re-evaluated Jul 26
+AFTER ruling in write tools (user: maturity is no objection): still AI SDK 7
+for v1 — the agent's actions are short synchronous portal calls approved by a
+person sitting in the chat panel, so eve's differentiators (days-long
+zero-compute paused sessions, code sandbox, Slack/email channels) stay
+unused. Both frameworks' tools are plain TS functions and we use eve's
+directory layout, so **migration to eve is near-mechanical**. The explicit
+trigger to switch: the agent starts acting while nobody is watching —
+scheduled work, long-lived autonomous sessions, or a channel surface beyond
+the in-app panel.
 
 Deliberate divergence from Stitch: ALL tools execute server-side (`execute()`
 on the tool) — our tools are read-only lookups, there is no editor buffer to

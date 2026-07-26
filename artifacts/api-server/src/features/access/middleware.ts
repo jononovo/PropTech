@@ -34,7 +34,6 @@ async function roleFor(username: string): Promise<string | undefined> {
   return cache.roles.get(username);
 }
 
-const WORKER_CALLBACK = /^\/applications\/[^/]+\/(analysis|run\/failed)$/;
 const UPLOAD_PATH = /^\/intake-uploads(\/|$)|^\/applications\/[^/]+\/files$/;
 const AGENT_CHAT = /^\/applications\/[^/]+\/agent\/chat$/;
 
@@ -52,7 +51,9 @@ export async function accessControl(req: Request, res: Response, next: NextFunct
     path === "/healthz" ||
     (path === "/login" && req.method === "POST") ||
     (path === "/users" && req.method === "GET") ||
-    (WORKER_CALLBACK.test(path) && req.method === "POST")
+    // Analyzer worker loopback traffic (fetch application + source bytes,
+    // post results). Service identity, not a human — the matrix doesn't apply.
+    req.header("x-sheaf-service") === "analyzer-worker"
   ) {
     next();
     return;

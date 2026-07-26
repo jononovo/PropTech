@@ -6,7 +6,13 @@ from config import PORTAL_API_BASE
 
 
 def _client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(base_url=PORTAL_API_BASE, timeout=httpx.Timeout(60.0, read=120.0))
+    # The service identity header exempts worker loopback traffic from the
+    # portal's access matrix (which authorizes humans via x-profile).
+    return httpx.AsyncClient(
+        base_url=PORTAL_API_BASE,
+        timeout=httpx.Timeout(60.0, read=120.0),
+        headers={"x-sheaf-service": "analyzer-worker"},
+    )
 
 
 async def get_application(app_id: str) -> dict:

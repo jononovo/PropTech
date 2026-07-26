@@ -39,14 +39,19 @@ export function verifySession(value: string | undefined): string | undefined {
   return username;
 }
 
-// Secure only in production: the published app is HTTPS-only; in dev the
-// cookie must also work for plain-HTTP localhost curl testing.
+// The app is viewed inside the Replit preview iframe, where the browser
+// treats our cookie as third-party: SameSite=Lax gets silently dropped.
+// Third-party cookies need SameSite=None + Secure + Partitioned (CHIPS).
+// This also works fine for the normal top-level HTTPS tab. curl testing on
+// plain-HTTP localhost uses the x-profile header instead, so Secure is safe
+// to set unconditionally.
 function cookieOptions() {
   return {
     httpOnly: true,
-    sameSite: "lax" as const,
+    sameSite: "none" as const,
+    secure: true,
+    partitioned: true,
     path: "/",
-    secure: process.env["NODE_ENV"] === "production",
   };
 }
 

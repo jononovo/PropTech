@@ -36,6 +36,25 @@ Tool ladder (cheapest first):
 real packets. Not before.** (Decision researched Jul 2026; grep-based agentic
 search is the established norm at this file count.)
 
+## 2b. Tech (ruled Jul 26 2026 — pattern imported from user's "Stitch" agent doc)
+
+Vercel AI SDK v5: `streamText` + Zod-schema tools + `stopWhen: stepCountIs(~12)`
+on the server (Express: `pipeUIMessageStreamToResponse`), `useChat` on the
+client. File structure copied from Stitch for maintainability:
+`features/qa-agent/` with `tools/<name>/tool.ts`, a STATIC tool registry
+(manual imports — no codegen at this tool count), `system-prompt.ts` (pins
+core fields + file registry + sidecar list every turn; bodies fetched via the
+read tool, never inlined), thin route wrapper.
+
+Deliberate divergence from Stitch: ALL tools execute server-side (`execute()`
+on the tool) — our tools are read-only lookups, there is no editor buffer to
+mutate. This deletes Stitch gotchas #1/#2/#3/#7 (client tool-result plumbing)
+by construction. No askChoice, no per-role tool restrictions in v1.
+
+Model: via `@ai-sdk/openai-compatible` against our existing Fireworks/Mistral
+keys (no Anthropic key; org AI integrations disabled). Tool-calling quality
+on the loop needs burn-in — same registry-is-truth discipline as the workers.
+
 ## 3. Citation contract
 
 Every claim cites: `{ approvedDocId | runId+docIndex, fileId, page, quote }`

@@ -30,7 +30,7 @@ Parking lot for decisions that are made but deliberately not built yet. Don't re
 ## Platform / scaling
 - **Ingest as job + poll.** Today a packet upload holds the per-app lock through preflight and the gate kick, and `processing` can stand for minutes on long engine runs. When runs get long, move ingest to a job with polling.
 - **Multi-file packets ("folder drop").** A packet becomes 1–n files; the drop zone is labeled "Documents". Keeps the spec's "packet" term.
-- **Retention + access controls** — required before real (non-synthetic) borrower packets are allowed; until then synthetic packets only (spec gate).
+- ~~Retention + access controls~~ — **DONE Jul 26, 2026.** 2-year retention sweep + application-wide access matrix (view/upload/edit per role), both enforced server-side. See `retention.md`. Honest residue before real borrower data: real authentication (x-profile is client-asserted) and a borrower-facing retention notice.
 - **Prod legacy packet bytes:** three prod apps uploaded before App Storage lost their bytes to a redeploy (unrecoverable, known). Any packet re-upload heals the affected app.
 
 ## Recently resolved (kept for the record)

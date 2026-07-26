@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedStoresFromDisk } from "./lib/seedStores";
+import { scheduleRetentionSweep } from "./features/retention/sweep";
 
 const rawPort = process.env["PORT"];
 
@@ -19,6 +20,7 @@ if (Number.isNaN(port) || port <= 0) {
 async function main(): Promise<void> {
   // Fresh databases (first prod boot) get the committed template fixtures.
   await seedStoresFromDisk();
+  scheduleRetentionSweep();
 
   app.listen(port, (err) => {
     if (err) {

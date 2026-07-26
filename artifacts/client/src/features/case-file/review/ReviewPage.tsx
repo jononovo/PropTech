@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { ArrowLeft, ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import { profileHeaders } from '../../auth/ProfileContext';
 import { confidencePct, pageSpan, type CaseModel } from '../caseData';
 import { useCaseFile } from '../useCaseFile';
 import { buildReviewModel, globalPageImageUrl, type PageCell, type ReviewModel, type ReviewStop } from './reviewModel';
@@ -108,7 +109,7 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
     if (!citation || !citedGlobal) return;
     const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const qs = new URLSearchParams({ fileId: citation.fileId, page: String(citation.page), quote: citation.quote });
-    fetch(`${base}/api/applications/${id}/citations/resolve?${qs}`)
+    fetch(`${base}/api/applications/${id}/citations/resolve?${qs}`, { headers: profileHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d?.matched && d.boxes?.length) setHighlightBoxes(d.boxes);

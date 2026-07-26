@@ -16,10 +16,18 @@ import modelsRouter from "../features/models/router";
 import ledgerRouter from "../features/ledger/router";
 import qaAgentRouter from "../features/qa-agent/router";
 import filesRouter from "../features/files/router";
+import accessRouter from "../features/access/router";
+import retentionRouter from "../features/retention/router";
+import { accessControl } from "../features/access/middleware";
 
 const router: IRouter = Router();
 
+// Central authorization — every route below answers to the access matrix.
+router.use(accessControl);
+
 router.use(healthRouter);
+router.use(accessRouter);
+router.use(retentionRouter);
 router.use(templateLibraryRouter);
 router.use(templateEditorRouter);
 router.use(savedSectionsRouter);

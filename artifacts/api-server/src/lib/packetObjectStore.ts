@@ -111,6 +111,34 @@ export async function putApprovedObject(
   await gcsFile(key).save(bytes, { contentType, resumable: false });
 }
 
+/**
+ * Delete EVERYTHING under one application's folder — files/, approved/,
+ * runs/. Retention-sweep only (internal_docs/retention.md); nothing else may
+ * delete document bytes. Returns the number of objects removed.
+ */
+export async function deleteApplicationObjects(storageFolder: string): Promise<number> {
+  const root = `${appRoot(storageFolder)}/`;
+  if (USE_DISK) {
+    const dir = diskPath(root);
+    let count = 0;
+    try {
+      const entries = await readdir(dir, { recursive: true, withFileTypes: true });
+      count = entries.filter((e) => e.isFile()).length;
+    } catch {
+      return 0;
+    }
+    await rm(dir, { recursive: true, force: true });
+    return count;
+  }
+  const { bucketName, objectName } = locateInPrivateDir(root);
+  const bucket = objectStorageClient.bucket(bucketName);
+  const [files] = await bucket.getFiles({ prefix: objectName });
+  for (const f of files) {
+    await f.delete();
+  }
+  return files.length;
+}
+
 /** Store one SourceFile's immutable bytes. Write-once by convention (ids are never reused). */
 export async function putSourceFileBytes(
   storageFolder: string,

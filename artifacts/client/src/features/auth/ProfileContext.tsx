@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import type { User } from '@workspace/api-client-react';
+import { setDefaultHeadersGetter, type User } from '@workspace/api-client-react';
 
 /**
  * The signed-in demo user, as returned by POST /login. Kept whole in
@@ -26,6 +26,24 @@ function readStored(): Profile | null {
     return null;
   }
 }
+
+/**
+ * The signed-in profile as an `x-profile` header — the server's access
+ * matrix identifies every call by it. Exported for the few raw fetches that
+ * bypass the generated client (citations resolver, agent chat transport).
+ */
+export function profileHeaders(): Record<string, string> {
+  const p = readStored();
+  return p ? { 'x-profile': p.username } : {};
+}
+
+// Every generated-client request carries the current profile (module-level:
+// registered once at import, reads storage per request so login/logout and
+// multi-tab changes are always current).
+setDefaultHeadersGetter(() => {
+  const p = readStored();
+  return p ? { 'x-profile': p.username } : null;
+});
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(readStored);

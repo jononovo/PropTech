@@ -44,6 +44,20 @@ export function setAuthTokenGetter(getter: AuthTokenGetter | null): void {
   _authTokenGetter = getter;
 }
 
+export type DefaultHeadersGetter = () => Record<string, string> | null;
+
+let _defaultHeadersGetter: DefaultHeadersGetter | null = null;
+
+/**
+ * Register a getter that supplies default headers attached to every request
+ * (explicit per-request headers win). Used by the web client to send the
+ * signed-in profile (`x-profile`) that the server's access matrix enforces.
+ * Pass `null` to clear.
+ */
+export function setDefaultHeadersGetter(getter: DefaultHeadersGetter | null): void {
+  _defaultHeadersGetter = getter;
+}
+
 function isRequest(input: RequestInfo | URL): input is Request {
   return typeof Request !== "undefined" && input instanceof Request;
 }
@@ -347,6 +361,15 @@ export async function customFetch<T = unknown>(
 
   if (responseType === "json" && !headers.has("accept")) {
     headers.set("accept", DEFAULT_JSON_ACCEPT);
+  }
+
+  if (_defaultHeadersGetter) {
+    const defaults = _defaultHeadersGetter();
+    if (defaults) {
+      for (const [key, value] of Object.entries(defaults)) {
+        if (!headers.has(key)) headers.set(key, value);
+      }
+    }
   }
 
   // Attach bearer token when an auth getter is configured and no

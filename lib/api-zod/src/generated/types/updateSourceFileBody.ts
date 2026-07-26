@@ -5,6 +5,7 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { UpdateSourceFileBodyStatus } from './updateSourceFileBodyStatus';
 
 export interface UpdateSourceFileBody {
   /**
@@ -13,4 +14,6 @@ export interface UpdateSourceFileBody {
      * @maxLength 120
      */
   filename?: string;
+  /** archive/restore — bytes are never deleted; archived files leave the delta gate, estimates, and runs */
+  status?: UpdateSourceFileBodyStatus;
 }

@@ -2080,7 +2080,8 @@ export const updateSourceFileBodyFilenameMax = 120;
 
 
 export const UpdateSourceFileBody = zod.object({
-  "filename": zod.string().min(1).max(updateSourceFileBodyFilenameMax).optional().describe('new assigned name — bytes and id unchanged, ledger records from→to')
+  "filename": zod.string().min(1).max(updateSourceFileBodyFilenameMax).optional().describe('new assigned name — bytes and id unchanged, ledger records from→to'),
+  "status": zod.enum(['active', 'archived']).optional().describe('archive\/restore — bytes are never deleted; archived files leave the delta gate, estimates, and runs')
 })
 
 export const updateSourceFileResponseFilesItemDerivationSourcesItemPagesMin = 2;
@@ -3967,7 +3968,7 @@ export const RecordVerdictResponse = zod.object({
 
 
 /**
- * Proxied from the analyzer worker's store. Pages are addressed (fileId, page) — 1-based within the file. Files are immutable, so a render never changes and survives across (delta) runs. size=strip returns a cached 320px-wide thumbnail for the filmstrip; size=full returns the render at analyzer DPI. Responses cache aggressively.
+ * Served from object storage, collocated with the file's bytes (files/<fileId>/pages|thumbnails). Pages are addressed (fileId, page) — 1-based within the file. Files are immutable, so a render never changes and survives across (delta) runs. size=thumb returns the 320px-wide filmstrip thumbnail; size=full returns the render at analyzer DPI. Responses cache aggressively.
  * @summary Full-page PNG render for a source file (file-keyed, run-independent)
  */
 export const GetFilePageImageParams = zod.object({
@@ -3977,10 +3978,29 @@ export const GetFilePageImageParams = zod.object({
 })
 
 export const GetFilePageImageQueryParams = zod.object({
-  "size": zod.enum(['full', 'strip']).optional()
+  "size": zod.enum(['full', 'thumb']).optional()
 })
 
 export const GetFilePageImageResponse = zod.unknown()
+
+
+/**
+ * The analyzer worker pushes each page's full render and thumbnail here the moment it renders them — object storage is the single durable home for renders; the worker's disk is scratch. Authenticated by the x-sheaf-service header, not x-profile.
+ * @summary Store one page render (worker-only)
+ */
+export const UploadFileRenderParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "fileId": zod.coerce.string(),
+  "page": zod.coerce.number()
+})
+
+export const UploadFileRenderQueryParams = zod.object({
+  "kind": zod.enum(['pages', 'thumbnails'])
+})
+
+export const UploadFileRenderResponse = zod.object({
+  "stored": zod.boolean()
+})
 
 
 /**

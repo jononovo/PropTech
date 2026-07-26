@@ -10,6 +10,11 @@ Shipped & e2e-verified Jul 26 2026 (curl fresh-app flow + UI test on 5fCIFghsp1)
 **Why:** files are immutable → per-file renders/parses never change; carrying results forward is always sound.
 
 Key decisions:
+- Renders (pages + thumbnails) live in OBJECT STORAGE, collocated with file bytes: `applications/<folder>/files/<fileId>/pages|thumbnails/p-N.png` (ruled Jul 26: single storage flow; worker disk is scratch). Worker PUTs each PNG to `/applications/:id/files/:fileId/renders/:page?kind=pages|thumbnails` as it renders; API GET `.../pages/:page?size=full|thumb` streams from object storage. "strip" naming is dead — it's "thumbnails"/"thumb" everywhere.
+- Approved docs are self-contained: materialize copies span thumbnails to `approved/<basename>/thumbnails/p-N.png` renumbered 1..N (loud 502 if a source thumbnail is missing). Originals in files/ are audit-only — approved viewing must never link back to them.
+- Worker md/elements remain on worker disk, served via its `/store/...` routes (fetched at ingest/approval) — the one remaining non-object-storage read; candidate for a later move.
+- SourceFile PATCH accepts `status: active|archived` (ledger file.archived/restored); bytes never deleted. Archived files leave delta gate/estimates/runs.
+- Known accepted risk (review flagged): `x-sheaf-service: analyzer-worker` header is unverified service identity scoped to /applications/* — pre-existing owner-accepted pattern.
 - Worker store pages/md/elements are FILE-keyed (`store/<app>/files/<fileId>/…`), not run-keyed. Page-image API route is `/applications/:id/files/:fileId/pages/:page`. Each file is parsed exactly once by the run that covers it.
 - Merge-resolution keys have NO runId prefix (`<fileId>:pF-L|…`) — server mergeKey.ts and client docGroups.ts must stay in lockstep.
 - Covered set = latest run's (cumulative) input; computed INSIDE the row-locked gate tx (updateApplication supports async mutate) to avoid stale-coverage races.

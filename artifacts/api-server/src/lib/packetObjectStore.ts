@@ -94,6 +94,20 @@ const runElementsKey = (storageFolder: string, runId: string, fileId: string, pa
   `${appRoot(storageFolder)}/runs/${runId}/elements/${fileId}/p${page}.json`;
 const sourceFileKey = (storageFolder: string, fileId: string, ext: string): string =>
   `${appRoot(storageFolder)}/files/${fileId}${ext}`;
+// Page renders live NEXT TO their file's bytes — everything about a file sits
+// under its fileId (ruled Jul 26 2026: one storage flow, object storage only;
+// the analyzer's disk is scratch). Files are immutable, so renders never
+// change: write-once, cache forever.
+//   files/<fileId>/pages/p-<page>.png       full render at analyzer DPI
+//   files/<fileId>/thumbnails/p-<page>.png  320px-wide filmstrip thumbnail
+export type RenderKind = "pages" | "thumbnails";
+const fileRenderKey = (storageFolder: string, fileId: string, kind: RenderKind, page: number): string =>
+  `${appRoot(storageFolder)}/files/${fileId}/${kind}/p-${page}.png`;
+// Approved docs are the record of truth and must be self-contained: their
+// thumbnails are COPIES (renumbered 1..N in document page order), never links
+// back to files/ — originals are audit-only and may be swept independently.
+const approvedThumbnailKey = (storageFolder: string, basename: string, page: number): string =>
+  `${appRoot(storageFolder)}/approved/${basename}/thumbnails/p-${page}.png`;
 
 /** Write one approved-registry object (pdf bytes or md sidecar). Overwrite = retry semantics. */
 export async function putApprovedObject(
@@ -153,6 +167,79 @@ export async function putSourceFileBytes(
     return;
   }
   await gcsFile(key).save(bytes, { contentType, resumable: false });
+}
+
+/** Store one page render (full or thumbnail). Write-once by convention — files are immutable. */
+export async function putFileRender(
+  storageFolder: string,
+  fileId: string,
+  kind: RenderKind,
+  page: number,
+  bytes: Buffer,
+): Promise<void> {
+  const key = fileRenderKey(storageFolder, fileId, kind, page);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => writeFile(dest, bytes));
+    return;
+  }
+  await gcsFile(key).save(bytes, { contentType: "image/png", resumable: false });
+}
+
+/** Readable stream of one page render, or undefined when missing. */
+export async function openFileRenderStream(
+  storageFolder: string,
+  fileId: string,
+  kind: RenderKind,
+  page: number,
+): Promise<Readable | undefined> {
+  return openStream(fileRenderKey(storageFolder, fileId, kind, page));
+}
+
+/**
+ * Copy one source-page thumbnail into an approved document's own folder,
+ * renumbered to the document's page order. Returns false when the source
+ * thumbnail is missing (caller decides how loud to be).
+ */
+export async function copyThumbnailToApproved(
+  storageFolder: string,
+  fileId: string,
+  sourcePage: number,
+  basename: string,
+  docPage: number,
+): Promise<boolean> {
+  const bytes = await readBytes(fileRenderKey(storageFolder, fileId, "thumbnails", sourcePage));
+  if (!bytes) return false;
+  const key = approvedThumbnailKey(storageFolder, basename, docPage);
+  if (USE_DISK) {
+    await diskWrite(key, (dest) => writeFile(dest, bytes));
+    return true;
+  }
+  await gcsFile(key).save(bytes, { contentType: "image/png", resumable: false });
+  return true;
+}
+
+/** Readable stream of one approved document's thumbnail, or undefined when missing. */
+export async function openApprovedThumbnailStream(
+  storageFolder: string,
+  basename: string,
+  page: number,
+): Promise<Readable | undefined> {
+  return openStream(approvedThumbnailKey(storageFolder, basename, page));
+}
+
+async function readBytes(key: string): Promise<Buffer | undefined> {
+  if (USE_DISK) {
+    try {
+      return await readFile(diskPath(key));
+    } catch {
+      return undefined;
+    }
+  }
+  const file = gcsFile(key);
+  const [exists] = await file.exists();
+  if (!exists) return undefined;
+  const [bytes] = await file.download();
+  return bytes;
 }
 
 /** Readable stream of one SourceFile's bytes, or undefined when missing. */

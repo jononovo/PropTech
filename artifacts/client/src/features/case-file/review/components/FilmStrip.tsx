@@ -24,7 +24,7 @@ export function FilmStrip({
   pos: number;
   ack: Set<number>;
   onJump: (i: number) => void;
-  imageUrl: (globalPage: number, size?: 'full' | 'strip') => string;
+  imageUrl: (globalPage: number, size?: 'full' | 'thumb') => string;
 }) {
   const activeRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
@@ -66,7 +66,7 @@ export function FilmStrip({
           >
             <div className={`absolute top-0 left-0 right-0 h-[3px] z-10 ${stripBar(it.band)}`} />
             <img
-              src={imageUrl(it.page, 'strip')}
+              src={imageUrl(it.page, 'thumb')}
               alt=""
               loading="lazy"
               className="absolute inset-0 w-full h-full object-cover object-top"

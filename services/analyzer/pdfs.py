@@ -22,3 +22,17 @@ async def render_pages(pdf_path: str, out_dir: str) -> list[str]:
     if not pages:
         raise RuntimeError("pdftoppm produced no pages")
     return [str(p) for p in pages]
+
+
+THUMBNAIL_WIDTH = 320  # filmstrip width — generated alongside the full render
+
+
+def make_thumbnail(src: str, dest: str) -> str:
+    """320px-wide PNG thumbnail of one rendered page."""
+    from PIL import Image
+
+    Path(dest).parent.mkdir(parents=True, exist_ok=True)
+    with Image.open(src) as im:
+        h = max(1, round(im.height * THUMBNAIL_WIDTH / im.width))
+        im.convert("RGB").resize((THUMBNAIL_WIDTH, h)).save(dest, "PNG", optimize=True)
+    return dest

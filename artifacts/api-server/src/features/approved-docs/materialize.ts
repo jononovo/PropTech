@@ -4,7 +4,7 @@ import type { Readable } from "node:stream";
 import { updateApplication, type Application } from "../intake/store";
 import { findBlock } from "../intake/blocks";
 import { readSidecar } from "../analysis/store";
-import { openSourceFileStream, putApprovedObject } from "../../lib/packetObjectStore";
+import { copyThumbnailToApproved, openSourceFileStream, putApprovedObject } from "../../lib/packetObjectStore";
 import { storageExt } from "../files/receive";
 import { HttpError } from "../../lib/httpError";
 import { buildSidecarMarkdown } from "./frontmatter";
@@ -88,6 +88,23 @@ async function extractSpans(app: Application, spans: FileSpan[]): Promise<Buffer
   return Buffer.from(await out.save());
 }
 
+/**
+ * Copy the spans' thumbnails into the approved document's own folder,
+ * renumbered 1..N in document page order. The approved folder is the record
+ * of truth and must be self-contained — viewing an approved document never
+ * touches files/ (originals are audit-only, swept independently). A missing
+ * source thumbnail is a loud 502: an extract-source approval implies the
+ * analyzer rendered (and uploaded) every one of these pages.
+ */
+async function copySpanThumbnails(app: Application, spans: FileSpan[], basename: string): Promise<void> {
+  const pages = spanPages(spans);
+  for (let i = 0; i < pages.length; i++) {
+    const p = pages[i]!;
+    const ok = await copyThumbnailToApproved(app.storageFolder, p.fileId, p.page, basename, i + 1);
+    if (!ok) throw new HttpError(502, `Thumbnail missing in storage for ${p.fileId} p.${p.page} — cannot complete the approved record`);
+  }
+}
+
 /** Record or clear the block's loud materialization error on the application. */
 async function setMaterializationError(applicationId: string, blockId: string, message: string | null): Promise<void> {
   await updateApplication(applicationId, (app) => {
@@ -140,9 +157,11 @@ export async function materializeApproval(app: Application, blockId: string): Pr
     let doc: ApprovedDoc;
     let pdfBytes: Buffer;
     let pageMarkdown: string[] = [];
+    let extractedSpans: FileSpan[] | undefined;
 
     if (runDoc && run) {
       const spans = normalizeSpans(runDoc.spans);
+      extractedSpans = spans;
       pdfBytes = await extractSpans(app, spans);
       pageMarkdown = await Promise.all(
         spanPages(spans).map((p) => fetchPageMarkdown(app.id, p.fileId, p.page)),
@@ -181,6 +200,7 @@ export async function materializeApproval(app: Application, blockId: string): Pr
     // a registry row without bytes is not.
     await putApprovedObject(app.storageFolder, basename, "pdf", pdfBytes);
     await putApprovedObject(app.storageFolder, basename, "md", Buffer.from(md, "utf8"));
+    if (extractedSpans) await copySpanThumbnails(app, extractedSpans, basename);
     await insertApprovedDoc(doc);
     await setMaterializationError(app.id, blockId, null);
     return doc;
@@ -265,6 +285,7 @@ export async function materializeDocumentApproval(
 
     await putApprovedObject(app.storageFolder, basename, "pdf", pdfBytes);
     await putApprovedObject(app.storageFolder, basename, "md", Buffer.from(md, "utf8"));
+    await copySpanThumbnails(app, spans, basename);
     await insertApprovedDoc(doc, { matchSpans: spans });
     await setMaterializationError(app.id, blockId, null);
     return doc;

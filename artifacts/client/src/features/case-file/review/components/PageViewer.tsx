@@ -39,7 +39,7 @@ export function PageImage({
   runId: string;
   /** global page number (view currency); imageUrl resolves it to (fileId, page) */
   page: number;
-  imageUrl: (globalPage: number, size?: 'full' | 'strip') => string;
+  imageUrl: (globalPage: number, size?: 'full' | 'thumb') => string;
   /** citation highlight boxes for THIS page (already filtered by the caller) */
   highlight?: HighlightBox[] | null;
 }) {

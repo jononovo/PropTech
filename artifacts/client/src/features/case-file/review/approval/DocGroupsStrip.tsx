@@ -52,7 +52,7 @@ export function DocGroupsStrip({
   /** the two groups' file-qualified spans, in pair order */
   onResolveMerge: (spans: FileSpan[], decision: MergeDecision) => void;
   onQuickApprove: (group: DocGroup) => void;
-  imageUrl: (globalPage: number, size?: 'full' | 'strip') => string;
+  imageUrl: (globalPage: number, size?: 'full' | 'thumb') => string;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -163,7 +163,7 @@ export function DocGroupsStrip({
                 {g.pageList.map((p) => (
                   <StripThumb
                     key={p}
-                    src={imageUrl(p, 'strip')}
+                    src={imageUrl(p, 'thumb')}
                     page={p}
                     active={p === activePage && !selectedGroupId}
                     decision={decisions[g.id]?.[p]}

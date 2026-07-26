@@ -1,7 +1,6 @@
-import { Readable } from "node:stream";
-import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
+import type { Readable } from "node:stream";
 import type { z } from "zod";
-import { Router, type IRouter } from "express";
+import express, { Router, type IRouter } from "express";
 import {
   GetAnalysisResponse,
   IngestAnalysisRunBody,
@@ -19,6 +18,7 @@ import { writeRunSidecars, writeRunElements } from "./runSidecars";
 import { appendEvent } from "../ledger/store";
 import { clientIp } from "../../lib/clientIp";
 import { materializeApproval } from "../approved-docs/materialize";
+import { putFileRender, openFileRenderStream, type RenderKind } from "../../lib/packetObjectStore";
 
 const router: IRouter = Router();
 
@@ -293,10 +293,10 @@ router.put("/applications/:applicationId/verdicts/:blockId", async (req, res): P
 });
 
 /**
- * Page renders for the filmstrip review room — proxied from the analyzer
- * worker's store (the API never grows its own copy). Renders are keyed by
- * FILE, not run: files are immutable, so a render never changes and the
- * thumbnails survive across (delta) runs. Responses cache aggressively.
+ * Page renders for the filmstrip review room — served straight from object
+ * storage, collocated with the file's bytes (files/<fileId>/pages|thumbnails).
+ * The analyzer uploads them as it renders; its disk is scratch. Files are
+ * immutable, so a render never changes — responses cache forever.
  */
 router.get("/applications/:applicationId/files/:fileId/pages/:page", async (req, res): Promise<void> => {
   const id = paramStr(req.params["applicationId"]);
@@ -310,33 +310,61 @@ router.get("/applications/:applicationId/files/:fileId/pages/:page", async (req,
     res.status(400).json({ error: "Invalid page number" });
     return;
   }
-  const size = req.query["size"] === "strip" ? "strip" : "full";
-  const base = process.env["ANALYZER_URL"];
-  if (!base) {
-    res.status(502).json({ error: "ANALYZER_URL is not configured — analyzer worker unreachable" });
+  const kind: RenderKind = req.query["size"] === "thumb" ? "thumbnails" : "pages";
+  const app = await readApplication(id!);
+  if (!app) {
+    res.status(404).json({ error: "Application not found" });
     return;
   }
-  let upstream;
-  try {
-    upstream = await fetch(`${base.replace(/\/$/, "")}/store/${id}/files/${fileId}/pages/${page}?size=${size}`, {
-      signal: AbortSignal.timeout(20000),
-    });
-  } catch (err) {
-    res.status(502).json({ error: `Analyzer worker unreachable: ${err instanceof Error ? err.message : String(err)}` });
-    return;
-  }
-  if (upstream.status === 404) {
+  const stream = await openFileRenderStream(app.storageFolder, fileId!, kind, page);
+  if (!stream) {
     res.status(404).json({ error: "No render for this page" });
-    return;
-  }
-  if (!upstream.ok || !upstream.body) {
-    res.status(502).json({ error: `Analyzer store answered ${upstream.status}` });
     return;
   }
   res.type("png");
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-  Readable.fromWeb(upstream.body as NodeWebReadableStream).pipe(res);
+  (stream as Readable).pipe(res);
 });
+
+/**
+ * Render upload — the analyzer worker pushes each page's full render and
+ * thumbnail here the moment it renders them (single storage flow: object
+ * storage is the only durable home; the worker's disk is scratch).
+ */
+router.put(
+  "/applications/:applicationId/files/:fileId/renders/:page",
+  express.raw({ type: "image/png", limit: "50mb" }),
+  async (req, res): Promise<void> => {
+    const id = paramStr(req.params["applicationId"]);
+    const fileId = paramStr(req.params["fileId"]);
+    if (!isSafeSegment(id) || !isSafeSegment(fileId)) {
+      res.status(400).json({ error: "Invalid application or file id" });
+      return;
+    }
+    const page = Number.parseInt(paramStr(req.params["page"]) ?? "", 10);
+    const kind = req.query["kind"];
+    if (!Number.isFinite(page) || page <= 0 || (kind !== "pages" && kind !== "thumbnails")) {
+      res.status(400).json({ error: "Invalid page or kind (pages|thumbnails)" });
+      return;
+    }
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      res.status(400).json({ error: "Empty body — send the PNG bytes as image/png" });
+      return;
+    }
+    const app = await readApplication(id!);
+    const sf = (app?.files ?? []).find((f) => f.id === fileId);
+    if (!app || !sf) {
+      res.status(404).json({ error: "No such file" });
+      return;
+    }
+    if (sf.pages !== undefined && page > sf.pages) {
+      res.status(400).json({ error: `Page ${page} exceeds ${sf.filename}'s ${sf.pages} pages` });
+      return;
+    }
+    await putFileRender(app.storageFolder, fileId!, kind, page, req.body);
+    res.json({ stored: true });
+  },
+);
 
 /**
  * Manual filing of analyzer-unassigned page ranges (portal-owned, human-only).

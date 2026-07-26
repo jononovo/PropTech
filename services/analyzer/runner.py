@@ -20,7 +20,7 @@ from models import resolve_plan
 from judge import judge_document, prompt_version as judge_prompt_version
 from naming import derive_name
 from parse import parse_document
-from pdfs import render_pages
+from pdfs import make_thumbnail, render_pages
 from satisfaction import satisfaction_pass
 from scrutiny import apply_substitution_scrutiny, block_index, deep_scan, needs_deep_scan
 from split_classify import (classify_segment, deterministic_boundaries,
@@ -112,13 +112,16 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
         pdf_path.write_bytes(await portal.get_source_file(app_id, file_id))
 
         t = time.monotonic()
-        # Page renders are keyed by FILE, not run: files are immutable, so a
-        # render never changes — and thumbnails survive across (delta) runs.
-        pngs = await render_pages(str(pdf_path), str(Path(config.STORE_DIR) / app_id / "files" / file_id / "pages"))
-        timings["renderMs"] += int((time.monotonic() - t) * 1000)
+        # Renders are keyed by FILE (immutable → run-independent) and pushed
+        # straight to the portal's object storage: local dirs are scratch.
+        file_dir = Path(config.STORE_DIR) / app_id / "files" / file_id
+        pngs = await render_pages(str(pdf_path), str(file_dir / "pages"))
         if len(pngs) != f.get("pages"):
             raise RuntimeError(f"{f.get('filename', file_id)}: rendered {len(pngs)} pages, "
                                f"registry says {f.get('pages')}")
+        thumbs = [make_thumbnail(p, str(file_dir / "thumbnails" / Path(p).name)) for p in pngs]
+        await portal.put_renders(app_id, file_id, pngs, thumbs)
+        timings["renderMs"] += int((time.monotonic() - t) * 1000)
         t = time.monotonic()
         # md/elements are file-keyed like the page renders: each file is parsed
         # exactly once (by the run that covers it), so the parse is run-independent
@@ -207,7 +210,6 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
         core = verdict["core_fields"]
         if core["primary_party_name"] == "unknown":
             core["primary_party_name"] = app.get("applicantName", "unknown")
-        pad = len(str(next(f["pages"] for f in input_files if f["fileId"] == file_id)))
         documents.append({
             "spans": [span],
             "suggestedBlockId": block_id,
@@ -226,10 +228,9 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
             "artifacts": {
                 "judge": f"{ref}/{judge_rel}",
                 "md": f"store://{app_id}/files/{file_id}/md/p{span['pages'][0]}.md",
-                # pdftoppm zero-pads to the FILE's page-count width — the URIs
-                # must reference the files as they exist on disk. Renders are
-                # file-keyed (run-independent).
-                "pageRenders": [f"store://{app_id}/files/{file_id}/pages/p-{n:0{pad}d}.png"
+                # Renders live in the portal's object storage, collocated with
+                # the file bytes (files/<fileId>/pages/p-<n>.png, unpadded).
+                "pageRenders": [f"files/{file_id}/pages/p-{n}.png"
                                 for n in range(span["pages"][0], span["pages"][1] + 1)],
                 "crops": [],
             },

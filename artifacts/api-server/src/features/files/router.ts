@@ -110,7 +110,7 @@ router.get("/applications/:applicationId/files/:fileId", async (req, res): Promi
   (stream as Readable).pipe(res);
 });
 
-/** Rename = metadata only. Bytes and id untouched; from→to recorded in the ledger. */
+/** Metadata-only updates: rename, and archive/restore (bytes are never deleted — status is the lifecycle). */
 router.patch("/applications/:applicationId/files/:fileId", async (req, res): Promise<void> => {
   const id = param(req, "applicationId");
   const fileId = param(req, "fileId");
@@ -119,11 +119,12 @@ router.patch("/applications/:applicationId/files/:fileId", async (req, res): Pro
     if (!isSafeSegment(id) || !isSafeSegment(fileId)) throw new HttpError(400, "Invalid application or file id");
     if (!parsed.success) throw new HttpError(400, parsed.error.message);
     const nextName = parsed.data.filename ? sanitizeFilename(parsed.data.filename) : undefined;
-    if (!nextName) throw new HttpError(400, "Nothing to update — provide filename");
+    const nextStatus = parsed.data.status;
+    if (!nextName && !nextStatus) throw new HttpError(400, "Nothing to update — provide filename and/or status");
     const app = await updateApplication(id!, (app, emit) => {
       const sf = (app.files ?? []).find((f) => f.id === fileId);
       if (!sf) throw new HttpError(404, "No such file");
-      if (sf.filename !== nextName) {
+      if (nextName && sf.filename !== nextName) {
         emit({
           actor: { kind: "user", ip: clientIp(req) },
           action: "file.renamed",
@@ -131,6 +132,15 @@ router.patch("/applications/:applicationId/files/:fileId", async (req, res): Pro
           detail: { from: sf.filename, to: nextName },
         });
         sf.filename = nextName;
+      }
+      if (nextStatus && sf.status !== nextStatus) {
+        emit({
+          actor: { kind: "user", ip: clientIp(req) },
+          action: nextStatus === "archived" ? "file.archived" : "file.restored",
+          target: { type: "file", id: sf.id, label: sf.filename },
+          detail: { from: sf.status, to: nextStatus },
+        });
+        sf.status = nextStatus;
       }
       return app;
     });

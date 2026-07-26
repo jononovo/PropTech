@@ -1090,11 +1090,12 @@ paths:
       tags: [analysis]
       summary: Full-page PNG render for a source file (file-keyed, run-independent)
       description: >
-        Proxied from the analyzer worker's store. Pages are addressed
-        (fileId, page) — 1-based within the file. Files are immutable, so a
-        render never changes and survives across (delta) runs. size=strip
-        returns a cached 320px-wide thumbnail for the filmstrip; size=full
-        returns the render at analyzer DPI. Responses cache aggressively.
+        Served from object storage, collocated with the file's bytes
+        (files/<fileId>/pages|thumbnails). Pages are addressed (fileId, page) —
+        1-based within the file. Files are immutable, so a render never changes
+        and survives across (delta) runs. size=thumb returns the 320px-wide
+        filmstrip thumbnail; size=full returns the render at analyzer DPI.
+        Responses cache aggressively.
       parameters:
         - $ref: "#/components/parameters/ApplicationId"
         - name: fileId
@@ -1112,7 +1113,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [full, strip]
+            enum: [full, thumb]
       responses:
         "200":
           description: PNG render of the page
@@ -1134,7 +1135,64 @@ paths:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
         "502":
-          description: Analyzer worker unreachable
+          description: Object storage unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/files/{fileId}/renders/{page}:
+    put:
+      operationId: uploadFileRender
+      tags: [analysis]
+      summary: Store one page render (worker-only)
+      description: >
+        The analyzer worker pushes each page's full render and thumbnail here
+        the moment it renders them — object storage is the single durable home
+        for renders; the worker's disk is scratch. Authenticated by the
+        x-sheaf-service header, not x-profile.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: kind
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [pages, thumbnails]
+      requestBody:
+        required: true
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stored]
+                properties:
+                  stored: { type: boolean }
+        "400":
+          description: Invalid ids, page, kind, or empty body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: No such file
           content:
             application/json:
               schema:
@@ -1604,6 +1662,10 @@ components:
           minLength: 1
           maxLength: 120
           description: new assigned name — bytes and id unchanged, ledger records from→to
+        status:
+          type: string
+          enum: [active, archived]
+          description: archive/restore — bytes are never deleted; archived files leave the delta gate, estimates, and runs
     ApplicationVariant:
       type: object
       description: >

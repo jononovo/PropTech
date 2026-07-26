@@ -1,5 +1,8 @@
 """The portal API is the analyzer's ONLY integration surface (spec §5) — the
 analyzer stays stateless toward the portal and never touches its storage."""
+import asyncio
+from pathlib import Path
+
 import httpx
 
 from config import PORTAL_API_BASE
@@ -28,6 +31,29 @@ async def get_source_file(app_id: str, file_id: str) -> bytes:
         r = await c.get(f"/applications/{app_id}/files/{file_id}")
         r.raise_for_status()
         return r.content
+
+
+async def put_renders(app_id: str, file_id: str, pages: list[str], thumbnails: list[str]) -> None:
+    """Push one file's page renders + thumbnails into the portal's object
+    storage the moment they exist — the worker's disk is scratch, object
+    storage is the single durable home (ruled Jul 26 2026)."""
+    sem = asyncio.Semaphore(6)
+
+    async def put(c: httpx.AsyncClient, kind: str, page: int, path: str) -> None:
+        async with sem:
+            r = await c.put(
+                f"/applications/{app_id}/files/{file_id}/renders/{page}",
+                params={"kind": kind},
+                content=Path(path).read_bytes(),
+                headers={"content-type": "image/png"},
+            )
+            r.raise_for_status()
+
+    async with _client() as c:
+        await asyncio.gather(
+            *(put(c, "pages", i + 1, p) for i, p in enumerate(pages)),
+            *(put(c, "thumbnails", i + 1, p) for i, p in enumerate(thumbnails)),
+        )
 
 
 async def post_run(app_id: str, run: dict) -> tuple[int, str]:

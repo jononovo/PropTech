@@ -778,6 +778,17 @@ export interface ReceiveFilesResponse {
   application: Application;
 }
 
+/**
+ * archive/restore — bytes are never deleted; archived files leave the delta gate, estimates, and runs
+ */
+export type UpdateSourceFileBodyStatus = typeof UpdateSourceFileBodyStatus[keyof typeof UpdateSourceFileBodyStatus];
+
+
+export const UpdateSourceFileBodyStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
 export interface UpdateSourceFileBody {
   /**
      * new assigned name — bytes and id unchanged, ledger records from→to
@@ -785,6 +796,8 @@ export interface UpdateSourceFileBody {
      * @maxLength 120
      */
   filename?: string;
+  /** archive/restore — bytes are never deleted; archived files leave the delta gate, estimates, and runs */
+  status?: UpdateSourceFileBodyStatus;
 }
 
 /**
@@ -1262,6 +1275,22 @@ export type GetFilePageImageSize = typeof GetFilePageImageSize[keyof typeof GetF
 
 export const GetFilePageImageSize = {
   full: 'full',
-  strip: 'strip',
+  thumb: 'thumb',
 } as const;
+
+export type UploadFileRenderParams = {
+kind: UploadFileRenderKind;
+};
+
+export type UploadFileRenderKind = typeof UploadFileRenderKind[keyof typeof UploadFileRenderKind];
+
+
+export const UploadFileRenderKind = {
+  pages: 'pages',
+  thumbnails: 'thumbnails',
+} as const;
+
+export type UploadFileRender200 = {
+  stored: boolean;
+};
 

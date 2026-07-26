@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type GetFilePageImageSize = typeof GetFilePageImageSize[keyof typeof GetFilePageImageSize];
+export type UploadFileRenderKind = typeof UploadFileRenderKind[keyof typeof UploadFileRenderKind];
 
 
-export const GetFilePageImageSize = {
-  full: 'full',
-  thumb: 'thumb',
+export const UploadFileRenderKind = {
+  pages: 'pages',
+  thumbnails: 'thumbnails',
 } as const;

@@ -61,40 +61,6 @@ async def health() -> dict:
 
 
 _SAFE_SEG = re.compile(r"^[A-Za-z0-9_-]+$")
-_STRIP_WIDTH = 320  # filmstrip thumbnail width — cached alongside the full render
-
-
-def _make_strip(src: Path, dest: Path) -> None:
-    from PIL import Image
-
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    with Image.open(src) as im:
-        h = max(1, round(im.height * _STRIP_WIDTH / im.width))
-        im.convert("RGB").resize((_STRIP_WIDTH, h)).save(dest, "PNG", optimize=True)
-
-
-@app.get("/store/{application_id}/files/{file_id}/pages/{page}")
-def file_page_image(application_id: str, file_id: str, page: int, size: str = "full") -> FileResponse:
-    """Page render, addressed (fileId, in-file page). File-keyed — files are
-    immutable, so a render is run-independent. pdftoppm zero-pads filenames
-    to the file's page-count width, so we probe the paddings."""
-    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(file_id)):
-        raise HTTPException(status_code=400, detail="Invalid path segment")
-    if page < 1 or size not in ("full", "strip"):
-        raise HTTPException(status_code=400, detail="Invalid page or size")
-    pages_dir = Path(config.STORE_DIR) / application_id / "files" / file_id / "pages"
-    src = next(
-        (c for c in (pages_dir / f"p-{page:0{w}d}.png" for w in (1, 2, 3, 4)) if c.exists()),
-        None,
-    )
-    if src is None:
-        raise HTTPException(status_code=404, detail="Page render not found")
-    if size == "full":
-        return FileResponse(src, media_type="image/png")
-    strip = pages_dir.parent / "pages_strip" / src.name
-    if not strip.exists():
-        _make_strip(src, strip)  # sync handler — FastAPI runs it in the threadpool
-    return FileResponse(strip, media_type="image/png")
 
 
 @app.get("/store/{application_id}/files/{file_id}/md/{page}")

@@ -219,16 +219,16 @@ export const pageImageUrl = (
   applicationId: string,
   fileId: string,
   page: number,
-  size: 'full' | 'strip' = 'full',
+  size: 'full' | 'thumb' = 'full',
 ) =>
-  `/api/applications/${applicationId}/files/${fileId}/pages/${page}${size === 'strip' ? '?size=strip' : ''}`;
+  `/api/applications/${applicationId}/files/${fileId}/pages/${page}${size === 'thumb' ? '?size=thumb' : ''}`;
 
 /** Global-page image URL via the run's page index. */
 export const globalPageImageUrl = (
   applicationId: string,
   index: PageIndex,
   globalPage: number,
-  size: 'full' | 'strip' = 'full',
+  size: 'full' | 'thumb' = 'full',
 ) => {
   const rp = index.at(globalPage);
   return rp ? pageImageUrl(applicationId, rp.fileId, rp.page, size) : '';

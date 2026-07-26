@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks, MoreVertical, ScrollText } from 'lucide-react';
+import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks, MoreVertical, ScrollText, Sparkles } from 'lucide-react';
 import { useListTemplates } from '@workspace/api-client-react';
 import { PANEL, UserMenu } from '@/components/UserMenu';
 import { fmt } from './caseData';
 import type { CaseModel } from './caseData';
 import { useClosingDate, useTemplateUpgrade } from './useCaseFile';
+import { AgentPanel } from './components/AgentPanel';
 
 export type Lens = 'intake' | 'triage' | 'workfile' | 'timeline' | 'register' | 'ledger';
 
@@ -38,6 +39,7 @@ export function CaseShell({
   const { app } = model;
   const [caseOpen, setCaseOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -166,6 +168,20 @@ export function CaseShell({
 
         <div className="hidden md:block h-5 w-px bg-[var(--ops-border)] shrink-0" />
 
+        {/* case assistant — chat scoped to this application */}
+        <button
+          onClick={() => setAgentOpen((o) => !o)}
+          data-testid="button-agent-toggle"
+          title="Case assistant"
+          className={`w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-[4px] transition-colors shrink-0 ${
+            agentOpen
+              ? 'text-[var(--ops-accent)] bg-[var(--ops-accent-wash)]'
+              : 'text-[var(--ops-muted)] hover:bg-[var(--ops-inner-rule)] hover:text-[var(--ops-ink)]'
+          }`}
+        >
+          <Sparkles className="w-4 h-4" />
+        </button>
+
         {/* clock bell — count in the chrome, detail stays in the timeline */}
         <button
           onClick={() => onLens('timeline')}
@@ -185,6 +201,7 @@ export function CaseShell({
       </header>
 
       <div className="flex-1 min-h-0">{children}</div>
+      {agentOpen && <AgentPanel applicationId={app.id} onClose={() => setAgentOpen(false)} />}
     </div>
   );
 }

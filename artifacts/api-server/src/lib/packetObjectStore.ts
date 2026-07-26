@@ -1,5 +1,5 @@
 import { createReadStream, existsSync } from "node:fs";
-import { copyFile, mkdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { DATA_DIR } from "./jsonStore";
@@ -165,6 +165,56 @@ export async function putRunElementsJson(
     return;
   }
   await gcsFile(key).save(bytes, { contentType: "application/json", resumable: false });
+}
+
+/**
+ * Q&A agent corpus access — the agent's list/grep/read tools go through these
+ * two functions ONLY. Keys returned/accepted are RELATIVE to the application
+ * root (e.g. "runs/<runId>/doc-01_urla.md", "approved/<basename>.md") so the
+ * model never sees or fabricates cross-application paths.
+ */
+const CORPUS_TEXT_RE = /\.(md|json)$/;
+
+export async function listCorpusKeys(storageFolder: string): Promise<string[]> {
+  const root = `${appRoot(storageFolder)}/`;
+  if (USE_DISK) {
+    const dir = diskPath(root);
+    try {
+      const entries = await readdir(dir, { recursive: true, withFileTypes: true });
+      return entries
+        .filter((e) => e.isFile() && CORPUS_TEXT_RE.test(e.name))
+        .map((e) => path.relative(dir, path.join(e.parentPath, e.name)).split(path.sep).join("/"))
+        .sort();
+    } catch {
+      return [];
+    }
+  }
+  const { bucketName, objectName } = locateInPrivateDir(root);
+  const [files] = await objectStorageClient.bucket(bucketName).getFiles({ prefix: objectName });
+  return files
+    .map((f) => f.name.slice(objectName.length))
+    .filter((k) => CORPUS_TEXT_RE.test(k))
+    .sort();
+}
+
+/** Read one corpus text object by app-relative key. Undefined when missing. Throws on escape attempts. */
+export async function readCorpusText(storageFolder: string, relKey: string): Promise<string | undefined> {
+  if (relKey.includes("..") || relKey.startsWith("/") || !CORPUS_TEXT_RE.test(relKey)) {
+    throw new Error(`Invalid corpus key: ${relKey}`);
+  }
+  const key = `${appRoot(storageFolder)}/${relKey}`;
+  if (USE_DISK) {
+    try {
+      return await readFile(diskPath(key), "utf8");
+    } catch {
+      return undefined;
+    }
+  }
+  const file = gcsFile(key);
+  const [exists] = await file.exists();
+  if (!exists) return undefined;
+  const [bytes] = await file.download();
+  return bytes.toString("utf8");
 }
 
 /** Readable stream of one approved-registry object, or undefined when missing. */

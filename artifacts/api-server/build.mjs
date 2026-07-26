@@ -21,6 +21,9 @@ async function buildAll() {
     format: "esm",
     outdir: distDir,
     outExtension: { ".js": ".mjs" },
+    // Markdown imported as a string (e.g. qa-agent instructions.md — the
+    // system prompt stays an editable markdown file, eve-style).
+    loader: { ".md": "text" },
     logLevel: "info",
     // Some packages may not be bundleable, so we externalize them, we can add more here as needed.
     // Some of the packages below may not be imported or installed, but we're adding them in case they are in the future.

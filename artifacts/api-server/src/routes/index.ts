@@ -14,6 +14,7 @@ import runsRouter from "../features/runs/router";
 import usersRouter from "../features/users/router";
 import modelsRouter from "../features/models/router";
 import ledgerRouter from "../features/ledger/router";
+import qaAgentRouter from "../features/qa-agent/router";
 import filesRouter from "../features/files/router";
 
 const router: IRouter = Router();
@@ -34,5 +35,6 @@ router.use(runsRouter);
 router.use(usersRouter);
 router.use(modelsRouter);
 router.use(ledgerRouter);
+router.use(qaAgentRouter);
 
 export default router;

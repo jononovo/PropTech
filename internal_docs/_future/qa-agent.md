@@ -125,10 +125,16 @@ fetches during ingest exactly like page markdown for sidecars.)
 ## 6. Build order
 
 1. ✅ Elements projection at ingest (§5) + `run.elements_failed` ledger action.
-2. Portal endpoints for the agent tools (list/grep/read scoped to one
-   application) + citation resolver (quote → bbox).
-3. Agent loop + chat UI in the case file (new lens or side panel), streaming,
-   with citation link chips.
+2. ✅ Agent tools scoped to one application (`features/qa-agent/tools/`:
+   lookup_application, list_corpus, grep_corpus, read_corpus over
+   packetObjectStore `listCorpusKeys`/`readCorpusText`). Citation resolver
+   (quote → bbox) deferred with the v2 viewer.
+3. ✅ Agent loop + chat UI — AI SDK 7 `streamText`, off-spec route
+   `POST /api/applications/:id/agent/chat`, eve-style registry
+   (instructions.md + tools/<name>.ts), Mistral large (env
+   `QA_AGENT_MODEL` override), `AgentPanel` slide-over toggled from the
+   CaseShell header. Citations are inline text («doc», p.N) for v1;
+   link chips land with the v2 viewer alongside bbox.
 4. (Parked, v2 review UI) viewer honors bbox in the deep link and draws the
    highlight.
 

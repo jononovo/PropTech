@@ -1140,16 +1140,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
-  /applications/{applicationId}/files/{fileId}/renders/{page}:
+  /applications/{applicationId}/files/{fileId}/artifacts/{page}:
     put:
-      operationId: uploadFileRender
+      operationId: uploadFileArtifact
       tags: [analysis]
-      summary: Store one page render (worker-only)
+      summary: Store one per-page file artifact (worker-only)
       description: >
-        The analyzer worker pushes each page's full render and thumbnail here
-        the moment it renders them — object storage is the single durable home
-        for renders; the worker's disk is scratch. Authenticated by the
-        x-sheaf-service header, not x-profile.
+        The analyzer worker pushes each page's full render, thumbnail, parse
+        markdown and layout-elements JSON here the moment they exist — object
+        storage is the single durable home; the worker's disk is scratch.
+        Authenticated by the x-sheaf-service header, not x-profile.
       parameters:
         - $ref: "#/components/parameters/ApplicationId"
         - name: fileId
@@ -1167,7 +1167,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [pages, thumbnails]
+            enum: [pages, thumbnails, md, elements]
       requestBody:
         required: true
         content:
@@ -1175,6 +1175,14 @@ paths:
             schema:
               type: string
               format: binary
+          text/markdown:
+            schema:
+              type: string
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: elements JSON — octet-stream on the wire so the portal's JSON body parser leaves it alone
       responses:
         "200":
           description: Stored
@@ -2251,7 +2259,10 @@ components:
         detail: { type: string }
     AnalysisArtifacts:
       type: object
-      description: URLs into the analyzer's artifact store (md + renders + crops).
+      description: >
+        Provenance references for this document's per-page artifacts. md and
+        pageRenders are application-relative object-storage keys
+        (files/<fileId>/md|pages/p-<n>...); judge stays a run-store reference.
       required: [md, pageRenders, crops]
       properties:
         judge:

@@ -4,7 +4,7 @@ import type { Readable } from "node:stream";
 import { updateApplication, type Application } from "../intake/store";
 import { findBlock } from "../intake/blocks";
 import { readSidecar } from "../analysis/store";
-import { copyThumbnailToApproved, openSourceFileStream, putApprovedObject } from "../../lib/packetObjectStore";
+import { copyThumbnailToApproved, openSourceFileStream, putApprovedObject, readFileParseText } from "../../lib/packetObjectStore";
 import { storageExt } from "../files/receive";
 import { HttpError } from "../../lib/httpError";
 import { buildSidecarMarkdown } from "./frontmatter";
@@ -19,7 +19,7 @@ import { insertApprovedDoc, liveBasenames, type ApprovedDoc } from "./registry";
  * spans are extracted straight from the immutable SourceFile registry bytes —
  * there is no packet blob. Source priority:
  *   1. analyzer-assigned document in the accepted run → extract its FileSpans,
- *      pull per-(file,page) markdown from the worker
+ *      pull per-(file,page) markdown from object storage
  *   2. direct intake upload (newest) → copy bytes whole (PDF only in v1)
  * Anything else fails loudly — a 409 up front, or a 502 recorded on the
  * application as materializationErrors[blockId] (verdict stands, retry clears).
@@ -36,14 +36,10 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-async function fetchPageMarkdown(applicationId: string, fileId: string, page: number): Promise<string> {
-  const base = process.env["ANALYZER_URL"];
-  if (!base) throw new HttpError(502, "ANALYZER_URL is not configured — analyzer worker unreachable");
-  const res = await fetch(`${base.replace(/\/$/, "")}/store/${applicationId}/files/${fileId}/md/${page}`).catch((err) => {
-    throw new HttpError(502, `Analyzer worker unreachable: ${err instanceof Error ? err.message : String(err)}`);
-  });
-  if (!res.ok) throw new HttpError(502, `Analyzer store answered ${res.status} for ${fileId} p.${page} markdown`);
-  return res.text();
+async function fetchPageMarkdown(storageFolder: string, fileId: string, page: number): Promise<string> {
+  const md = await readFileParseText(storageFolder, fileId, "md", page);
+  if (md === undefined) throw new HttpError(502, `No parse markdown in storage for ${fileId} p.${page}`);
+  return md;
 }
 
 /** Flatten spans into an ordered (fileId, in-file page) list. */
@@ -164,7 +160,7 @@ export async function materializeApproval(app: Application, blockId: string): Pr
       extractedSpans = spans;
       pdfBytes = await extractSpans(app, spans);
       pageMarkdown = await Promise.all(
-        spanPages(spans).map((p) => fetchPageMarkdown(app.id, p.fileId, p.page)),
+        spanPages(spans).map((p) => fetchPageMarkdown(app.storageFolder, p.fileId, p.page)),
       );
       doc = {
         id, applicationId: app.id, blockId, basename, source: "extract",
@@ -254,7 +250,7 @@ export async function materializeDocumentApproval(
 
     const pdfBytes = await extractSpans(app, spans);
     const pageMarkdown = await Promise.all(
-      spanPages(spans).map((p) => fetchPageMarkdown(app.id, p.fileId, p.page)),
+      spanPages(spans).map((p) => fetchPageMarkdown(app.storageFolder, p.fileId, p.page)),
     );
 
     const doc: ApprovedDoc = {

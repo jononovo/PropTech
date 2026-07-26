@@ -5,7 +5,8 @@
  * Homium Compliance Portal API — templates, versions, saved sections, applications
  * OpenAPI spec version: 0.1.0
  */
+import type { UploadFileArtifactKind } from './uploadFileArtifactKind';
 
-export type UploadFileRender200 = {
-  stored: boolean;
+export type UploadFileArtifactParams = {
+kind: UploadFileArtifactKind;
 };

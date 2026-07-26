@@ -57,8 +57,8 @@ import type {
   TemplateUpgradeInput,
   UpdateSourceFileBody,
   UploadDocumentParams,
-  UploadFileRender200,
-  UploadFileRenderParams,
+  UploadFileArtifact200,
+  UploadFileArtifactParams,
   UploadedFile,
   User,
   VariantShape,
@@ -3233,10 +3233,10 @@ export function useGetFilePageImage<TData = Awaited<ReturnType<typeof getFilePag
 
 
 
-export const getUploadFileRenderUrl = (applicationId: string,
+export const getUploadFileArtifactUrl = (applicationId: string,
     fileId: string,
     page: number,
-    params: UploadFileRenderParams,) => {
+    params: UploadFileArtifactParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -3248,25 +3248,25 @@ export const getUploadFileRenderUrl = (applicationId: string,
 
   const stringifiedParams = normalizedParams.toString();
 
-  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/files/${fileId}/renders/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/files/${fileId}/renders/${page}`
+  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/files/${fileId}/artifacts/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/files/${fileId}/artifacts/${page}`
 }
 
 /**
- * The analyzer worker pushes each page's full render and thumbnail here the moment it renders them — object storage is the single durable home for renders; the worker's disk is scratch. Authenticated by the x-sheaf-service header, not x-profile.
- * @summary Store one page render (worker-only)
+ * The analyzer worker pushes each page's full render, thumbnail, parse markdown and layout-elements JSON here the moment they exist — object storage is the single durable home; the worker's disk is scratch. Authenticated by the x-sheaf-service header, not x-profile.
+ * @summary Store one per-page file artifact (worker-only)
  */
-export const uploadFileRender = async (applicationId: string,
+export const uploadFileArtifact = async (applicationId: string,
     fileId: string,
     page: number,
-    uploadFileRenderBody: Blob,
-    params: UploadFileRenderParams, options?: RequestInit): Promise<UploadFileRender200> => {
+    uploadFileArtifactBody: Blob | string,
+    params: UploadFileArtifactParams, options?: RequestInit): Promise<UploadFileArtifact200> => {
 
-  return customFetch<UploadFileRender200>(getUploadFileRenderUrl(applicationId,fileId,page,params),
+  return customFetch<UploadFileArtifact200>(getUploadFileArtifactUrl(applicationId,fileId,page,params),
   {
     ...options,
-    method: 'PUT',
-    headers: { 'Content-Type': 'image/png', ...options?.headers },
-    body: uploadFileRenderBody
+    method: 'PUT'
+    ,
+    body: JSON.stringify(uploadFileArtifactBody)
   }
 );}
 
@@ -3274,11 +3274,11 @@ export const uploadFileRender = async (applicationId: string,
 
 
 
-export const getUploadFileRenderMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFileRender>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob>;params: UploadFileRenderParams}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof uploadFileRender>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob>;params: UploadFileRenderParams}, TContext> => {
+export const getUploadFileArtifactMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFileArtifact>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadFileArtifact>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}, TContext> => {
 
-const mutationKey = ['uploadFileRender'];
+const mutationKey = ['uploadFileArtifact'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
       options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
       options
@@ -3288,10 +3288,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadFileRender>>, {applicationId: string;fileId: string;page: number;data: BodyType<Blob>;params: UploadFileRenderParams}> = (props) => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadFileArtifact>>, {applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}> = (props) => {
           const {applicationId,fileId,page,data,params} = props ?? {};
 
-          return  uploadFileRender(applicationId,fileId,page,data,params,requestOptions)
+          return  uploadFileArtifact(applicationId,fileId,page,data,params,requestOptions)
         }
 
 
@@ -3301,22 +3301,22 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
   return  { mutationFn, ...mutationOptions }}
 
-    export type UploadFileRenderMutationResult = NonNullable<Awaited<ReturnType<typeof uploadFileRender>>>
-    export type UploadFileRenderMutationBody = BodyType<Blob>
-    export type UploadFileRenderMutationError = ErrorType<ApiMessage>
+    export type UploadFileArtifactMutationResult = NonNullable<Awaited<ReturnType<typeof uploadFileArtifact>>>
+    export type UploadFileArtifactMutationBody = BodyType<Blob | string>
+    export type UploadFileArtifactMutationError = ErrorType<ApiMessage>
 
     /**
- * @summary Store one page render (worker-only)
+ * @summary Store one per-page file artifact (worker-only)
  */
-export const useUploadFileRender = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFileRender>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob>;params: UploadFileRenderParams}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useUploadFileArtifact = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFileArtifact>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
-        Awaited<ReturnType<typeof uploadFileRender>>,
+        Awaited<ReturnType<typeof uploadFileArtifact>>,
         TError,
-        {applicationId: string;fileId: string;page: number;data: BodyType<Blob>;params: UploadFileRenderParams},
+        {applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams},
         TContext
       > => {
-      return useMutation(getUploadFileRenderMutationOptions(options));
+      return useMutation(getUploadFileArtifactMutationOptions(options));
     }
 
 export const getRecordPlacementUrl = (applicationId: string,) => {

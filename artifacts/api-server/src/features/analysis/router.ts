@@ -14,11 +14,11 @@ import { HttpError, isHttpError } from "../../lib/httpError";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { findBlock, isSafeSegment } from "../intake/blocks";
 import { appendRun, readSidecar } from "./store";
-import { writeRunSidecars, writeRunElements } from "./runSidecars";
+import { writeRunSidecars } from "./runSidecars";
 import { appendEvent } from "../ledger/store";
 import { clientIp } from "../../lib/clientIp";
 import { materializeApproval } from "../approved-docs/materialize";
-import { putFileRender, openFileRenderStream, type RenderKind } from "../../lib/packetObjectStore";
+import { putFileArtifact, openFileRenderStream, type FileArtifactKind } from "../../lib/packetObjectStore";
 
 const router: IRouter = Router();
 
@@ -194,22 +194,6 @@ router.post("/applications/:applicationId/analysis", async (req, res): Promise<v
       detail: { message },
     });
   }
-  // Citation-geometry projection (elements/pN.json per input page) — durable
-  // bbox source for Q&A agent citations. Same regenerable semantics: loud
-  // ledger event on failure, never fails the ingest.
-  try {
-    await writeRunElements(id, app.storageFolder, run);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[analysis] run elements write failed for ${id}/${run.runId}: ${message}`);
-    await appendEvent({
-      applicationId: id,
-      actor: { kind: "system" },
-      action: "run.elements_failed",
-      target: { type: "run", id: run.runId },
-      detail: { message },
-    });
-  }
   await updateApplication(id, (app) => {
     // requestId correlation (stale-worker guard): only the kick this run
     // answers may flip processing→report — a late run from a superseded kick
@@ -310,7 +294,7 @@ router.get("/applications/:applicationId/files/:fileId/pages/:page", async (req,
     res.status(400).json({ error: "Invalid page number" });
     return;
   }
-  const kind: RenderKind = req.query["size"] === "thumb" ? "thumbnails" : "pages";
+  const kind = req.query["size"] === "thumb" ? "thumbnails" : ("pages" as const);
   const app = await readApplication(id!);
   if (!app) {
     res.status(404).json({ error: "Application not found" });
@@ -326,14 +310,19 @@ router.get("/applications/:applicationId/files/:fileId/pages/:page", async (req,
   (stream as Readable).pipe(res);
 });
 
+const ARTIFACT_KINDS = ["pages", "thumbnails", "md", "elements"] as const;
+
 /**
- * Render upload — the analyzer worker pushes each page's full render and
- * thumbnail here the moment it renders them (single storage flow: object
- * storage is the only durable home; the worker's disk is scratch).
+ * Per-page artifact upload — the analyzer worker pushes each page's render,
+ * thumbnail, parse markdown and layout elements here the moment they exist
+ * (single storage flow: object storage is the only durable home; the worker's
+ * disk is scratch).
  */
 router.put(
-  "/applications/:applicationId/files/:fileId/renders/:page",
-  express.raw({ type: "image/png", limit: "50mb" }),
+  "/applications/:applicationId/files/:fileId/artifacts/:page",
+  // elements JSON travels as octet-stream: the app-level express.json() would
+  // otherwise consume an application/json body before this raw handler runs.
+  express.raw({ type: ["image/png", "text/markdown", "application/octet-stream"], limit: "50mb" }),
   async (req, res): Promise<void> => {
     const id = paramStr(req.params["applicationId"]);
     const fileId = paramStr(req.params["fileId"]);
@@ -342,13 +331,13 @@ router.put(
       return;
     }
     const page = Number.parseInt(paramStr(req.params["page"]) ?? "", 10);
-    const kind = req.query["kind"];
-    if (!Number.isFinite(page) || page <= 0 || (kind !== "pages" && kind !== "thumbnails")) {
-      res.status(400).json({ error: "Invalid page or kind (pages|thumbnails)" });
+    const kind = req.query["kind"] as FileArtifactKind;
+    if (!Number.isFinite(page) || page <= 0 || !ARTIFACT_KINDS.includes(kind)) {
+      res.status(400).json({ error: `Invalid page or kind (${ARTIFACT_KINDS.join("|")})` });
       return;
     }
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
-      res.status(400).json({ error: "Empty body — send the PNG bytes as image/png" });
+      res.status(400).json({ error: "Empty body — send the raw artifact bytes" });
       return;
     }
     const app = await readApplication(id!);
@@ -361,7 +350,7 @@ router.put(
       res.status(400).json({ error: `Page ${page} exceeds ${sf.filename}'s ${sf.pages} pages` });
       return;
     }
-    await putFileRender(app.storageFolder, fileId!, kind, page, req.body);
+    await putFileArtifact(app.storageFolder, fileId!, kind, page, req.body);
     res.json({ stored: true });
   },
 );

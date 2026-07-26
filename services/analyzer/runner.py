@@ -120,14 +120,23 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
             raise RuntimeError(f"{f.get('filename', file_id)}: rendered {len(pngs)} pages, "
                                f"registry says {f.get('pages')}")
         thumbs = [make_thumbnail(p, str(file_dir / "thumbnails" / Path(p).name)) for p in pngs]
-        await portal.put_renders(app_id, file_id, pngs, thumbs)
+        await portal.put_file_artifacts(app_id, file_id, {"pages": pngs, "thumbnails": thumbs})
         timings["renderMs"] += int((time.monotonic() - t) * 1000)
         t = time.monotonic()
         # md/elements are file-keyed like the page renders: each file is parsed
         # exactly once (by the run that covers it), so the parse is run-independent
         # and stays fetchable after later delta runs.
-        mds = await parse_document(pngs, str(Path(config.STORE_DIR) / app_id / "files" / file_id / "md"), plan.parse, str(pdf_path))
+        mds = await parse_document(pngs, str(file_dir / "md"), plan.parse, str(pdf_path))
         timings["parseMs"] += int((time.monotonic() - t) * 1000)
+        # Parse artifacts go durable immediately too — the portal reads them
+        # from object storage at ingest (sidecars) and approval (record of
+        # truth); elements power Q&A citations. Local files are scratch.
+        md_paths = [str(file_dir / "md" / f"p{i + 1}.md") for i in range(len(pngs))]
+        el_paths = [str(file_dir / "elements" / f"p{i + 1}.json") for i in range(len(pngs))]
+        parse_artifacts = {"md": md_paths}
+        if all(Path(p).exists() for p in el_paths):
+            parse_artifacts["elements"] = el_paths
+        await portal.put_file_artifacts(app_id, file_id, parse_artifacts)
 
         file_starts.add(len(sheet))
         for i, (png, md) in enumerate(zip(pngs, mds)):
@@ -227,7 +236,7 @@ async def _pipeline(app_id: str, request_id: str, gate: str,
             "extractions": [],
             "artifacts": {
                 "judge": f"{ref}/{judge_rel}",
-                "md": f"store://{app_id}/files/{file_id}/md/p{span['pages'][0]}.md",
+                "md": f"files/{file_id}/md/p-{span['pages'][0]}.md",
                 # Renders live in the portal's object storage, collocated with
                 # the file bytes (files/<fileId>/pages/p-<n>.png, unpadded).
                 "pageRenders": [f"files/{file_id}/pages/p-{n}.png"

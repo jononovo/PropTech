@@ -3,12 +3,11 @@ work in the background, and reports back ONLY through the portal API:
 POST /analysis on success, POST /run/failed on any failure (spec §5).
 Also serves run artifacts (page renders) from its store — read-only."""
 import asyncio
-import re
+
 from pathlib import Path
 from typing import Literal
 
 from fastapi import BackgroundTasks, FastAPI, HTTPException
-from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import config
@@ -58,41 +57,6 @@ async def health() -> dict:
         "backendProblems": config.missing_backends(),
         "runningApplications": sorted(_running),
     }
-
-
-_SAFE_SEG = re.compile(r"^[A-Za-z0-9_-]+$")
-
-
-@app.get("/store/{application_id}/files/{file_id}/md/{page}")
-def file_page_markdown(application_id: str, file_id: str, page: int) -> FileResponse:
-    """Per-(file, page) parse markdown — fetched by the portal at approval time
-    to build the approved document's .md sidecar. File-keyed: each file is
-    parsed exactly once (by the run that covered it), so the parse is
-    run-independent."""
-    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(file_id)):
-        raise HTTPException(status_code=400, detail="Invalid path segment")
-    if page < 1:
-        raise HTTPException(status_code=400, detail="Invalid page")
-    src = Path(config.STORE_DIR) / application_id / "files" / file_id / "md" / f"p{page}.md"
-    if not src.exists():
-        raise HTTPException(status_code=404, detail="Page markdown not found")
-    return FileResponse(src, media_type="text/markdown")
-
-
-@app.get("/store/{application_id}/files/{file_id}/elements/{page}")
-def file_page_elements(application_id: str, file_id: str, page: int) -> FileResponse:
-    """Per-(file, page) layout-elements JSON (typed blocks + bboxes + page
-    dimensions, written by both parse engines) — fetched by the portal at
-    ingest to project the durable citation-geometry corpus into App Storage.
-    File-keyed: each file is parsed exactly once, so this is run-independent."""
-    if not (_SAFE_SEG.match(application_id) and _SAFE_SEG.match(file_id)):
-        raise HTTPException(status_code=400, detail="Invalid path segment")
-    if page < 1:
-        raise HTTPException(status_code=400, detail="Invalid page")
-    src = Path(config.STORE_DIR) / application_id / "files" / file_id / "elements" / f"p{page}.json"
-    if not src.exists():
-        raise HTTPException(status_code=404, detail="Page elements not found")
-    return FileResponse(src, media_type="application/json")
 
 
 @app.post("/runs", status_code=202)

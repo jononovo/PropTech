@@ -1,4 +1,4 @@
-import { listCorpusKeys, readCorpusText } from "../../lib/packetObjectStore";
+import { readFileParseText } from "../../lib/packetObjectStore";
 
 /**
  * Citation resolver — quote → on-page bounding box(es) (qa-agent spec §5).
@@ -37,13 +37,9 @@ export type ResolvedCitation = {
 const normalize = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 const tokens = (s: string): Set<string> => new Set(normalize(s).split(" ").filter((t) => t.length > 2));
 
-/** Latest run's elements JSON for (fileId, page), or undefined. */
+/** File-keyed elements JSON for (fileId, page), or undefined. Each file is parsed exactly once. */
 async function loadElements(storageFolder: string, fileId: string, page: number): Promise<ElementsPage | undefined> {
-  const suffix = `/elements/${fileId}/p${page}.json`;
-  const keys = (await listCorpusKeys(storageFolder)).filter((k) => k.startsWith("runs/") && k.endsWith(suffix));
-  const key = keys.sort().at(-1); // run ids are timestamped — lexicographic max = latest
-  if (!key) return undefined;
-  const raw = await readCorpusText(storageFolder, key);
+  const raw = await readFileParseText(storageFolder, fileId, "elements", page);
   return raw ? (JSON.parse(raw) as ElementsPage) : undefined;
 }
 

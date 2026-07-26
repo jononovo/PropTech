@@ -4,7 +4,7 @@ export * from "./generated/types";
 // GetRunPageImageParams is consumed as a type; UploadDocumentParams and
 // AddVariantBody are consumed as zod values by the api-server, so the api
 // barrel's runtime schemas win for those.
-export type { GetFilePageImageParams, UploadFileRenderParams } from "./generated/types";
+export type { GetFilePageImageParams, UploadFileArtifactParams } from "./generated/types";
 export { UploadDocumentParams, AddVariantBody, GetApprovedDocFileParams, ListApplicationEventsResponse, ReceiveFilesParams, ReceiveFilesResponse, ReceiveFilesBody, UpdateSourceFileBody } from "./generated/api";
 export * from './generated/api';
 export * from './generated/types';

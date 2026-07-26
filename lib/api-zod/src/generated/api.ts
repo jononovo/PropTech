@@ -3025,7 +3025,7 @@ export const GetAnalysisResponse = zod.object({
   "md": zod.string(),
   "pageRenders": zod.array(zod.string()),
   "crops": zod.array(zod.string())
-}).describe('URLs into the analyzer\'s artifact store (md + renders + crops).')
+}).describe('Provenance references for this document\'s per-page artifacts. md and pageRenders are application-relative object-storage keys (files\/<fileId>\/md|pages\/p-<n>...); judge stays a run-store reference.\n')
 })),
   "unassigned": zod.array(zod.object({
   "span": zod.object({
@@ -3132,7 +3132,7 @@ export const IngestAnalysisRunBody = zod.object({
   "md": zod.string(),
   "pageRenders": zod.array(zod.string()),
   "crops": zod.array(zod.string())
-}).describe('URLs into the analyzer\'s artifact store (md + renders + crops).')
+}).describe('Provenance references for this document\'s per-page artifacts. md and pageRenders are application-relative object-storage keys (files\/<fileId>\/md|pages\/p-<n>...); judge stays a run-store reference.\n')
 })),
   "unassigned": zod.array(zod.object({
   "span": zod.object({
@@ -3232,7 +3232,7 @@ export const IngestAnalysisRunResponse = zod.object({
   "md": zod.string(),
   "pageRenders": zod.array(zod.string()),
   "crops": zod.array(zod.string())
-}).describe('URLs into the analyzer\'s artifact store (md + renders + crops).')
+}).describe('Provenance references for this document\'s per-page artifacts. md and pageRenders are application-relative object-storage keys (files\/<fileId>\/md|pages\/p-<n>...); judge stays a run-store reference.\n')
 })),
   "unassigned": zod.array(zod.object({
   "span": zod.object({
@@ -3985,20 +3985,20 @@ export const GetFilePageImageResponse = zod.unknown()
 
 
 /**
- * The analyzer worker pushes each page's full render and thumbnail here the moment it renders them — object storage is the single durable home for renders; the worker's disk is scratch. Authenticated by the x-sheaf-service header, not x-profile.
- * @summary Store one page render (worker-only)
+ * The analyzer worker pushes each page's full render, thumbnail, parse markdown and layout-elements JSON here the moment they exist — object storage is the single durable home; the worker's disk is scratch. Authenticated by the x-sheaf-service header, not x-profile.
+ * @summary Store one per-page file artifact (worker-only)
  */
-export const UploadFileRenderParams = zod.object({
+export const UploadFileArtifactParams = zod.object({
   "applicationId": zod.coerce.string(),
   "fileId": zod.coerce.string(),
   "page": zod.coerce.number()
 })
 
-export const UploadFileRenderQueryParams = zod.object({
-  "kind": zod.enum(['pages', 'thumbnails'])
+export const UploadFileArtifactQueryParams = zod.object({
+  "kind": zod.enum(['pages', 'thumbnails', 'md', 'elements'])
 })
 
-export const UploadFileRenderResponse = zod.object({
+export const UploadFileArtifactResponse = zod.object({
   "stored": zod.boolean()
 })
 

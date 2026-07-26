@@ -1098,7 +1098,7 @@ export interface AnalysisFlag {
 }
 
 /**
- * URLs into the analyzer's artifact store (md + renders + crops).
+ * Provenance references for this document's per-page artifacts. md and pageRenders are application-relative object-storage keys (files/<fileId>/md|pages/p-<n>...); judge stays a run-store reference.
  */
 export interface AnalysisArtifacts {
   /** Audit-grade raw judge output for this document (judge/doc-<N>.json in the run's store folder) — the pre-mapping superset that every rendered score traces back to. Additive; absent on older runs. */
@@ -1278,19 +1278,21 @@ export const GetFilePageImageSize = {
   thumb: 'thumb',
 } as const;
 
-export type UploadFileRenderParams = {
-kind: UploadFileRenderKind;
+export type UploadFileArtifactParams = {
+kind: UploadFileArtifactKind;
 };
 
-export type UploadFileRenderKind = typeof UploadFileRenderKind[keyof typeof UploadFileRenderKind];
+export type UploadFileArtifactKind = typeof UploadFileArtifactKind[keyof typeof UploadFileArtifactKind];
 
 
-export const UploadFileRenderKind = {
+export const UploadFileArtifactKind = {
   pages: 'pages',
   thumbnails: 'thumbnails',
+  md: 'md',
+  elements: 'elements',
 } as const;
 
-export type UploadFileRender200 = {
+export type UploadFileArtifact200 = {
   stored: boolean;
 };
 

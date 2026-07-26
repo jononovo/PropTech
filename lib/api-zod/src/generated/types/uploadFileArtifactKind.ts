@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type UploadFileRenderKind = typeof UploadFileRenderKind[keyof typeof UploadFileRenderKind];
+export type UploadFileArtifactKind = typeof UploadFileArtifactKind[keyof typeof UploadFileArtifactKind];
 
 
-export const UploadFileRenderKind = {
+export const UploadFileArtifactKind = {
   pages: 'pages',
   thumbnails: 'thumbnails',
+  md: 'md',
+  elements: 'elements',
 } as const;

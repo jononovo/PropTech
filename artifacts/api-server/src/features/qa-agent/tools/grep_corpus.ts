@@ -21,7 +21,7 @@ export default function grep_corpus(ctx: AgentCtx) {
         return { error: `Invalid regex: ${err instanceof Error ? err.message : String(err)}` };
       }
       const keys = (await listCorpusKeys(ctx.app.storageFolder)).filter(
-        (k) => k.endsWith(".md") && !k.includes("/elements/"),
+        (k) => k.endsWith(".md") && !k.startsWith("files/"),
       );
       const matches: { key: string; line: number; text: string }[] = [];
       for (const key of keys) {

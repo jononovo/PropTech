@@ -7,7 +7,7 @@
  */
 
 /**
- * URLs into the analyzer's artifact store (md + renders + crops).
+ * Provenance references for this document's per-page artifacts. md and pageRenders are application-relative object-storage keys (files/<fileId>/md|pages/p-<n>...); judge stays a run-store reference.
  */
 export interface AnalysisArtifacts {
   /** Audit-grade raw judge output for this document (judge/doc-<N>.json in the run's store folder) — the pre-mapping superset that every rendered score traces back to. Additive; absent on older runs. */

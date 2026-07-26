@@ -87,22 +87,26 @@ const runDocKey = (storageFolder: string, runId: string, filename: string): stri
 // SourceFile registry bytes (file-native intake phase 2) — immutable,
 // id-addressed. ext comes from the immutable ORIGINAL filename, so renames
 // never touch storage.
-// Per-run citation geometry — one elements JSON (typed blocks + bboxes) per
-// (file, page), projected at ingest. Never grepped by the Q&A agent; consulted
-// only to resolve a made citation's quote to an on-page bbox.
-const runElementsKey = (storageFolder: string, runId: string, fileId: string, page: number): string =>
-  `${appRoot(storageFolder)}/runs/${runId}/elements/${fileId}/p${page}.json`;
 const sourceFileKey = (storageFolder: string, fileId: string, ext: string): string =>
   `${appRoot(storageFolder)}/files/${fileId}${ext}`;
-// Page renders live NEXT TO their file's bytes — everything about a file sits
-// under its fileId (ruled Jul 26 2026: one storage flow, object storage only;
-// the analyzer's disk is scratch). Files are immutable, so renders never
-// change: write-once, cache forever.
+// Per-page file artifacts live NEXT TO their file's bytes — everything about a
+// file sits under its fileId (ruled Jul 26 2026: one storage flow, object
+// storage only; the analyzer's disk is scratch). Files are immutable, so these
+// never change: write-once, cache forever.
 //   files/<fileId>/pages/p-<page>.png       full render at analyzer DPI
 //   files/<fileId>/thumbnails/p-<page>.png  320px-wide filmstrip thumbnail
-export type RenderKind = "pages" | "thumbnails";
-const fileRenderKey = (storageFolder: string, fileId: string, kind: RenderKind, page: number): string =>
-  `${appRoot(storageFolder)}/files/${fileId}/${kind}/p-${page}.png`;
+//   files/<fileId>/md/p-<page>.md           parse transcript (per page)
+//   files/<fileId>/elements/p-<page>.json   layout blocks + bboxes (citation geometry)
+export type FileArtifactKind = "pages" | "thumbnails" | "md" | "elements";
+const ARTIFACT_EXT: Record<FileArtifactKind, string> = { pages: "png", thumbnails: "png", md: "md", elements: "json" };
+const ARTIFACT_TYPE: Record<FileArtifactKind, string> = {
+  pages: "image/png",
+  thumbnails: "image/png",
+  md: "text/markdown",
+  elements: "application/json",
+};
+const fileArtifactKey = (storageFolder: string, fileId: string, kind: FileArtifactKind, page: number): string =>
+  `${appRoot(storageFolder)}/files/${fileId}/${kind}/p-${page}.${ARTIFACT_EXT[kind]}`;
 // Approved docs are the record of truth and must be self-contained: their
 // thumbnails are COPIES (renumbered 1..N in document page order), never links
 // back to files/ — originals are audit-only and may be swept independently.
@@ -169,30 +173,41 @@ export async function putSourceFileBytes(
   await gcsFile(key).save(bytes, { contentType, resumable: false });
 }
 
-/** Store one page render (full or thumbnail). Write-once by convention — files are immutable. */
-export async function putFileRender(
+/** Store one per-page file artifact (render, thumbnail, md, elements). Write-once by convention — files are immutable. */
+export async function putFileArtifact(
   storageFolder: string,
   fileId: string,
-  kind: RenderKind,
+  kind: FileArtifactKind,
   page: number,
   bytes: Buffer,
 ): Promise<void> {
-  const key = fileRenderKey(storageFolder, fileId, kind, page);
+  const key = fileArtifactKey(storageFolder, fileId, kind, page);
   if (USE_DISK) {
     await diskWrite(key, (dest) => writeFile(dest, bytes));
     return;
   }
-  await gcsFile(key).save(bytes, { contentType: "image/png", resumable: false });
+  await gcsFile(key).save(bytes, { contentType: ARTIFACT_TYPE[kind], resumable: false });
 }
 
 /** Readable stream of one page render, or undefined when missing. */
 export async function openFileRenderStream(
   storageFolder: string,
   fileId: string,
-  kind: RenderKind,
+  kind: "pages" | "thumbnails",
   page: number,
 ): Promise<Readable | undefined> {
-  return openStream(fileRenderKey(storageFolder, fileId, kind, page));
+  return openStream(fileArtifactKey(storageFolder, fileId, kind, page));
+}
+
+/** One page's parse text (md transcript or elements JSON), or undefined when missing. */
+export async function readFileParseText(
+  storageFolder: string,
+  fileId: string,
+  kind: "md" | "elements",
+  page: number,
+): Promise<string | undefined> {
+  const bytes = await readBytes(fileArtifactKey(storageFolder, fileId, kind, page));
+  return bytes?.toString("utf8");
 }
 
 /**
@@ -207,7 +222,7 @@ export async function copyThumbnailToApproved(
   basename: string,
   docPage: number,
 ): Promise<boolean> {
-  const bytes = await readBytes(fileRenderKey(storageFolder, fileId, "thumbnails", sourcePage));
+  const bytes = await readBytes(fileArtifactKey(storageFolder, fileId, "thumbnails", sourcePage));
   if (!bytes) return false;
   const key = approvedThumbnailKey(storageFolder, basename, docPage);
   if (USE_DISK) {
@@ -264,22 +279,6 @@ export async function putRunDocMarkdown(
     return;
   }
   await gcsFile(key).save(bytes, { contentType: "text/markdown", resumable: false });
-}
-
-/** Write one per-run page-elements projection (.json). Overwrite = regenerate semantics. */
-export async function putRunElementsJson(
-  storageFolder: string,
-  runId: string,
-  fileId: string,
-  page: number,
-  bytes: Buffer,
-): Promise<void> {
-  const key = runElementsKey(storageFolder, runId, fileId, page);
-  if (USE_DISK) {
-    await diskWrite(key, (dest) => writeFile(dest, bytes));
-    return;
-  }
-  await gcsFile(key).save(bytes, { contentType: "application/json", resumable: false });
 }
 
 /**

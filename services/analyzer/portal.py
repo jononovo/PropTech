@@ -33,26 +33,40 @@ async def get_source_file(app_id: str, file_id: str) -> bytes:
         return r.content
 
 
-async def put_renders(app_id: str, file_id: str, pages: list[str], thumbnails: list[str]) -> None:
-    """Push one file's page renders + thumbnails into the portal's object
-    storage the moment they exist — the worker's disk is scratch, object
-    storage is the single durable home (ruled Jul 26 2026)."""
+_ARTIFACT_TYPE = {
+    "pages": "image/png",
+    "thumbnails": "image/png",
+    "md": "text/markdown",
+    # octet-stream on the wire — the portal's JSON body parser must not eat it;
+    # the stored object still gets application/json from the server-side map.
+    "elements": "application/octet-stream",
+}
+
+
+async def put_file_artifacts(app_id: str, file_id: str, artifacts: dict[str, list[str]]) -> None:
+    """Push one file's per-page artifacts (renders, thumbnails, parse md,
+    layout elements) into the portal's object storage the moment they exist —
+    the worker's disk is scratch, object storage is the single durable home
+    (ruled Jul 26 2026). `artifacts` maps kind -> paths ordered by page."""
     sem = asyncio.Semaphore(6)
 
     async def put(c: httpx.AsyncClient, kind: str, page: int, path: str) -> None:
         async with sem:
             r = await c.put(
-                f"/applications/{app_id}/files/{file_id}/renders/{page}",
+                f"/applications/{app_id}/files/{file_id}/artifacts/{page}",
                 params={"kind": kind},
-                content=Path(path).read_bytes(),
-                headers={"content-type": "image/png"},
+                # blank pages parse to an empty transcript — send a newline so
+                # the object exists (the portal rejects bodyless PUTs)
+                content=Path(path).read_bytes() or b"\n",
+                headers={"content-type": _ARTIFACT_TYPE[kind]},
             )
             r.raise_for_status()
 
     async with _client() as c:
         await asyncio.gather(
-            *(put(c, "pages", i + 1, p) for i, p in enumerate(pages)),
-            *(put(c, "thumbnails", i + 1, p) for i, p in enumerate(thumbnails)),
+            *(put(c, kind, i + 1, p)
+              for kind, paths in artifacts.items()
+              for i, p in enumerate(paths)),
         )
 
 

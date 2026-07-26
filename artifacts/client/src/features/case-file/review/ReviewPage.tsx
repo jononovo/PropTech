@@ -8,7 +8,7 @@ import { CenterCard, ModeButton, Room, ScoreChip } from './components/chrome';
 import { AllClear, PageImage } from './components/PageViewer';
 import { FilmStrip } from './components/FilmStrip';
 import { Rail } from './components/Rail';
-import { buildDocGroups, firstOpenGroup, type DocGroup } from './approval/docGroups';
+import { buildDocGroups, firstOpenGroup, mergePairKey, type DocGroup } from './approval/docGroups';
 import { useDocApproval } from './approval/useDocApproval';
 import { DocGroupsStrip } from './approval/DocGroupsStrip';
 import { DocApprovalRail } from './approval/DocApprovalRail';
@@ -126,6 +126,24 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
   const nextOpenGroup = (after?: DocGroup) => {
     const open = groups.filter((g) => !g.settled && g.id !== after?.id);
     setDocGroupId(open[0]?.id ?? null);
+  };
+
+  /** merge proposal state for a group (pending gates approval) */
+  const mergeFor = (g: DocGroup) => {
+    const partner = g.mergeWith ? groups.find((x) => x.id === g.mergeWith) : undefined;
+    if (!partner) return undefined;
+    const state: 'merged' | 'dismissed' | 'pending' =
+      (approval.mergeRes[mergePairKey(g.id, partner.id)] as 'merged' | 'dismissed' | undefined) ?? 'pending';
+    return { state, partnerPages: partner.pages, onJump: () => setDocGroupId(partner.id) };
+  };
+
+  /** approve straight from the strip bubble — analyzer filing, no variant needed */
+  const quickApprove = (g: DocGroup) => {
+    if (!g.blockId || g.needsVariant || approval.isPending) return;
+    if (mergeFor(g)?.state === 'pending') return;
+    approval.submit(g, { blockId: g.blockId, outcome: 'approved', runId: run.runId }, () =>
+      nextOpenGroup(g),
+    );
   };
 
   // page pre-step: when the LAST page of a group gets a decision, the rail
@@ -308,10 +326,13 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
               activePage={activePage}
               selectedGroupId={docGroup?.id ?? null}
               decisions={approval.decisions}
+              mergeRes={approval.mergeRes}
               onPageClick={jumpToPage}
               onGroupSelect={setDocGroupId}
               onDecide={onDecide}
               onLink={approval.link}
+              onResolveMerge={approval.resolveMerge}
+              onQuickApprove={quickApprove}
             />
           ) : (
             <FilmStrip
@@ -341,6 +362,7 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
                   approval.submit(docGroup, { ...opts, runId: run.runId }, () => nextOpenGroup(docGroup))
                 }
                 onNext={() => nextOpenGroup(docGroup)}
+                merge={mergeFor(docGroup)}
               />
             ) : emptyQueue ? (
               <div className="p-5 text-center text-[12.5px] text-[var(--ops-muted)] leading-relaxed">

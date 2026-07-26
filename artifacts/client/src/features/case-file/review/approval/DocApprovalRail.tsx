@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Check, Flag, X, XCircle } from 'lucide-react';
+import { Link as LinkIcon } from 'lucide-react';
 import type { CaseModel } from '../../caseData';
-import type { DocGroup, PageDecisionValue } from './docGroups';
+import type { DocGroup, MergeDecision, PageDecisionValue } from './docGroups';
 
 /**
  * Document-mode rail — the ONE confirm surface. The confirmation is a FILING
@@ -17,6 +18,7 @@ export function DocApprovalRail({
   onSelectPage,
   onSubmit,
   onNext,
+  merge,
 }: {
   model: CaseModel;
   group: DocGroup;
@@ -26,6 +28,8 @@ export function DocApprovalRail({
   onSelectPage: (page: number) => void;
   onSubmit: (opts: { blockId: string; variantId?: string; outcome: 'approved' | 'approved_incomplete' | 'rejected' }) => void;
   onNext: () => void;
+  /** pending merge proposal gates approval; dismissed/merged shown as a note */
+  merge?: { state: MergeDecision | 'pending'; partnerPages: [number, number]; onJump: () => void };
 }) {
   const [blockId, setBlockId] = useState(group.blockId ?? '');
   useEffect(() => setBlockId(group.blockId ?? ''), [group.id, group.blockId]);
@@ -40,7 +44,8 @@ export function DocApprovalRail({
   useEffect(() => setVariantId(variants[0]?.id ?? ''), [blockId, group.id, variants]);
 
   const badCount = group.pageList.filter((p) => decisions[p] === 'bad').length;
-  const canFile = !!blockId && (!isSet || !!variantId);
+  const mergeBlocked = merge?.state === 'pending';
+  const canFile = !!blockId && (!isSet || !!variantId) && !mergeBlocked;
 
   // ↵ ACCEPT in document mode = approve the whole document
   const lastArm = useRef(armTick);
@@ -130,6 +135,27 @@ export function DocApprovalRail({
           </label>
         )}
       </div>
+
+      {merge && (
+        <button
+          onClick={merge.onJump}
+          data-testid="note-merge-status"
+          className={`rounded border p-2.5 text-[11.5px] leading-snug text-left flex items-start gap-2 transition-colors ${
+            merge.state === 'pending'
+              ? 'bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)] text-[var(--ops-warning-text)]'
+              : 'bg-[var(--ops-inset)] border-[var(--ops-border)] text-[var(--ops-muted)]'
+          }`}
+        >
+          <LinkIcon className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>
+            {merge.state === 'pending'
+              ? `Merge suggested with pp. ${merge.partnerPages[0]}–${merge.partnerPages[1]} — resolve it on the strip before approving.`
+              : merge.state === 'dismissed'
+                ? `Merge to pp. ${merge.partnerPages[0]}–${merge.partnerPages[1]} was suggested — dismissed. Click to revisit.`
+                : `Linked with pp. ${merge.partnerPages[0]}–${merge.partnerPages[1]}.`}
+          </span>
+        </button>
+      )}
 
       <div className="flex flex-col gap-2">
         {badCount === 0 ? (

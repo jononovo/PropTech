@@ -8,6 +8,10 @@ import { actionableFlags, type CaseModel } from '../../caseData';
  */
 
 export type PageDecisionValue = 'good' | 'bad' | 'flag_accepted';
+export type MergeDecision = 'merged' | 'dismissed';
+
+/** Stable key for a merge proposal between two groups, order-independent. */
+export const mergePairKey = (a: string, b: string) => [a, b].sort().join('|');
 
 export interface DocGroup {
   id: string;
@@ -16,6 +20,10 @@ export interface DocGroup {
   pages: [number, number];
   pageList: number[];
   title: string;
+  /** second header line (analyzer's document-specific name, when it adds info) */
+  subtitle?: string;
+  /** set-arity block — filing needs a variant, so no quick approve from the strip */
+  needsVariant?: boolean;
   /** analyzer's filing guess — correcting it is first-class in the rail */
   blockId?: string;
   doc?: AnalysisDocument;
@@ -40,8 +48,8 @@ export function buildDocGroups(model: CaseModel, links: Array<[string, string]> 
   const run = model.run;
   if (!run) return [];
 
-  const blockName = (blockId: string) =>
-    model.reqs.find((r) => r.block.id === blockId)?.block.name ?? blockId;
+  const reqFor = (blockId: string) => model.reqs.find((r) => r.block.id === blockId);
+  const blockName = (blockId: string) => reqFor(blockId)?.block.name ?? blockId;
 
   const raw: DocGroup[] = [];
   for (const doc of run.documents) {
@@ -51,12 +59,16 @@ export function buildDocGroups(model: CaseModel, links: Array<[string, string]> 
     const flags = actionableFlags(doc);
     const fs = doc.scores.fraud_signal;
     const fraudHigh = fs != null && fs >= 0.3;
+    const name = blockName(doc.suggestedBlockId);
     raw.push({
       id: `g-${first}-${last}`,
       kind: 'document',
       pages: [first, last],
       pageList: rangeList(first, last),
-      title: blockName(doc.suggestedBlockId),
+      title: name,
+      // analyzer's doc-specific name as the second line, when it adds info
+      ...(doc.suggestedName && doc.suggestedName !== name ? { subtitle: doc.suggestedName } : {}),
+      ...(reqFor(doc.suggestedBlockId)?.block.arity === 'set' ? { needsVariant: true } : {}),
       blockId: doc.suggestedBlockId,
       doc,
       colorSlot: -1,

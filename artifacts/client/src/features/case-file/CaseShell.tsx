@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'wouter';
-import { Bell, ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks, MoreVertical, ScrollText, Sparkles } from 'lucide-react';
+import { ChevronDown, FolderOpen, History, Inbox, LayoutDashboard, ListChecks, MoreVertical, ScrollText, Sparkles } from 'lucide-react';
 import { useListTemplates } from '@workspace/api-client-react';
 import { PANEL, UserMenu } from '@/components/UserMenu';
 import { fmt } from './caseData';
@@ -181,21 +181,6 @@ export function CaseShell({
           }`}
         >
           <Sparkles className="w-4 h-4" />
-        </button>
-
-        {/* clock bell — count in the chrome, detail stays in the timeline */}
-        <button
-          onClick={() => onLens('timeline')}
-          data-testid="button-clock-bell"
-          title={`${model.alarmCount} live ${model.alarmCount === 1 ? 'clock' : 'clocks'} inside 30 days`}
-          className="relative w-9 h-9 md:w-8 md:h-8 flex items-center justify-center rounded-[4px] transition-colors text-[var(--ops-muted)] hover:bg-[var(--ops-inner-rule)] hover:text-[var(--ops-ink)] shrink-0"
-        >
-          <Bell className="w-4 h-4" />
-          {model.alarmCount > 0 && (
-            <span className="absolute top-[1px] right-[1px] min-w-[15px] h-[15px] px-[3px] flex items-center justify-center rounded-[3px] border ops-mono text-[9px] font-medium leading-none text-[var(--ops-warning-text)] bg-[var(--ops-warning-wash)] border-[var(--ops-warning-border)]">
-              {model.alarmCount}
-            </span>
-          )}
         </button>
 
         <AccessMatrixButton />

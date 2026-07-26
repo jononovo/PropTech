@@ -38,13 +38,23 @@ search is the established norm at this file count.)
 
 ## 2b. Tech (ruled Jul 26 2026 — pattern imported from user's "Stitch" agent doc)
 
-Vercel AI SDK v5: `streamText` + Zod-schema tools + `stopWhen: stepCountIs(~12)`
-on the server (Express: `pipeUIMessageStreamToResponse`), `useChat` on the
-client. File structure copied from Stitch for maintainability:
-`features/qa-agent/` with `tools/<name>/tool.ts`, a STATIC tool registry
-(manual imports — no codegen at this tool count), `system-prompt.ts` (pins
-core fields + file registry + sidecar list every turn; bodies fetched via the
-read tool, never inlined), thin route wrapper.
+Vercel **AI SDK 7** (Jun 25 2026 line; Node 22+/ESM — we run Node 24):
+`streamText` + Zod-schema tools + `stopWhen: stepCountIs(~12)` on the server
+(Express: `pipeUIMessageStreamToResponse`), `useChat` on the client. One
+route, one hook, a few tool files — deliberately the smallest footprint.
+
+File layout borrows **eve's directory convention** (vercel/eve, Jun 2026:
+"an agent is a directory") WITHOUT adopting the framework:
+`features/qa-agent/instructions.md` is the system prompt (markdown, editable
+without code changes; runtime context — core fields, file registry, sidecar
+list — appended per turn; bodies fetched via the read tool, never inlined),
+`tools/<name>.ts` where filename = tool name, registry is a trivial folder
+walk. Evaluated eve itself Jul 26 2026 and ruled it OUT for this agent: it is
+a standalone agent runtime (durable workflow sessions, sandboxes, channels,
+HITL) with first-class frontends for Next/Nuxt/SvelteKit only — on our
+Express+Vite stack it adds a second runtime for features we don't need, and
+it's weeks old. Revisit eve for any future STANDALONE agent (e.g. Slack-facing
+cross-application bot) — that's its sweet spot.
 
 Deliberate divergence from Stitch: ALL tools execute server-side (`execute()`
 on the tool) — our tools are read-only lookups, there is no editor buffer to

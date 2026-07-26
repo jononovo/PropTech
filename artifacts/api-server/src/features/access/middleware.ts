@@ -34,7 +34,9 @@ async function roleFor(username: string): Promise<string | undefined> {
   return cache.roles.get(username);
 }
 
-const UPLOAD_PATH = /^\/intake-uploads(\/|$)|^\/applications\/[^/]+\/files$/;
+const UPLOAD_PATH = /^\/applications\/[^/]+\/(uploads\/[^/]+|files)$/;
+/** The analyzer worker only ever touches application resources. */
+const WORKER_SCOPE = /^\/applications\/[^/]+(\/|$)/;
 const AGENT_CHAT = /^\/applications\/[^/]+\/agent\/chat$/;
 
 function requiredRight(method: string, path: string): AccessRight {
@@ -50,11 +52,20 @@ export async function accessControl(req: Request, res: Response, next: NextFunct
   if (
     path === "/healthz" ||
     (path === "/login" && req.method === "POST") ||
-    (path === "/users" && req.method === "GET") ||
-    // Analyzer worker loopback traffic (fetch application + source bytes,
-    // post results). Service identity, not a human — the matrix doesn't apply.
-    req.header("x-sheaf-service") === "analyzer-worker"
+    (path === "/users" && req.method === "GET")
   ) {
+    next();
+    return;
+  }
+
+  // Analyzer worker loopback traffic (fetch application + source bytes, post
+  // results). Service identity, not a human — the matrix doesn't apply, but
+  // the identity is scoped: it can only reach application resources.
+  if (req.header("x-sheaf-service") === "analyzer-worker") {
+    if (!WORKER_SCOPE.test(path)) {
+      res.status(403).json({ error: "Service identity is scoped to application resources" });
+      return;
+    }
     next();
     return;
   }

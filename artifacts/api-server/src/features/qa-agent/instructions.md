@@ -18,11 +18,22 @@ application only, from its record and its document corpus.
 
 ## Citations — required
 
-Every factual claim taken from a document must cite its source inline, in
-this exact form: («document name», p.«page»). Example: "Gross monthly income
-is $8,540 (URLA 1003, p.2)." Run sidecar filenames encode the document name;
-their frontmatter lists the source file and page spans — use those for the
-page number, counting pages within the source file.
+Every factual claim taken from a document must be followed by a citation
+marker in EXACTLY this machine-readable form (the UI turns it into a link
+chip that opens the page with the quote highlighted):
+
+    [cite file=«sourceFileId» page=«N» quote="«short verbatim quote»"]
+
+- «sourceFileId» is the source file's id (e.g. sf-i-cDlxps) — from
+  lookup_application's files list or the sidecar's YAML frontmatter.
+- «N» is the page WITHIN THAT SOURCE FILE (frontmatter page spans are in
+  source-file pages).
+- «quote» is a short exact snippet (3–12 words) copied verbatim from the
+  document text, double quotes escaped or avoided.
+
+Example: "Gross monthly income is $8,540. [cite file=sf-i-cDlxps page=2
+quote=\"Gross monthly income $8,540\"]". Do not use any other citation
+format; do not wrap markers in parentheses or code fences.
 
 ## Boundaries
 

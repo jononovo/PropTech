@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 
 /** Center pane pieces — extracted verbatim from ReviewPage (step-0 split). */
@@ -27,18 +27,47 @@ export function AllClear({ onAll, onReport }: { onAll: () => void; onReport: () 
   );
 }
 
+/** Fractional page-space rectangle (0..1 of the page) — from the citation resolver. */
+export type HighlightBox = { x: number; y: number; w: number; h: number };
+
 export function PageImage({
   runId,
   page,
   imageUrl,
+  highlight,
 }: {
   runId: string;
   /** global page number (view currency); imageUrl resolves it to (fileId, page) */
   page: number;
   imageUrl: (globalPage: number, size?: 'full' | 'strip') => string;
+  /** citation highlight boxes for THIS page (already filtered by the caller) */
+  highlight?: HighlightBox[] | null;
 }) {
   const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
-  useEffect(() => setState('loading'), [page, runId]);
+  const imgRef = useRef<HTMLImageElement>(null);
+  // rendered image rect (relative to the pane) — measured, because the img is
+  // fit-to-screen via max-h/max-w and %-overlays have no reliable anchor box
+  const [rect, setRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  useEffect(() => {
+    setState('loading');
+    setRect(null);
+  }, [page, runId]);
+
+  const measure = () => {
+    const img = imgRef.current;
+    const pane = img?.parentElement;
+    if (!img || !pane) return;
+    const ir = img.getBoundingClientRect();
+    const pr = pane.getBoundingClientRect();
+    setRect({ left: ir.left - pr.left, top: ir.top - pr.top, width: ir.width, height: ir.height });
+  };
+
+  useEffect(() => {
+    if (state !== 'ok' || !highlight?.length) return;
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [state, highlight]);
 
   return (
     <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
@@ -54,17 +83,38 @@ export function PageImage({
           </div>
         </div>
       ) : (
-        <img
-          key={`${runId}-${page}`}
-          src={imageUrl(page)}
-          alt={`Page ${page}`}
-          data-testid="img-review-page"
-          onLoad={() => setState('ok')}
-          onError={() => setState('error')}
-          className={`max-h-full max-w-full object-contain bg-white rounded-[2px] shadow-[0_8px_24px_rgba(15,23,42,0.12)] transition-opacity ${
-            state === 'ok' ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
+        <>
+          <img
+            ref={imgRef}
+            key={`${runId}-${page}`}
+            src={imageUrl(page)}
+            alt={`Page ${page}`}
+            data-testid="img-review-page"
+            onLoad={() => {
+              setState('ok');
+              measure();
+            }}
+            onError={() => setState('error')}
+            className={`max-h-full max-w-full object-contain bg-white rounded-[2px] shadow-[0_8px_24px_rgba(15,23,42,0.12)] transition-opacity ${
+              state === 'ok' ? 'opacity-100' : 'opacity-0'
+            }`}
+          />
+          {state === 'ok' &&
+            rect &&
+            (highlight ?? []).map((b, i) => (
+              <div
+                key={i}
+                data-testid="citation-highlight"
+                className="absolute pointer-events-none rounded-[2px] border-2 border-[var(--ops-accent)] bg-[rgba(59,130,246,0.18)] animate-pulse"
+                style={{
+                  left: rect.left + b.x * rect.width,
+                  top: rect.top + b.y * rect.height,
+                  width: b.w * rect.width,
+                  height: b.h * rect.height,
+                }}
+              />
+            ))}
+        </>
       )}
     </div>
   );

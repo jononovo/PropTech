@@ -201,7 +201,13 @@ export function CaseShell({
       </header>
 
       <div className="flex-1 min-h-0">{children}</div>
-      {agentOpen && <AgentPanel applicationId={app.id} onClose={() => setAgentOpen(false)} />}
+      {agentOpen && (
+        <AgentPanel
+          applicationId={app.id}
+          files={Object.fromEntries((app.files ?? []).map((f) => [f.id, f.filename]))}
+          onClose={() => setAgentOpen(false)}
+        />
+      )}
     </div>
   );
 }

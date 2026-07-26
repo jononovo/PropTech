@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'wouter';
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
-import { ArrowUp, Search, FileText, List, Database, X } from 'lucide-react';
+import { ArrowUp, ExternalLink, Search, FileText, List, Database, X } from 'lucide-react';
 
 /**
  * Case assistant — chat panel scoped to one application (qa-agent spec).
@@ -16,7 +17,66 @@ const TOOL_META: Record<string, { label: string; icon: typeof Search }> = {
   read_corpus: { label: 'Read a document', icon: FileText },
 };
 
-export function AgentPanel({ applicationId, onClose }: { applicationId: string; onClose: () => void }) {
+/**
+ * Inline citation markers — the model emits
+ * `[cite file=<id> page=<N> quote="<verbatim>"]` after each claim; we render
+ * them as link chips that open the review room at that page with the quote
+ * highlighted (resolver draws the bbox).
+ */
+const CITE_RE = /\[cite\s+file=([\w-]+)\s+page=(\d+)\s+quote="((?:[^"\\]|\\.)*)"\s*\]/g;
+
+function CitedText({
+  text,
+  files,
+  onOpen,
+}: {
+  text: string;
+  files: Record<string, string>;
+  onOpen: (fileId: string, page: number, quote: string) => void;
+}) {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  CITE_RE.lastIndex = 0;
+  while ((m = CITE_RE.exec(text)) !== null) {
+    if (m.index > last) out.push(<span key={last}>{text.slice(last, m.index)}</span>);
+    const [, fileId, pageStr, rawQuote] = m;
+    const page = Number(pageStr);
+    const quote = rawQuote!.replace(/\\(.)/g, '$1');
+    const label = `${files[fileId!] ?? fileId} p.${page}`;
+    out.push(
+      <button
+        key={`c${m.index}`}
+        onClick={() => onOpen(fileId!, page, quote)}
+        data-testid="chip-citation"
+        title={`Open ${label} — "${quote}"`}
+        className="inline-flex items-center gap-1 align-baseline mx-0.5 ops-mono text-[9.5px] px-1.5 py-[1px] rounded-[3px] bg-[var(--ops-accent-wash)] border border-[var(--ops-inner-rule)] text-[var(--ops-accent)] hover:border-[var(--ops-accent)] transition-colors"
+      >
+        <ExternalLink className="w-[9px] h-[9px]" />
+        {label}
+      </button>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(<span key={last}>{text.slice(last)}</span>);
+  return <>{out}</>;
+}
+
+export function AgentPanel({
+  applicationId,
+  files,
+  onClose,
+}: {
+  applicationId: string;
+  /** fileId → filename, for citation chip labels */
+  files: Record<string, string>;
+  onClose: () => void;
+}) {
+  const [, setLocation] = useLocation();
+  const openCitation = (fileId: string, page: number, quote: string) => {
+    const qs = new URLSearchParams({ file: fileId, page: String(page), quote });
+    setLocation(`/applications/${applicationId}/review?${qs}`);
+  };
   const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   const [input, setInput] = useState('');
   const { messages, sendMessage, status, error } = useChat({
@@ -66,7 +126,7 @@ export function AgentPanel({ applicationId, onClose }: { applicationId: string; 
                   if (p.type === 'text') {
                     return (
                       <div key={i} className="text-[12.5px] leading-relaxed text-[var(--ops-ink)] whitespace-pre-wrap">
-                        {p.text}
+                        <CitedText text={p.text} files={files} onOpen={openCitation} />
                       </div>
                     );
                   }

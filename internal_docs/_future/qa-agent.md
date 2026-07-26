@@ -133,10 +133,30 @@ fetches during ingest exactly like page markdown for sidecars.)
    `POST /api/applications/:id/agent/chat`, eve-style registry
    (instructions.md + tools/<name>.ts), Mistral large (env
    `QA_AGENT_MODEL` override), `AgentPanel` slide-over toggled from the
-   CaseShell header. Citations are inline text («doc», p.N) for v1;
-   link chips land with the v2 viewer alongside bbox.
-4. (Parked, v2 review UI) viewer honors bbox in the deep link and draws the
-   highlight.
+   CaseShell header. Default model moved to `fireworks:glm-5p2` — the
+   Mistral key is free-tier (4 req/min) and an agent turn makes several
+   model calls, so it rate-limited itself mid-loop. `QA_AGENT_MODEL` =
+   `<backend>:<modelId>`, backend ∈ {fireworks, mistral}, loud failure on
+   unknown backend/missing key (`features/qa-agent/model.ts`).
+4. ✅ Citation link chips + bbox highlight (shipped Jul 26, e2e-verified):
+   - Marker contract: the model emits
+     `[cite file=<sourceFileId> page=<N> quote="<verbatim>"]` after each
+     claim (instructions.md); page is in SOURCE-FILE space.
+   - Chip: `AgentPanel` `CitedText` parses markers → chip
+     "<filename> p.N" → SPA-navigates to
+     `/applications/:id/review?file=&page=&quote=`.
+   - Resolver: `GET /api/applications/:id/citations/resolve` →
+     `features/qa-agent/citations.ts` reads the LATEST run's
+     `elements/<fileId>/pN.json` (lexicographic max run id), matches the
+     quote against block contents (normalized-substring first, then ≥0.5
+     token overlap), returns fractional page-space boxes. 200
+     `{matched:false}` when unlocatable; 404 only when no elements exist.
+     Still the only elements reader — the agent never greps geometry.
+   - Viewer: `ReviewRoom` parses the query once at mount, jumps to the
+     global page (page mode, doc-group landing suppressed), fetches the
+     resolver best-effort; `PageImage` measures the rendered img rect
+     (fit-to-screen makes %-anchoring unreliable) and draws pulsing
+     accent boxes. Highlight failure never blocks opening the page.
 
 ## 7. Open questions
 

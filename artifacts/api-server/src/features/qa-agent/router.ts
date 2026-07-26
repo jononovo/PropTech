@@ -11,17 +11,15 @@
  */
 import { Router, type IRouter } from "express";
 import { convertToModelMessages, stepCountIs, streamText, validateUIMessages } from "ai";
-import { mistral } from "@ai-sdk/mistral";
 import { readApplication } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
 import { buildTools } from "./registry";
+import { resolveAgentModel } from "./model";
+import { resolveCitation } from "./citations";
 import instructions from "./instructions.md";
 
 const router: IRouter = Router();
 
-// Registry-is-truth discipline applies when this graduates; for burn-in the
-// model is env-switchable without a deploy.
-const MODEL_ID = process.env["QA_AGENT_MODEL"] ?? "mistral-large-latest";
 const MAX_STEPS = 12;
 
 router.post("/applications/:applicationId/agent/chat", async (req, res): Promise<void> => {
@@ -44,7 +42,7 @@ router.post("/applications/:applicationId/agent/chat", async (req, res): Promise
   }
 
   const result = streamText({
-    model: mistral(MODEL_ID),
+    model: resolveAgentModel().model,
     system:
       `${instructions}\n\n## Current application\n` +
       `id: ${app.id}\napplicant: ${app.applicantName}\n` +
@@ -55,6 +53,38 @@ router.post("/applications/:applicationId/agent/chat", async (req, res): Promise
     stopWhen: stepCountIs(MAX_STEPS),
   });
   result.pipeUIMessageStreamToResponse(res);
+});
+
+/**
+ * Citation resolver — quote → fractional bbox(es) on a page, from the
+ * elements projection. Read-only; used by the review room to draw the
+ * highlight behind a citation chip. 200 {matched:false} when the quote
+ * can't be located; 404 only when the page has no elements at all.
+ */
+router.get("/applications/:applicationId/citations/resolve", async (req, res): Promise<void> => {
+  const id = req.params["applicationId"];
+  if (!id || !isSafeSegment(id)) {
+    res.status(400).json({ error: "Invalid application id" });
+    return;
+  }
+  const app = await readApplication(id);
+  if (!app) {
+    res.status(404).json({ error: "Application not found" });
+    return;
+  }
+  const fileId = String(req.query["fileId"] ?? "");
+  const page = Number(req.query["page"] ?? NaN);
+  const quote = String(req.query["quote"] ?? "");
+  if (!fileId || !isSafeSegment(fileId) || !Number.isInteger(page) || page < 1 || !quote) {
+    res.status(400).json({ error: "fileId, page (>=1) and quote are required" });
+    return;
+  }
+  const resolved = await resolveCitation(app.storageFolder, fileId, page, quote);
+  if (!resolved) {
+    res.status(404).json({ error: "No elements projection for that file/page" });
+    return;
+  }
+  res.json(resolved);
 });
 
 export default router;

@@ -85,11 +85,36 @@ function SpreadPage({ src, page }: { src: string; page: number }) {
 
 // ─── the room ────────────────────────────────────────────────────────────────
 
+/** Citation deep-link (?file=&page=&quote=) parsed once at mount. */
+function readCitationParams(): { fileId: string; page: number; quote: string } | null {
+  const p = new URLSearchParams(window.location.search);
+  const fileId = p.get('file');
+  const page = Number(p.get('page'));
+  const quote = p.get('quote');
+  if (!fileId || !quote || !Number.isInteger(page) || page < 1) return null;
+  return { fileId, page, quote };
+}
+
 function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; review: ReviewModel }) {
   const [, setLocation] = useLocation();
   const run = model.run!;
-  const [mode, setMode] = useState<'priority' | 'all'>(review.stops.length > 0 ? 'priority' : 'all');
-  const [idx, setIdx] = useState(0);
+  const [citation] = useState(readCitationParams);
+  const citedGlobal = citation ? review.index.globalRange({ fileId: citation.fileId, pages: [citation.page, citation.page] })?.[0] : undefined;
+  const [mode, setMode] = useState<'priority' | 'all'>(citedGlobal ? 'all' : review.stops.length > 0 ? 'priority' : 'all');
+  const [idx, setIdx] = useState(citedGlobal ? citedGlobal - 1 : 0);
+  // quote → bbox via the citation resolver; null = nothing to draw
+  const [highlightBoxes, setHighlightBoxes] = useState<{ x: number; y: number; w: number; h: number }[] | null>(null);
+  useEffect(() => {
+    if (!citation || !citedGlobal) return;
+    const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+    const qs = new URLSearchParams({ fileId: citation.fileId, page: String(citation.page), quote: citation.quote });
+    fetch(`${base}/api/applications/${id}/citations/resolve?${qs}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.matched && d.boxes?.length) setHighlightBoxes(d.boxes);
+      })
+      .catch(() => {}); // highlight is best-effort — the page itself already opened
+  }, []);
   const [ack, setAck] = useState<Set<number>>(new Set());
   const [armTick, setArmTick] = useState(0);
 
@@ -102,8 +127,9 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
   const approval = useDocApproval(id, review.index);
   const mergeRes = model.app.mergeResolutions ?? {};
   const groups = useMemo(() => buildDocGroups(model, mergeRes, review.index), [model, mergeRes, review.index]);
-  // landing rule: DOCUMENT mode on the first unsettled document
-  const [docGroupId, setDocGroupId] = useState<string | null>(() => firstOpenGroup(groups)?.id ?? null);
+  // landing rule: DOCUMENT mode on the first unsettled document — unless a
+  // citation deep-link points at a specific page
+  const [docGroupId, setDocGroupId] = useState<string | null>(() => (citedGlobal ? null : (firstOpenGroup(groups)?.id ?? null)));
   const docGroup = docGroupId ? groups.find((g) => g.id === docGroupId) : undefined;
 
   const list: Array<ReviewStop | PageCell> = mode === 'priority' ? review.stops : review.cells;
@@ -320,7 +346,12 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
             ) : emptyQueue ? (
               <AllClear onAll={() => switchMode('all')} onReport={() => setLocation(`/applications/${id}/triage`)} />
             ) : (
-              <PageImage runId={run.runId} page={activePage} imageUrl={imageUrl} />
+              <PageImage
+                runId={run.runId}
+                page={activePage}
+                imageUrl={imageUrl}
+                highlight={citedGlobal !== undefined && activePage === citedGlobal ? highlightBoxes : null}
+              />
             )}
           </div>
 

@@ -17,6 +17,8 @@ description: How to run/test the Sheaf monorepo day-to-day — restart rules, AP
   - **Why:** gate concurrency had to survive multi-instance deploys; jsonb doc keeps the OpenAPI contract as the schema while the product shape still moves.
   - **How to apply:** never write an application outside `insertApplication`/`updateApplication(id, mutate)` — mutate may throw `HttpError(status, msg)` to abort with a mapped response. Never hold the tx across preflight/ingest.
 - **`lib/db` is a composite TS project:** after schema changes run `pnpm --filter @workspace/db run push` AND `pnpm --filter @workspace/db exec tsc -b` — api-server typecheck resolves it via `dist/*.d.ts`, so stale dist yields TS2305 "no exported member" even though the source is right.
+- **Codegen → restart ordering:** after editing `lib/api-spec/openapi.yaml` + `pnpm run codegen`, the api-server MUST be rebuilt/restarted BEFORE ingesting or POSTing data with new fields — the bundled zod schemas silently STRIP unknown fields (a satisfaction payload vanished this way). Same for any new run/application fields.
+- **Variant seed shape:** `app.variants[blockId].items[]` need `descriptor` (singular, map) and `createdAt`, or `GET /applications/{id}` 500s on zod parse — bit us when seeding via psql.
 - E2E probe gotchas: verdict `decidedBy` must be enum `Originator|Underwriter|Manager` (not a free string); packet thumbnails exist ONLY for flag-evidence pages (`pickThumbnails`) — probe a page from `.packet.preflight.thumbnails[].page`, not page 1.
 
 ## Pipeline dev drivers (2026-07-24)

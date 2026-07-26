@@ -398,6 +398,12 @@ export interface ApprovedDocument {
   pages?: number[];
   /** analyzer run the assignment came from (extract only) */
   runId?: string;
+  /**
+     * When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
   packetSha256?: string;
   /** original upload filename (copy only) */
   sourceFilename?: string;
@@ -470,6 +476,12 @@ export interface DocumentApproval {
   decidedAt: string;
   /** registry row created by materialization (approved outcomes only) */
   approvedDocId?: string;
+  /**
+     * For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
 }
 
 export type DocumentApprovalInputOutcome = typeof DocumentApprovalInputOutcome[keyof typeof DocumentApprovalInputOutcome];
@@ -502,6 +514,76 @@ export interface DocumentApprovalInput {
   pageDecisions?: PageDecision[];
   outcome: DocumentApprovalInputOutcome;
   decidedBy: DocumentApprovalInputDecidedBy;
+  /**
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
+}
+
+export type MergeResolutionDecision = typeof MergeResolutionDecision[keyof typeof MergeResolutionDecision];
+
+
+export const MergeResolutionDecision = {
+  merged: 'merged',
+  dismissed: 'dismissed',
+} as const;
+
+export type MergeResolutionDecidedBy = typeof MergeResolutionDecidedBy[keyof typeof MergeResolutionDecidedBy];
+
+
+export const MergeResolutionDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+/**
+ * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:p<f>-<l>|p<f>-<l>" (ranges sorted by first page). Latest decision wins — reversible.
+ */
+export interface MergeResolution {
+  runId: string;
+  /**
+     * the two inclusive page ranges the recommendation covers
+     * @minItems 2
+     * @maxItems 2
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  ranges: number[][];
+  decision: MergeResolutionDecision;
+  decidedBy: MergeResolutionDecidedBy;
+  decidedAt: string;
+}
+
+export type MergeResolutionInputDecision = typeof MergeResolutionInputDecision[keyof typeof MergeResolutionInputDecision];
+
+
+export const MergeResolutionInputDecision = {
+  merged: 'merged',
+  dismissed: 'dismissed',
+} as const;
+
+export type MergeResolutionInputDecidedBy = typeof MergeResolutionInputDecidedBy[keyof typeof MergeResolutionInputDecidedBy];
+
+
+export const MergeResolutionInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface MergeResolutionInput {
+  runId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  ranges: number[][];
+  decision: MergeResolutionInputDecision;
+  decidedBy: MergeResolutionInputDecidedBy;
 }
 
 export interface DocumentUpload {
@@ -587,6 +669,11 @@ export type ApplicationMaterializationErrors = {[key: string]: {
 }};
 
 /**
+ * Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.
+ */
+export type ApplicationMergeResolutions = {[key: string]: MergeResolution};
+
+/**
  * blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts.
  */
 export type ApplicationVariants = {[key: string]: ApplicationVariant[]};
@@ -649,6 +736,15 @@ export interface PacketGateDecision {
   decidedAt: string;
 }
 
+export type PacketStateFilesItem = {
+  filename: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+};
+
 /**
  * Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run's model plan before spend.
  */
@@ -665,6 +761,28 @@ export interface PacketState {
   lastRunError?: string;
   /** audit trail — client IP the packet upload arrived from */
   uploaderIp?: string;
+  /** Multi-file provenance (assembled packets only): each source file's name and its [first,last] span in the packet's global page numbering. Absent on single-PDF uploads. */
+  files?: PacketStateFilesItem[];
+}
+
+export interface PacketManifestFile {
+  id: string;
+  filename: string;
+  sizeBytes: number;
+  pages: number;
+  /** deterministic per-file quality flags (same checks as pre-flight, no model calls) */
+  flags: string[];
+  removed: boolean;
+}
+
+/**
+ * Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.
+ */
+export interface PacketManifest {
+  files: PacketManifestFile[];
+  createdAt: string;
+  /** set when assemble consumed this manifest (staging bytes are gone) */
+  assembledAt?: string;
 }
 
 export interface TemplateRepinEvent {
@@ -715,6 +833,7 @@ export interface Application {
   /** blockId -> latest human verdict */
   verdicts?: ApplicationVerdicts;
   packet?: PacketState;
+  packetManifest?: PacketManifest;
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
@@ -722,6 +841,8 @@ export interface Application {
   materializationErrors?: ApplicationMaterializationErrors;
   /** Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned. */
   documentApprovals?: DocumentApproval[];
+  /** Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned. */
+  mergeResolutions?: ApplicationMergeResolutions;
   /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
   variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */
@@ -950,6 +1071,40 @@ export interface AnalysisPreflight {
 }
 
 /**
+ * descriptor values the pass read off the documents (keys = the block's descriptorFields)
+ */
+export type SatisfactionGroupDescriptorGuess = {[key: string]: string};
+
+/**
+ * one variant-shaped pile of run documents, as the pass read them
+ */
+export interface SatisfactionGroup {
+  /** declared variant this pile belongs to, when the pass could tell */
+  variantId?: string;
+  /** descriptor values the pass read off the documents (keys = the block's descriptorFields) */
+  descriptorGuess?: SatisfactionGroupDescriptorGuess;
+  /**
+     * [first,last] of each run document in this pile
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  docPages: number[][];
+  /** human sentence on sequence coverage (periods present, holes) */
+  coverage?: string;
+}
+
+export interface BlockSatisfaction {
+  groups: SatisfactionGroup[];
+  /** what is still missing, one human sentence each (empty = nothing obvious) */
+  gaps: string[];
+  /** one paragraph — the expert read of where this requirement stands */
+  summary: string;
+  /** text model that produced this (provenance) */
+  model?: string;
+  generatedAt: string;
+}
+
+/**
  * Per-engine honesty — which artifact kinds THIS run actually produced (bare-VLM parses emit md only; Paddle/Mistral also emit elements). UI reads this instead of assuming capabilities.
  */
 export type AnalysisRunArtifactsProduced = {
@@ -957,6 +1112,11 @@ export type AnalysisRunArtifactsProduced = {
   elements: boolean;
   crops: boolean;
 };
+
+/**
+ * Satisfaction pass (Phase 4) — per SET block with ≥1 assigned document, a text-LLM read of how the run's documents map onto the block's declared variants and rules. Assistive only, never a gate; humans re-assign freely. Absent on runs before the pass existed or when no set block had documents.
+ */
+export type AnalysisRunSatisfaction = {[key: string]: BlockSatisfaction};
 
 export interface AnalysisRun {
   runId: string;
@@ -971,6 +1131,8 @@ export interface AnalysisRun {
   preflight: AnalysisPreflight;
   documents: AnalysisDocument[];
   unassigned: AnalysisUnassigned[];
+  /** Satisfaction pass (Phase 4) — per SET block with ≥1 assigned document, a text-LLM read of how the run's documents map onto the block's declared variants and rules. Assistive only, never a gate; humans re-assign freely. Absent on runs before the pass existed or when no set block had documents. */
+  satisfaction?: AnalysisRunSatisfaction;
   whisper: string[];
 }
 
@@ -1007,6 +1169,14 @@ export const GetApprovedDocFileKind = {
   pdf: 'pdf',
   md: 'md',
 } as const;
+
+export type UploadPacketFilesBody = {
+  files: Blob[];
+};
+
+export type SetPacketFileRemovedBody = {
+  removed: boolean;
+};
 
 export type GetRunPageImageParams = {
 size?: GetRunPageImageSize;

@@ -45,14 +45,20 @@ async function fetchPageMarkdown(applicationId: string, runId: string, page: num
   return res.text();
 }
 
-async function extractPages(packet: Buffer, first: number, last: number): Promise<Buffer> {
+/** Flatten inclusive [first,last] ranges into an ordered 1-based page list. */
+function rangesToPageList(ranges: [number, number][]): number[] {
+  return ranges.flatMap(([f, l]) => Array.from({ length: l - f + 1 }, (_, i) => f + i));
+}
+
+async function extractPages(packet: Buffer, ranges: [number, number][]): Promise<Buffer> {
   const src = await PDFDocument.load(packet);
-  if (last > src.getPageCount()) {
-    throw new HttpError(502, `Packet has ${src.getPageCount()} pages — cannot extract pp. ${first}–${last}`);
+  const pageList = rangesToPageList(ranges);
+  const max = pageList[pageList.length - 1]!;
+  if (max > src.getPageCount()) {
+    throw new HttpError(502, `Packet has ${src.getPageCount()} pages — cannot extract p. ${max}`);
   }
   const out = await PDFDocument.create();
-  const indices = Array.from({ length: last - first + 1 }, (_, i) => first - 1 + i);
-  const pages = await out.copyPages(src, indices);
+  const pages = await out.copyPages(src, pageList.map((p) => p - 1));
   for (const p of pages) out.addPage(p);
   return Buffer.from(await out.save());
 }
@@ -114,7 +120,7 @@ export async function materializeApproval(app: Application, blockId: string): Pr
       const [first, last] = runDoc.segment.pages as [number, number];
       const packetStream = await openPacketPdfStream(app.id);
       if (!packetStream) throw new HttpError(502, "Packet PDF missing from storage — cannot extract");
-      pdfBytes = await extractPages(await streamToBuffer(packetStream), first, last);
+      pdfBytes = await extractPages(await streamToBuffer(packetStream), [[first, last]]);
       pageMarkdown = await Promise.all(
         Array.from({ length: last - first + 1 }, (_, i) => fetchPageMarkdown(app.id, run.runId, first + i)),
       );
@@ -175,6 +181,8 @@ export async function materializeDocumentApproval(
     variantId?: string;
     runId: string;
     pages: [number, number];
+    /** non-adjacent human-accepted merge: every range making up the document */
+    pageRanges?: [number, number][];
     outcome: "approved" | "approved_incomplete";
     pageDecisions?: { page: number; decision: string; note?: string }[];
     decidedBy: string;
@@ -190,9 +198,12 @@ export async function materializeDocumentApproval(
     const run = sidecar.runs.find((r) => r.runId === approval.runId);
     if (!run) throw new HttpError(502, `Run ${approval.runId} not found on this application`);
     const [first, last] = approval.pages;
-    // the analyzer's document for these pages, if any — scores/flags provenance
+    const ranges: [number, number][] = approval.pageRanges?.length
+      ? (approval.pageRanges as [number, number][])
+      : [[first, last]];
+    // the analyzer's document for the FIRST range, if any — scores/flags provenance
     const runDoc = run.documents.find(
-      (d) => d.segment.pages[0] === first && d.segment.pages[1] === last,
+      (d) => d.segment.pages[0] === ranges[0]![0] && d.segment.pages[1] === ranges[0]![1],
     );
 
     const taken = await liveBasenames(app.id);
@@ -203,15 +214,16 @@ export async function materializeDocumentApproval(
 
     const packetStream = await openPacketPdfStream(app.id);
     if (!packetStream) throw new HttpError(502, "Packet PDF missing from storage — cannot extract");
-    const pdfBytes = await extractPages(await streamToBuffer(packetStream), first, last);
+    const pdfBytes = await extractPages(await streamToBuffer(packetStream), ranges);
     const pageMarkdown = await Promise.all(
-      Array.from({ length: last - first + 1 }, (_, i) => fetchPageMarkdown(app.id, run.runId, first + i)),
+      rangesToPageList(ranges).map((p) => fetchPageMarkdown(app.id, run.runId, p)),
     );
 
     const doc: ApprovedDoc = {
       id: `ad-${nanoid(10)}`,
       applicationId: app.id, blockId, basename, source: "extract",
       pages: [first, last], runId: run.runId,
+      ...(approval.pageRanges?.length ? { pageRanges: ranges } : {}),
       ...(approval.variantId ? { variantId: approval.variantId } : {}),
       ...(app.packet?.sha256 ? { packetSha256: app.packet.sha256 } : {}),
       approvedBy: approval.decidedBy, approvedAt: approval.decidedAt,

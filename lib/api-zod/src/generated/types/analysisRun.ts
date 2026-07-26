@@ -8,6 +8,7 @@
 import type { AnalysisDocument } from './analysisDocument';
 import type { AnalysisPreflight } from './analysisPreflight';
 import type { AnalysisRunArtifactsProduced } from './analysisRunArtifactsProduced';
+import type { AnalysisRunSatisfaction } from './analysisRunSatisfaction';
 import type { AnalysisUnassigned } from './analysisUnassigned';
 
 export interface AnalysisRun {
@@ -23,5 +24,7 @@ export interface AnalysisRun {
   preflight: AnalysisPreflight;
   documents: AnalysisDocument[];
   unassigned: AnalysisUnassigned[];
+  /** Satisfaction pass (Phase 4) — per SET block with ≥1 assigned document, a text-LLM read of how the run's documents map onto the block's declared variants and rules. Assistive only, never a gate; humans re-assign freely. Absent on runs before the pass existed or when no set block had documents. */
+  satisfaction?: AnalysisRunSatisfaction;
   whisper: string[];
 }

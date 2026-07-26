@@ -152,7 +152,11 @@ export function WorkfilePage({
               <div key={req.block.id} className="flex flex-col">
                 <ReqCard req={req} applicationId={applicationId} onLens={onLens} />
                 {req.block.arity === 'set' && req.status !== 'accepted' && (
-                  <VariantPanel req={req} applicationId={applicationId} />
+                  <VariantPanel
+                    req={req}
+                    applicationId={applicationId}
+                    satisfaction={model.run?.satisfaction?.[req.block.id]}
+                  />
                 )}
               </div>
             ))}

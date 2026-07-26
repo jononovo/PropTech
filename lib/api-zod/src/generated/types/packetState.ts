@@ -7,6 +7,7 @@
  */
 import type { PacketGateDecision } from './packetGateDecision';
 import type { PacketPreflight } from './packetPreflight';
+import type { PacketStateFilesItem } from './packetStateFilesItem';
 import type { PacketStateState } from './packetStateState';
 
 /**
@@ -25,4 +26,6 @@ export interface PacketState {
   lastRunError?: string;
   /** audit trail — client IP the packet upload arrived from */
   uploaderIp?: string;
+  /** Multi-file provenance (assembled packets only): each source file's name and its [first,last] span in the packet's global page numbering. Absent on single-PDF uploads. */
+  files?: PacketStateFilesItem[];
 }

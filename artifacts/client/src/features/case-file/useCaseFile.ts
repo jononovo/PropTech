@@ -17,6 +17,9 @@ import {
   useUpgradeTemplateVersion,
   useUploadDocument,
   useUploadPacket,
+  useUploadPacketFiles,
+  useSetPacketFileRemoved,
+  useAssemblePacket,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '../auth/ProfileContext';
@@ -251,6 +254,28 @@ export function usePacketActions(applicationId: string) {
 
   const uploadPacket = (file: File) => upload.mutate({ applicationId, data: { file } });
 
+  // multi-file intake (Phase 5): drop → manifest → per-file X → assemble
+  const uploadFiles = useUploadPacketFiles({ mutation: { onSuccess: invalidate, onError: invalidate } });
+  const setFileRemoved = useSetPacketFileRemoved({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => toast({ description: `Not saved — ${errText(err)}` }),
+    },
+  });
+  const assemble = useAssemblePacket({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (err: unknown) => {
+        invalidate();
+        toast({ description: `Assemble failed — ${errText(err)}` });
+      },
+    },
+  });
+  const uploadPacketFiles = (files: File[]) => uploadFiles.mutate({ applicationId, data: { files } });
+  const toggleFileRemoved = (fileId: string, removed: boolean) =>
+    setFileRemoved.mutate({ applicationId, fileId, data: { removed } });
+  const assemblePacket = () => assemble.mutate({ applicationId });
+
   const decide = (
     decision: 'confirmed' | 'bypassed',
     plan?: { parse?: string; text?: string; judge?: string; fraudScoring?: boolean },
@@ -268,7 +293,18 @@ export function usePacketActions(applicationId: string) {
       },
     );
 
-  return { uploadPacket, decide, upload, gate };
+  return {
+    uploadPacket,
+    decide,
+    upload,
+    gate,
+    uploadPacketFiles,
+    uploadFiles,
+    toggleFileRemoved,
+    setFileRemoved,
+    assemblePacket,
+    assemble,
+  };
 }
 
 /** Retry approval materialization after a loud failure (worker/storage). */

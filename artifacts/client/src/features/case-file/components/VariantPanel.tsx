@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { FileText, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { FileText, Plus, Sparkles, Trash2, UploadCloud, X } from 'lucide-react';
+import type { BlockSatisfaction } from '@workspace/api-client-react';
 import type { CaseReq } from '../caseData';
 import { useVariantActions } from '../useCaseFile';
 
@@ -9,7 +10,15 @@ import { useVariantActions } from '../useCaseFile';
  * Counts are guidance only ("typically N"), never gates. Everything here is
  * intake-side: nothing counts toward completeness until a human accepts.
  */
-export function VariantPanel({ req, applicationId }: { req: CaseReq; applicationId: string }) {
+export function VariantPanel({
+  req,
+  applicationId,
+  satisfaction,
+}: {
+  req: CaseReq;
+  applicationId: string;
+  satisfaction?: BlockSatisfaction;
+}) {
   const cfg = req.block.variantConfig;
   if (!cfg) return null;
   const variants = req.variants ?? [];
@@ -46,6 +55,51 @@ export function VariantPanel({ req, applicationId }: { req: CaseReq; application
       </div>
 
       <AddVariantForm req={req} applicationId={applicationId} />
+
+      {satisfaction && <SatisfactionCard sat={satisfaction} blockId={req.block.id} />}
+    </div>
+  );
+}
+
+/**
+ * Analyzer's satisfaction read (Phase 4) — assistive only, never a gate.
+ * Humans re-assign and approve regardless of what this says.
+ */
+function SatisfactionCard({ sat, blockId }: { sat: BlockSatisfaction; blockId: string }) {
+  return (
+    <div
+      className="mt-3 bg-white border border-[var(--ops-border)] rounded p-3 flex flex-col gap-2"
+      data-testid={`satisfaction-card-${blockId}`}
+    >
+      <div className="flex items-center gap-1.5 micro-label text-[10px]">
+        <Sparkles size={11} className="text-[var(--ops-accent)]" />
+        Analyzer read — assistive, not a gate
+      </div>
+      <p className="text-[12px] text-[var(--ops-body-sec)] leading-relaxed">{sat.summary}</p>
+      {sat.groups.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {sat.groups.map((g, i) => (
+            <div key={i} className="ops-mono text-[10.5px] text-[var(--ops-muted)]">
+              {g.descriptorGuess && Object.values(g.descriptorGuess).filter(Boolean).length > 0
+                ? Object.values(g.descriptorGuess).join(' · ')
+                : g.variantId ?? `pile ${i + 1}`}
+              {' — '}
+              {g.docPages.map(([f, l]) => (f === l ? `p.${f}` : `pp.${f}–${l}`)).join(', ')}
+              {g.coverage ? ` · ${g.coverage}` : ''}
+            </div>
+          ))}
+        </div>
+      )}
+      {sat.gaps.length > 0 && (
+        <ul className="flex flex-col gap-0.5">
+          {sat.gaps.map((gap, i) => (
+            <li key={i} className="text-[11.5px] text-[var(--ops-warning-text)] flex gap-1.5">
+              <span className="shrink-0">•</span>
+              {gap}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

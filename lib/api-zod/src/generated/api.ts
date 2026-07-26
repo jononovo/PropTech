@@ -645,9 +645,21 @@ export const CreateApplicationBody = zod.object({
   "projectedClosingDate": zod.string().optional()
 })
 
+export const createApplicationResponsePacketFilesItemPagesMin = 2;
+export const createApplicationResponsePacketFilesItemPagesMax = 2;
+
 
 export const createApplicationResponseDocumentApprovalsItemPagesMin = 2;
 export const createApplicationResponseDocumentApprovalsItemPagesMax = 2;
+
+export const createApplicationResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const createApplicationResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const createApplicationResponseMergeResolutionsRangesItemMin = 2;
+export const createApplicationResponseMergeResolutionsRangesItemMax = 2;
+
+export const createApplicationResponseMergeResolutionsRangesMin = 2;
+export const createApplicationResponseMergeResolutionsRangesMax = 2;
 
 export const createApplicationResponseManualPlacementsItemPagesMin = 2;
 export const createApplicationResponseManualPlacementsItemPagesMax = 2;
@@ -708,8 +720,24 @@ export const CreateApplicationResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(createApplicationResponsePacketFilesItemPagesMin).max(createApplicationResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -796,8 +824,16 @@ export const CreateApplicationResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(createApplicationResponseDocumentApprovalsItemPageRangesItemMin).max(createApplicationResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(createApplicationResponseMergeResolutionsRangesItemMin).max(createApplicationResponseMergeResolutionsRangesItemMax)).min(createApplicationResponseMergeResolutionsRangesMin).max(createApplicationResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -822,9 +858,21 @@ export const GetApplicationParams = zod.object({
   "applicationId": zod.coerce.string()
 })
 
+export const getApplicationResponsePacketFilesItemPagesMin = 2;
+export const getApplicationResponsePacketFilesItemPagesMax = 2;
+
 
 export const getApplicationResponseDocumentApprovalsItemPagesMin = 2;
 export const getApplicationResponseDocumentApprovalsItemPagesMax = 2;
+
+export const getApplicationResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const getApplicationResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const getApplicationResponseMergeResolutionsRangesItemMin = 2;
+export const getApplicationResponseMergeResolutionsRangesItemMax = 2;
+
+export const getApplicationResponseMergeResolutionsRangesMin = 2;
+export const getApplicationResponseMergeResolutionsRangesMax = 2;
 
 export const getApplicationResponseManualPlacementsItemPagesMin = 2;
 export const getApplicationResponseManualPlacementsItemPagesMax = 2;
@@ -885,8 +933,24 @@ export const GetApplicationResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(getApplicationResponsePacketFilesItemPagesMin).max(getApplicationResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -973,8 +1037,16 @@ export const GetApplicationResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(getApplicationResponseDocumentApprovalsItemPageRangesItemMin).max(getApplicationResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(getApplicationResponseMergeResolutionsRangesItemMin).max(getApplicationResponseMergeResolutionsRangesItemMax)).min(getApplicationResponseMergeResolutionsRangesMin).max(getApplicationResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1004,9 +1076,21 @@ export const UpdateApplicationBody = zod.object({
   "projectedClosingDate": zod.union([zod.string(),zod.null()]).optional()
 })
 
+export const updateApplicationResponsePacketFilesItemPagesMin = 2;
+export const updateApplicationResponsePacketFilesItemPagesMax = 2;
+
 
 export const updateApplicationResponseDocumentApprovalsItemPagesMin = 2;
 export const updateApplicationResponseDocumentApprovalsItemPagesMax = 2;
+
+export const updateApplicationResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const updateApplicationResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const updateApplicationResponseMergeResolutionsRangesItemMin = 2;
+export const updateApplicationResponseMergeResolutionsRangesItemMax = 2;
+
+export const updateApplicationResponseMergeResolutionsRangesMin = 2;
+export const updateApplicationResponseMergeResolutionsRangesMax = 2;
 
 export const updateApplicationResponseManualPlacementsItemPagesMin = 2;
 export const updateApplicationResponseManualPlacementsItemPagesMax = 2;
@@ -1067,8 +1151,24 @@ export const UpdateApplicationResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(updateApplicationResponsePacketFilesItemPagesMin).max(updateApplicationResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1155,8 +1255,16 @@ export const UpdateApplicationResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(updateApplicationResponseDocumentApprovalsItemPageRangesItemMin).max(updateApplicationResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(updateApplicationResponseMergeResolutionsRangesItemMin).max(updateApplicationResponseMergeResolutionsRangesItemMax)).min(updateApplicationResponseMergeResolutionsRangesMin).max(updateApplicationResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1187,9 +1295,21 @@ export const UpgradeTemplateVersionBody = zod.object({
   "decidedBy": zod.string()
 })
 
+export const upgradeTemplateVersionResponsePacketFilesItemPagesMin = 2;
+export const upgradeTemplateVersionResponsePacketFilesItemPagesMax = 2;
+
 
 export const upgradeTemplateVersionResponseDocumentApprovalsItemPagesMin = 2;
 export const upgradeTemplateVersionResponseDocumentApprovalsItemPagesMax = 2;
+
+export const upgradeTemplateVersionResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const upgradeTemplateVersionResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const upgradeTemplateVersionResponseMergeResolutionsRangesItemMin = 2;
+export const upgradeTemplateVersionResponseMergeResolutionsRangesItemMax = 2;
+
+export const upgradeTemplateVersionResponseMergeResolutionsRangesMin = 2;
+export const upgradeTemplateVersionResponseMergeResolutionsRangesMax = 2;
 
 export const upgradeTemplateVersionResponseManualPlacementsItemPagesMin = 2;
 export const upgradeTemplateVersionResponseManualPlacementsItemPagesMax = 2;
@@ -1250,8 +1370,24 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(upgradeTemplateVersionResponsePacketFilesItemPagesMin).max(upgradeTemplateVersionResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1338,8 +1474,16 @@ export const UpgradeTemplateVersionResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(upgradeTemplateVersionResponseDocumentApprovalsItemPageRangesItemMin).max(upgradeTemplateVersionResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(upgradeTemplateVersionResponseMergeResolutionsRangesItemMin).max(upgradeTemplateVersionResponseMergeResolutionsRangesItemMax)).min(upgradeTemplateVersionResponseMergeResolutionsRangesMin).max(upgradeTemplateVersionResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1369,9 +1513,21 @@ export const SaveFieldValuesBody = zod.object({
   "values": zod.record(zod.string(), zod.string())
 }).describe('Map of field id to entered value for one field-group block.')
 
+export const saveFieldValuesResponsePacketFilesItemPagesMin = 2;
+export const saveFieldValuesResponsePacketFilesItemPagesMax = 2;
+
 
 export const saveFieldValuesResponseDocumentApprovalsItemPagesMin = 2;
 export const saveFieldValuesResponseDocumentApprovalsItemPagesMax = 2;
+
+export const saveFieldValuesResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const saveFieldValuesResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const saveFieldValuesResponseMergeResolutionsRangesItemMin = 2;
+export const saveFieldValuesResponseMergeResolutionsRangesItemMax = 2;
+
+export const saveFieldValuesResponseMergeResolutionsRangesMin = 2;
+export const saveFieldValuesResponseMergeResolutionsRangesMax = 2;
 
 export const saveFieldValuesResponseManualPlacementsItemPagesMin = 2;
 export const saveFieldValuesResponseManualPlacementsItemPagesMax = 2;
@@ -1432,8 +1588,24 @@ export const SaveFieldValuesResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(saveFieldValuesResponsePacketFilesItemPagesMin).max(saveFieldValuesResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1520,8 +1692,16 @@ export const SaveFieldValuesResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(saveFieldValuesResponseDocumentApprovalsItemPageRangesItemMin).max(saveFieldValuesResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(saveFieldValuesResponseMergeResolutionsRangesItemMin).max(saveFieldValuesResponseMergeResolutionsRangesItemMax)).min(saveFieldValuesResponseMergeResolutionsRangesMin).max(saveFieldValuesResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1619,6 +1799,9 @@ export const ListApprovedDocsParams = zod.object({
 export const listApprovedDocsResponsePagesMin = 2;
 export const listApprovedDocsResponsePagesMax = 2;
 
+export const listApprovedDocsResponsePageRangesItemMin = 2;
+export const listApprovedDocsResponsePageRangesItemMax = 2;
+
 
 
 export const ListApprovedDocsResponseItem = zod.object({
@@ -1630,6 +1813,7 @@ export const ListApprovedDocsResponseItem = zod.object({
   "source": zod.enum(['extract', 'copy']).describe('extract = pages pulled from the packet PDF; copy = direct intake upload copied whole'),
   "pages": zod.array(zod.number()).min(listApprovedDocsResponsePagesMin).max(listApprovedDocsResponsePagesMax).optional().describe('packet page range [first, last] (extract only)'),
   "runId": zod.string().optional().describe('analyzer run the assignment came from (extract only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(listApprovedDocsResponsePageRangesItemMin).max(listApprovedDocsResponsePageRangesItemMax)).optional().describe('When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.\n'),
   "packetSha256": zod.string().optional(),
   "sourceFilename": zod.string().optional().describe('original upload filename (copy only)'),
   "approvedBy": zod.string(),
@@ -1651,6 +1835,9 @@ export const MaterializeApprovedDocParams = zod.object({
 export const materializeApprovedDocResponsePagesMin = 2;
 export const materializeApprovedDocResponsePagesMax = 2;
 
+export const materializeApprovedDocResponsePageRangesItemMin = 2;
+export const materializeApprovedDocResponsePageRangesItemMax = 2;
+
 
 
 export const MaterializeApprovedDocResponse = zod.object({
@@ -1662,12 +1849,242 @@ export const MaterializeApprovedDocResponse = zod.object({
   "source": zod.enum(['extract', 'copy']).describe('extract = pages pulled from the packet PDF; copy = direct intake upload copied whole'),
   "pages": zod.array(zod.number()).min(materializeApprovedDocResponsePagesMin).max(materializeApprovedDocResponsePagesMax).optional().describe('packet page range [first, last] (extract only)'),
   "runId": zod.string().optional().describe('analyzer run the assignment came from (extract only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(materializeApprovedDocResponsePageRangesItemMin).max(materializeApprovedDocResponsePageRangesItemMax)).optional().describe('When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.\n'),
   "packetSha256": zod.string().optional(),
   "sourceFilename": zod.string().optional().describe('original upload filename (copy only)'),
   "approvedBy": zod.string(),
   "approvedAt": zod.string(),
   "supersededBy": zod.string().optional().describe('id of the newer row that replaced this one')
 }).describe('One approved, materialized document — the unit of the approved registry. Bytes live flat at approved\/<applicationId>\/<basename>.pdf + .md; this is the row that makes them findable. Append-only; re-acceptance supersedes (supersededBy), never deletes.\n')
+
+
+/**
+ * A merge recommendation (two run groups filed under the same block) must be resolved — merged or dismissed — before either group can be approved. Upsert keyed by run + the two page ranges; latest decision wins, so a dismissed recommendation can be revisited. Portal-owned, additive.
+ * @summary Record (or change) the human decision on an analyzer merge recommendation
+ */
+export const RecordMergeResolutionParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const recordMergeResolutionBodyRangesItemMin = 2;
+export const recordMergeResolutionBodyRangesItemMax = 2;
+
+export const recordMergeResolutionBodyRangesMin = 2;
+export const recordMergeResolutionBodyRangesMax = 2;
+
+
+
+export const RecordMergeResolutionBody = zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(recordMergeResolutionBodyRangesItemMin).max(recordMergeResolutionBodyRangesItemMax)).min(recordMergeResolutionBodyRangesMin).max(recordMergeResolutionBodyRangesMax),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager'])
+})
+
+export const recordMergeResolutionResponsePacketFilesItemPagesMin = 2;
+export const recordMergeResolutionResponsePacketFilesItemPagesMax = 2;
+
+
+export const recordMergeResolutionResponseDocumentApprovalsItemPagesMin = 2;
+export const recordMergeResolutionResponseDocumentApprovalsItemPagesMax = 2;
+
+export const recordMergeResolutionResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const recordMergeResolutionResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const recordMergeResolutionResponseMergeResolutionsRangesItemMin = 2;
+export const recordMergeResolutionResponseMergeResolutionsRangesItemMax = 2;
+
+export const recordMergeResolutionResponseMergeResolutionsRangesMin = 2;
+export const recordMergeResolutionResponseMergeResolutionsRangesMax = 2;
+
+export const recordMergeResolutionResponseManualPlacementsItemPagesMin = 2;
+export const recordMergeResolutionResponseManualPlacementsItemPagesMax = 2;
+
+
+
+export const RecordMergeResolutionResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(recordMergeResolutionResponsePacketFilesItemPagesMin).max(recordMergeResolutionResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
+  "documentApprovals": zod.array(zod.object({
+  "id": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document files into'),
+  "runId": zod.string().describe('analyzer run whose grouping this approval is based on'),
+  "pages": zod.array(zod.number()).min(recordMergeResolutionResponseDocumentApprovalsItemPagesMin).max(recordMergeResolutionResponseDocumentApprovalsItemPagesMax).describe('inclusive 1-based packet page range [first, last]'),
+  "pageDecisions": zod.array(zod.object({
+  "page": zod.number().describe('1-based packet page'),
+  "decision": zod.enum(['good', 'bad', 'flag_accepted']).describe('good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags\/low scores — the flag stays on the record as a low-level note.\n'),
+  "note": zod.string().optional()
+}).describe('A per-page pre-step decision inside the document approval flow.')).optional(),
+  "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(recordMergeResolutionResponseDocumentApprovalsItemPageRangesItemMin).max(recordMergeResolutionResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
+}).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(recordMergeResolutionResponseMergeResolutionsRangesItemMin).max(recordMergeResolutionResponseMergeResolutionsRangesItemMax)).min(recordMergeResolutionResponseMergeResolutionsRangesMin).max(recordMergeResolutionResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(recordMergeResolutionResponseManualPlacementsItemPagesMin).max(recordMergeResolutionResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
+})
 
 
 /**
@@ -1680,6 +2097,9 @@ export const RecordDocumentApprovalParams = zod.object({
 
 export const recordDocumentApprovalBodyPagesMin = 2;
 export const recordDocumentApprovalBodyPagesMax = 2;
+
+export const recordDocumentApprovalBodyPageRangesItemMin = 2;
+export const recordDocumentApprovalBodyPageRangesItemMax = 2;
 
 
 
@@ -1694,12 +2114,25 @@ export const RecordDocumentApprovalBody = zod.object({
   "note": zod.string().optional()
 }).describe('A per-page pre-step decision inside the document approval flow.')).optional(),
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
-  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager'])
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "pageRanges": zod.array(zod.array(zod.number()).min(recordDocumentApprovalBodyPageRangesItemMin).max(recordDocumentApprovalBodyPageRangesItemMax)).optional()
 })
+
+export const recordDocumentApprovalResponsePacketFilesItemPagesMin = 2;
+export const recordDocumentApprovalResponsePacketFilesItemPagesMax = 2;
 
 
 export const recordDocumentApprovalResponseDocumentApprovalsItemPagesMin = 2;
 export const recordDocumentApprovalResponseDocumentApprovalsItemPagesMax = 2;
+
+export const recordDocumentApprovalResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const recordDocumentApprovalResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const recordDocumentApprovalResponseMergeResolutionsRangesItemMin = 2;
+export const recordDocumentApprovalResponseMergeResolutionsRangesItemMax = 2;
+
+export const recordDocumentApprovalResponseMergeResolutionsRangesMin = 2;
+export const recordDocumentApprovalResponseMergeResolutionsRangesMax = 2;
 
 export const recordDocumentApprovalResponseManualPlacementsItemPagesMin = 2;
 export const recordDocumentApprovalResponseManualPlacementsItemPagesMax = 2;
@@ -1760,8 +2193,24 @@ export const RecordDocumentApprovalResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(recordDocumentApprovalResponsePacketFilesItemPagesMin).max(recordDocumentApprovalResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -1848,8 +2297,16 @@ export const RecordDocumentApprovalResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(recordDocumentApprovalResponseDocumentApprovalsItemPageRangesItemMin).max(recordDocumentApprovalResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(recordDocumentApprovalResponseMergeResolutionsRangesItemMin).max(recordDocumentApprovalResponseMergeResolutionsRangesItemMax)).min(recordDocumentApprovalResponseMergeResolutionsRangesMin).max(recordDocumentApprovalResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -1919,6 +2376,9 @@ export const getAnalysisResponseRunsItemDocumentsItemSegmentPagesMax = 2;
 export const getAnalysisResponseRunsItemUnassignedItemPagesMin = 2;
 export const getAnalysisResponseRunsItemUnassignedItemPagesMax = 2;
 
+export const getAnalysisResponseRunsItemSatisfactionGroupsItemDocPagesItemMin = 2;
+export const getAnalysisResponseRunsItemSatisfactionGroupsItemDocPagesItemMax = 2;
+
 
 
 export const GetAnalysisResponse = zod.object({
@@ -1975,6 +2435,18 @@ export const GetAnalysisResponse = zod.object({
   "pages": zod.array(zod.number()).min(getAnalysisResponseRunsItemUnassignedItemPagesMin).max(getAnalysisResponseRunsItemUnassignedItemPagesMax),
   "description": zod.string()
 })),
+  "satisfaction": zod.record(zod.string(), zod.object({
+  "groups": zod.array(zod.object({
+  "variantId": zod.string().optional().describe('declared variant this pile belongs to, when the pass could tell'),
+  "descriptorGuess": zod.record(zod.string(), zod.string()).optional().describe('descriptor values the pass read off the documents (keys = the block\'s descriptorFields)'),
+  "docPages": zod.array(zod.array(zod.number()).min(getAnalysisResponseRunsItemSatisfactionGroupsItemDocPagesItemMin).max(getAnalysisResponseRunsItemSatisfactionGroupsItemDocPagesItemMax)).describe('[first,last] of each run document in this pile'),
+  "coverage": zod.string().optional().describe('human sentence on sequence coverage (periods present, holes)')
+}).describe('one variant-shaped pile of run documents, as the pass read them')),
+  "gaps": zod.array(zod.string()).describe('what is still missing, one human sentence each (empty = nothing obvious)'),
+  "summary": zod.string().describe('one paragraph — the expert read of where this requirement stands'),
+  "model": zod.string().optional().describe('text model that produced this (provenance)'),
+  "generatedAt": zod.string()
+})).optional().describe('Satisfaction pass (Phase 4) — per SET block with ≥1 assigned document, a text-LLM read of how the run\'s documents map onto the block\'s declared variants and rules. Assistive only, never a gate; humans re-assign freely. Absent on runs before the pass existed or when no set block had documents.\n'),
   "whisper": zod.array(zod.string())
 }))
 }).describe('Portal-owned sidecar file (data\/analysis\/<applicationId>.json). Append-only runs.')
@@ -1993,6 +2465,9 @@ export const ingestAnalysisRunBodyDocumentsItemSegmentPagesMax = 2;
 
 export const ingestAnalysisRunBodyUnassignedItemPagesMin = 2;
 export const ingestAnalysisRunBodyUnassignedItemPagesMax = 2;
+
+export const ingestAnalysisRunBodySatisfactionGroupsItemDocPagesItemMin = 2;
+export const ingestAnalysisRunBodySatisfactionGroupsItemDocPagesItemMax = 2;
 
 
 
@@ -2047,6 +2522,18 @@ export const IngestAnalysisRunBody = zod.object({
   "pages": zod.array(zod.number()).min(ingestAnalysisRunBodyUnassignedItemPagesMin).max(ingestAnalysisRunBodyUnassignedItemPagesMax),
   "description": zod.string()
 })),
+  "satisfaction": zod.record(zod.string(), zod.object({
+  "groups": zod.array(zod.object({
+  "variantId": zod.string().optional().describe('declared variant this pile belongs to, when the pass could tell'),
+  "descriptorGuess": zod.record(zod.string(), zod.string()).optional().describe('descriptor values the pass read off the documents (keys = the block\'s descriptorFields)'),
+  "docPages": zod.array(zod.array(zod.number()).min(ingestAnalysisRunBodySatisfactionGroupsItemDocPagesItemMin).max(ingestAnalysisRunBodySatisfactionGroupsItemDocPagesItemMax)).describe('[first,last] of each run document in this pile'),
+  "coverage": zod.string().optional().describe('human sentence on sequence coverage (periods present, holes)')
+}).describe('one variant-shaped pile of run documents, as the pass read them')),
+  "gaps": zod.array(zod.string()).describe('what is still missing, one human sentence each (empty = nothing obvious)'),
+  "summary": zod.string().describe('one paragraph — the expert read of where this requirement stands'),
+  "model": zod.string().optional().describe('text model that produced this (provenance)'),
+  "generatedAt": zod.string()
+})).optional().describe('Satisfaction pass (Phase 4) — per SET block with ≥1 assigned document, a text-LLM read of how the run\'s documents map onto the block\'s declared variants and rules. Assistive only, never a gate; humans re-assign freely. Absent on runs before the pass existed or when no set block had documents.\n'),
   "whisper": zod.array(zod.string())
 })
 
@@ -2055,6 +2542,9 @@ export const ingestAnalysisRunResponseRunsItemDocumentsItemSegmentPagesMax = 2;
 
 export const ingestAnalysisRunResponseRunsItemUnassignedItemPagesMin = 2;
 export const ingestAnalysisRunResponseRunsItemUnassignedItemPagesMax = 2;
+
+export const ingestAnalysisRunResponseRunsItemSatisfactionGroupsItemDocPagesItemMin = 2;
+export const ingestAnalysisRunResponseRunsItemSatisfactionGroupsItemDocPagesItemMax = 2;
 
 
 
@@ -2112,6 +2602,18 @@ export const IngestAnalysisRunResponse = zod.object({
   "pages": zod.array(zod.number()).min(ingestAnalysisRunResponseRunsItemUnassignedItemPagesMin).max(ingestAnalysisRunResponseRunsItemUnassignedItemPagesMax),
   "description": zod.string()
 })),
+  "satisfaction": zod.record(zod.string(), zod.object({
+  "groups": zod.array(zod.object({
+  "variantId": zod.string().optional().describe('declared variant this pile belongs to, when the pass could tell'),
+  "descriptorGuess": zod.record(zod.string(), zod.string()).optional().describe('descriptor values the pass read off the documents (keys = the block\'s descriptorFields)'),
+  "docPages": zod.array(zod.array(zod.number()).min(ingestAnalysisRunResponseRunsItemSatisfactionGroupsItemDocPagesItemMin).max(ingestAnalysisRunResponseRunsItemSatisfactionGroupsItemDocPagesItemMax)).describe('[first,last] of each run document in this pile'),
+  "coverage": zod.string().optional().describe('human sentence on sequence coverage (periods present, holes)')
+}).describe('one variant-shaped pile of run documents, as the pass read them')),
+  "gaps": zod.array(zod.string()).describe('what is still missing, one human sentence each (empty = nothing obvious)'),
+  "summary": zod.string().describe('one paragraph — the expert read of where this requirement stands'),
+  "model": zod.string().optional().describe('text model that produced this (provenance)'),
+  "generatedAt": zod.string()
+})).optional().describe('Satisfaction pass (Phase 4) — per SET block with ≥1 assigned document, a text-LLM read of how the run\'s documents map onto the block\'s declared variants and rules. Assistive only, never a gate; humans re-assign freely. Absent on runs before the pass existed or when no set block had documents.\n'),
   "whisper": zod.array(zod.string())
 }))
 }).describe('Portal-owned sidecar file (data\/analysis\/<applicationId>.json). Append-only runs.')
@@ -2129,9 +2631,21 @@ export const UploadPacketBody = zod.object({
   "file": zod.instanceof(File)
 })
 
+export const uploadPacketResponsePacketFilesItemPagesMin = 2;
+export const uploadPacketResponsePacketFilesItemPagesMax = 2;
+
 
 export const uploadPacketResponseDocumentApprovalsItemPagesMin = 2;
 export const uploadPacketResponseDocumentApprovalsItemPagesMax = 2;
+
+export const uploadPacketResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const uploadPacketResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const uploadPacketResponseMergeResolutionsRangesItemMin = 2;
+export const uploadPacketResponseMergeResolutionsRangesItemMax = 2;
+
+export const uploadPacketResponseMergeResolutionsRangesMin = 2;
+export const uploadPacketResponseMergeResolutionsRangesMax = 2;
 
 export const uploadPacketResponseManualPlacementsItemPagesMin = 2;
 export const uploadPacketResponseManualPlacementsItemPagesMax = 2;
@@ -2192,8 +2706,24 @@ export const UploadPacketResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(uploadPacketResponsePacketFilesItemPagesMin).max(uploadPacketResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -2280,8 +2810,16 @@ export const UploadPacketResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(uploadPacketResponseDocumentApprovalsItemPageRangesItemMin).max(uploadPacketResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(uploadPacketResponseMergeResolutionsRangesItemMin).max(uploadPacketResponseMergeResolutionsRangesItemMax)).min(uploadPacketResponseMergeResolutionsRangesMin).max(uploadPacketResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -2290,6 +2828,656 @@ export const UploadPacketResponse = zod.object({
 }).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
   "manualPlacements": zod.array(zod.object({
   "pages": zod.array(zod.number()).min(uploadPacketResponseManualPlacementsItemPagesMin).max(uploadPacketResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
+})
+
+
+/**
+ * Phase 5 (multi-file intake v1). Accepts up to 25 PDFs in one drop and builds a MANIFEST before any analysis: per file — name, size, page count, and the same deterministic quality flags pre-flight uses (no model calls). Each file can then be removed from the manifest (X) before assembly; assemble concatenates the kept files into ONE packet PDF that flows through the existing pre-flight → gate → run pipeline unchanged (global page addressing). Re-posting replaces the whole manifest. Refused (409) while an analyzer run is mid-flight. Removed = gone at assemble time; there is no defer queue in v1 — re-upload later instead.
+ * @summary Multi-file intake — stage several PDFs and get a reviewable manifest
+ */
+export const UploadPacketFilesParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const UploadPacketFilesBody = zod.object({
+  "files": zod.array(zod.instanceof(File))
+})
+
+export const uploadPacketFilesResponsePacketFilesItemPagesMin = 2;
+export const uploadPacketFilesResponsePacketFilesItemPagesMax = 2;
+
+
+export const uploadPacketFilesResponseDocumentApprovalsItemPagesMin = 2;
+export const uploadPacketFilesResponseDocumentApprovalsItemPagesMax = 2;
+
+export const uploadPacketFilesResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const uploadPacketFilesResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const uploadPacketFilesResponseMergeResolutionsRangesItemMin = 2;
+export const uploadPacketFilesResponseMergeResolutionsRangesItemMax = 2;
+
+export const uploadPacketFilesResponseMergeResolutionsRangesMin = 2;
+export const uploadPacketFilesResponseMergeResolutionsRangesMax = 2;
+
+export const uploadPacketFilesResponseManualPlacementsItemPagesMin = 2;
+export const uploadPacketFilesResponseManualPlacementsItemPagesMax = 2;
+
+
+
+export const UploadPacketFilesResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(uploadPacketFilesResponsePacketFilesItemPagesMin).max(uploadPacketFilesResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
+  "documentApprovals": zod.array(zod.object({
+  "id": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document files into'),
+  "runId": zod.string().describe('analyzer run whose grouping this approval is based on'),
+  "pages": zod.array(zod.number()).min(uploadPacketFilesResponseDocumentApprovalsItemPagesMin).max(uploadPacketFilesResponseDocumentApprovalsItemPagesMax).describe('inclusive 1-based packet page range [first, last]'),
+  "pageDecisions": zod.array(zod.object({
+  "page": zod.number().describe('1-based packet page'),
+  "decision": zod.enum(['good', 'bad', 'flag_accepted']).describe('good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags\/low scores — the flag stays on the record as a low-level note.\n'),
+  "note": zod.string().optional()
+}).describe('A per-page pre-step decision inside the document approval flow.')).optional(),
+  "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(uploadPacketFilesResponseDocumentApprovalsItemPageRangesItemMin).max(uploadPacketFilesResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
+}).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(uploadPacketFilesResponseMergeResolutionsRangesItemMin).max(uploadPacketFilesResponseMergeResolutionsRangesItemMax)).min(uploadPacketFilesResponseMergeResolutionsRangesMin).max(uploadPacketFilesResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(uploadPacketFilesResponseManualPlacementsItemPagesMin).max(uploadPacketFilesResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
+})
+
+
+/**
+ * @summary Toggle a manifest file's removed state (the X — reversible until assemble)
+ */
+export const SetPacketFileRemovedParams = zod.object({
+  "applicationId": zod.coerce.string(),
+  "fileId": zod.coerce.string()
+})
+
+export const SetPacketFileRemovedBody = zod.object({
+  "removed": zod.boolean()
+})
+
+export const setPacketFileRemovedResponsePacketFilesItemPagesMin = 2;
+export const setPacketFileRemovedResponsePacketFilesItemPagesMax = 2;
+
+
+export const setPacketFileRemovedResponseDocumentApprovalsItemPagesMin = 2;
+export const setPacketFileRemovedResponseDocumentApprovalsItemPagesMax = 2;
+
+export const setPacketFileRemovedResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const setPacketFileRemovedResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const setPacketFileRemovedResponseMergeResolutionsRangesItemMin = 2;
+export const setPacketFileRemovedResponseMergeResolutionsRangesItemMax = 2;
+
+export const setPacketFileRemovedResponseMergeResolutionsRangesMin = 2;
+export const setPacketFileRemovedResponseMergeResolutionsRangesMax = 2;
+
+export const setPacketFileRemovedResponseManualPlacementsItemPagesMin = 2;
+export const setPacketFileRemovedResponseManualPlacementsItemPagesMax = 2;
+
+
+
+export const SetPacketFileRemovedResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(setPacketFileRemovedResponsePacketFilesItemPagesMin).max(setPacketFileRemovedResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
+  "documentApprovals": zod.array(zod.object({
+  "id": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document files into'),
+  "runId": zod.string().describe('analyzer run whose grouping this approval is based on'),
+  "pages": zod.array(zod.number()).min(setPacketFileRemovedResponseDocumentApprovalsItemPagesMin).max(setPacketFileRemovedResponseDocumentApprovalsItemPagesMax).describe('inclusive 1-based packet page range [first, last]'),
+  "pageDecisions": zod.array(zod.object({
+  "page": zod.number().describe('1-based packet page'),
+  "decision": zod.enum(['good', 'bad', 'flag_accepted']).describe('good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags\/low scores — the flag stays on the record as a low-level note.\n'),
+  "note": zod.string().optional()
+}).describe('A per-page pre-step decision inside the document approval flow.')).optional(),
+  "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(setPacketFileRemovedResponseDocumentApprovalsItemPageRangesItemMin).max(setPacketFileRemovedResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
+}).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(setPacketFileRemovedResponseMergeResolutionsRangesItemMin).max(setPacketFileRemovedResponseMergeResolutionsRangesItemMax)).min(setPacketFileRemovedResponseMergeResolutionsRangesMin).max(setPacketFileRemovedResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(setPacketFileRemovedResponseManualPlacementsItemPagesMin).max(setPacketFileRemovedResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
+  "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
+  "note": zod.string().optional(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "runId": zod.string().optional()
+}).describe('A human decision about an unassigned page range: filed into a document block, or archived as not-relevant. Waits for the next analyzer run to confirm — manual placement always wins over analyzer suggestions.\n')).optional().describe('Human filings of analyzer-unassigned page ranges (portal-owned)')
+})
+
+
+/**
+ * Assembles the manifest's kept (non-removed) files, in manifest order, into a single packet PDF and pushes it through the exact single-packet path (pre-flight, gated state, gate decision, analyzer). packet.files records each source file's global page span for provenance. At least one kept file required.
+ * @summary Concatenate the kept manifest files into ONE packet and run pre-flight
+ */
+export const AssemblePacketParams = zod.object({
+  "applicationId": zod.coerce.string()
+})
+
+export const assemblePacketResponsePacketFilesItemPagesMin = 2;
+export const assemblePacketResponsePacketFilesItemPagesMax = 2;
+
+
+export const assemblePacketResponseDocumentApprovalsItemPagesMin = 2;
+export const assemblePacketResponseDocumentApprovalsItemPagesMax = 2;
+
+export const assemblePacketResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const assemblePacketResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const assemblePacketResponseMergeResolutionsRangesItemMin = 2;
+export const assemblePacketResponseMergeResolutionsRangesItemMax = 2;
+
+export const assemblePacketResponseMergeResolutionsRangesMin = 2;
+export const assemblePacketResponseMergeResolutionsRangesMax = 2;
+
+export const assemblePacketResponseManualPlacementsItemPagesMin = 2;
+export const assemblePacketResponseManualPlacementsItemPagesMax = 2;
+
+
+
+export const AssemblePacketResponse = zod.object({
+  "id": zod.string(),
+  "family": zod.string(),
+  "version": zod.number(),
+  "applicantName": zod.string(),
+  "createdAt": zod.string(),
+  "fieldValues": zod.record(zod.string(), zod.record(zod.string(), zod.string())).describe('blockId -> field values map'),
+  "uploads": zod.record(zod.string(), zod.array(zod.object({
+  "filename": zod.string(),
+  "size": zod.number(),
+  "uploadedAt": zod.string(),
+  "variantId": zod.string().optional().describe('Set blocks only — which of the block\'s variants this file belongs to. Metadata only; object-store keys are unchanged.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the upload arrived from')
+}))).describe('blockId -> uploaded files'),
+  "projectedClosingDate": zod.string().optional(),
+  "verdicts": zod.record(zod.string(), zod.object({
+  "verdict": zod.enum(['accepted', 'new_version_requested']),
+  "note": zod.string().optional(),
+  "documentDate": zod.string().optional(),
+  "expiryDate": zod.string().optional(),
+  "datesEdited": zod.boolean(),
+  "decidedAt": zod.string(),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "runId": zod.string().optional()
+}).describe('Human verdict on a document block. Portal-owned; the analyzer never writes these. documentDate\/expiryDate are the confirmed dates the block\'s clocks run on.\n')).optional().describe('blockId -> latest human verdict'),
+  "packet": zod.object({
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "sha256": zod.string(),
+  "uploadedAt": zod.string(),
+  "state": zod.enum(['preflight_running', 'gated', 'processing', 'report']),
+  "preflight": zod.object({
+  "verdict": zod.string().describe('One plain-language line summarising the packet\'s pre-flight outcome.'),
+  "flags": zod.array(zod.string()).describe('Plain-language red flags (\"p.6 blank\", \"p.4 duplicate of p.3\").'),
+  "estimateUsd": zod.number().describe('FULL-pipeline estimate (parse + judge + deep scans) — informed consent before spend; the judge dominates at high page counts. Staff-facing only.\n'),
+  "estimateMinutes": zod.number(),
+  "metadata": zod.object({
+  "producer": zod.string().optional(),
+  "creator": zod.string().optional(),
+  "createdAt": zod.string().optional(),
+  "modifiedAt": zod.string().optional()
+}).describe('Metadata snapshot taken at pre-flight (analyzer spec §2.2). Display-only in v1 — metadata ANOMALY detection is analyzer-tier work, not pre-flight.\n'),
+  "thumbnails": zod.array(zod.object({
+  "page": zod.number(),
+  "reason": zod.string().describe('Why pre-flight picked this page (blank, duplicate, lowest contrast, cleanest).')
+})).describe('2 worst-scoring pages + 1 best, by deterministic per-page scores.')
+}).optional().describe('Deterministic pre-flight report (analyzer spec §3) — no model calls, no image enhancement (\"gate, don\'t retouch\"). Checks actually run in v1: file validity, page count, metadata snapshot, per-page blank detection, per-page contrast, exact-duplicate pages, embedded-image DPI. Blur\/skew scoring is analyzer-tier and intentionally NOT claimed here. Stored on the application as audit-trail material.\n'),
+  "gate": zod.object({
+  "decision": zod.enum(['auto', 'confirmed', 'bypassed']),
+  "decidedBy": zod.string().optional().describe('Absent when decision=auto; otherwise the signed-in staff profile.'),
+  "decidedAt": zod.string()
+}).optional(),
+  "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(assemblePacketResponsePacketFilesItemPagesMin).max(assemblePacketResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
+}).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
+  "template": zod.object({
+  "template": zod.string(),
+  "version": zod.number(),
+  "status": zod.enum(['draft', 'active']),
+  "program": zod.string(),
+  "alternatives": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "primary": zod.string(),
+  "satisfiedBy": zod.array(zod.string())
+}).describe('Satisfied when any one of [primary, ...satisfiedBy] is filed.')),
+  "sections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "owner": zod.enum(['Applicant', 'Originator', 'Escrow', 'Homium']),
+  "permissions": zod.array(zod.object({
+  "role": zod.enum(['Applicant', 'Originator', 'Underwriter', 'Manager']),
+  "view": zod.boolean(),
+  "upload": zod.boolean()
+})),
+  "subsections": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "blocks": zod.array(zod.object({
+  "kind": zod.enum(['document', 'fields']),
+  "id": zod.string(),
+  "name": zod.string(),
+  "docType": zod.string().optional().describe('Optional analyzer taxonomy id (e.g. bank_statement). With it, classification is exact; without it, the analyzer falls back to name-similarity matching (analyzer spec §4). Never applicant-facing.\n'),
+  "formats": zod.array(zod.string()).optional(),
+  "requirement": zod.enum(['required', 'required_alt', 'recommended', 'optional']).optional(),
+  "criticality": zod.enum(['critical', 'standard', 'supporting']).optional(),
+  "sourcing": zod.enum(['readily_available', 'constrained', 'scarce']).optional(),
+  "multiPage": zod.boolean().optional(),
+  "expiry": zod.union([zod.object({
+  "kind": zod.enum(['staleness', 'hard']),
+  "days": zod.number().optional()
+}).describe('Null means no clock. staleness uses days; hard means valid through closing.'),zod.null()]).optional(),
+  "arity": zod.enum(['single', 'set']).optional().describe('\"set\" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = \"single\" (today\'s behavior).\n'),
+  "variantConfig": zod.object({
+  "variantNoun": zod.string().describe('What one variant is called in the UI (\"Bank account\", \"Person\").'),
+  "descriptorFields": zod.array(zod.object({
+  "key": zod.string().describe('stable snake_case key (institution, account_last4, name, dob)'),
+  "label": zod.string().describe('UI label (\"Institution\", \"Account (last 4)\")')
+})).describe('Identity fields a variant must fill, as specific as possible.'),
+  "docsPerVariant": zod.object({
+  "mode": zod.enum(['single', 'sequence']).describe('single = exactly one document per variant (birth certificate); sequence = one or more documents (statements). One document never fails a sequence — counts are guidance, not gates.\n'),
+  "expectedCount": zod.number().min(1).optional().describe('Recommended number of documents per variant — guidance for review and the satisfaction pass, NEVER a hard limit or requirement. Document recency is governed by the block\'s existing expiry clock, not duplicated here.\n'),
+  "coverage": zod.enum(['consecutive_months']).optional().describe('optional — the sequence must cover consecutive periods with no gaps.')
+})
+}).optional().describe('Shape of a set block\'s variants. The template declares WHAT identifies a variant (descriptor field keys); the application supplies the actual variants per deal. Rules are data, never code (no conditional logic in v1).\n'),
+  "analysisNote": zod.string().optional().describe('Author-written expert guidance for the analyzer\'s satisfaction pass (e.g. \"statements must be consecutive; balance carryover should match\"). Never applicant-facing.\n'),
+  "fields": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.enum(['text', 'number', 'date', 'select', 'yesno']),
+  "label": zod.string(),
+  "required": zod.boolean().optional(),
+  "options": zod.array(zod.string()).optional()
+})).optional()
+}).describe('kind=document uses document fields; kind=fields uses the fields array.'))
+}))
+}))
+}),
+  "templateHistory": zod.array(zod.object({
+  "fromVersion": zod.number(),
+  "toVersion": zod.number(),
+  "decidedBy": zod.string(),
+  "decidedAt": zod.string()
+})).optional().describe('Audit trail of template re-pins (who, when, vN→vN)'),
+  "materializationErrors": zod.record(zod.string(), zod.object({
+  "message": zod.string(),
+  "at": zod.string()
+})).optional().describe('blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.\n'),
+  "documentApprovals": zod.array(zod.object({
+  "id": zod.string(),
+  "blockId": zod.string(),
+  "variantId": zod.string().optional().describe('set blocks — which variant this document files into'),
+  "runId": zod.string().describe('analyzer run whose grouping this approval is based on'),
+  "pages": zod.array(zod.number()).min(assemblePacketResponseDocumentApprovalsItemPagesMin).max(assemblePacketResponseDocumentApprovalsItemPagesMax).describe('inclusive 1-based packet page range [first, last]'),
+  "pageDecisions": zod.array(zod.object({
+  "page": zod.number().describe('1-based packet page'),
+  "decision": zod.enum(['good', 'bad', 'flag_accepted']).describe('good = page fine as-is; bad = page rejected; flag_accepted = page accepted despite flags\/low scores — the flag stays on the record as a low-level note.\n'),
+  "note": zod.string().optional()
+}).describe('A per-page pre-step decision inside the document approval flow.')).optional(),
+  "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string(),
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(assemblePacketResponseDocumentApprovalsItemPageRangesItemMin).max(assemblePacketResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
+}).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(assemblePacketResponseMergeResolutionsRangesItemMin).max(assemblePacketResponseMergeResolutionsRangesItemMax)).min(assemblePacketResponseMergeResolutionsRangesMin).max(assemblePacketResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
+  "variants": zod.record(zod.string(), zod.array(zod.object({
+  "id": zod.string(),
+  "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
+  "label": zod.string().describe('server-built display label (descriptor values joined)'),
+  "createdAt": zod.string()
+}).describe('One real-world instance of a set block\'s requirement on THIS application (\"Chase ····1234\", \"Jane Doe · 1990-04-24\"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.\n'))).optional().describe('blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application\'s satisfied requirements until a human accepts.\n'),
+  "manualPlacements": zod.array(zod.object({
+  "pages": zod.array(zod.number()).min(assemblePacketResponseManualPlacementsItemPagesMin).max(assemblePacketResponseManualPlacementsItemPagesMax).describe('inclusive 1-based page range [first, last]'),
   "target": zod.string().describe('document blockId on the pinned template, or the literal \"archive\"'),
   "note": zod.string().optional(),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
@@ -2318,9 +3506,21 @@ export const DecidePacketGateBody = zod.object({
 }).optional().describe('Per-stage model option ids (from GET \/models\/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown\/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run\'s config artifact (pipelineVersion honesty).\n')
 })
 
+export const decidePacketGateResponsePacketFilesItemPagesMin = 2;
+export const decidePacketGateResponsePacketFilesItemPagesMax = 2;
+
 
 export const decidePacketGateResponseDocumentApprovalsItemPagesMin = 2;
 export const decidePacketGateResponseDocumentApprovalsItemPagesMax = 2;
+
+export const decidePacketGateResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const decidePacketGateResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const decidePacketGateResponseMergeResolutionsRangesItemMin = 2;
+export const decidePacketGateResponseMergeResolutionsRangesItemMax = 2;
+
+export const decidePacketGateResponseMergeResolutionsRangesMin = 2;
+export const decidePacketGateResponseMergeResolutionsRangesMax = 2;
 
 export const decidePacketGateResponseManualPlacementsItemPagesMin = 2;
 export const decidePacketGateResponseManualPlacementsItemPagesMax = 2;
@@ -2381,8 +3581,24 @@ export const DecidePacketGateResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(decidePacketGateResponsePacketFilesItemPagesMin).max(decidePacketGateResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -2469,8 +3685,16 @@ export const DecidePacketGateResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(decidePacketGateResponseDocumentApprovalsItemPageRangesItemMin).max(decidePacketGateResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(decidePacketGateResponseMergeResolutionsRangesItemMin).max(decidePacketGateResponseMergeResolutionsRangesItemMax)).min(decidePacketGateResponseMergeResolutionsRangesMin).max(decidePacketGateResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -2512,9 +3736,21 @@ export const ReportPacketRunFailureBody = zod.object({
   "packetSha256": zod.string()
 })
 
+export const reportPacketRunFailureResponsePacketFilesItemPagesMin = 2;
+export const reportPacketRunFailureResponsePacketFilesItemPagesMax = 2;
+
 
 export const reportPacketRunFailureResponseDocumentApprovalsItemPagesMin = 2;
 export const reportPacketRunFailureResponseDocumentApprovalsItemPagesMax = 2;
+
+export const reportPacketRunFailureResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const reportPacketRunFailureResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const reportPacketRunFailureResponseMergeResolutionsRangesItemMin = 2;
+export const reportPacketRunFailureResponseMergeResolutionsRangesItemMax = 2;
+
+export const reportPacketRunFailureResponseMergeResolutionsRangesMin = 2;
+export const reportPacketRunFailureResponseMergeResolutionsRangesMax = 2;
 
 export const reportPacketRunFailureResponseManualPlacementsItemPagesMin = 2;
 export const reportPacketRunFailureResponseManualPlacementsItemPagesMax = 2;
@@ -2575,8 +3811,24 @@ export const ReportPacketRunFailureResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(reportPacketRunFailureResponsePacketFilesItemPagesMin).max(reportPacketRunFailureResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -2663,8 +3915,16 @@ export const ReportPacketRunFailureResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(reportPacketRunFailureResponseDocumentApprovalsItemPageRangesItemMin).max(reportPacketRunFailureResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(reportPacketRunFailureResponseMergeResolutionsRangesItemMin).max(reportPacketRunFailureResponseMergeResolutionsRangesItemMax)).min(reportPacketRunFailureResponseMergeResolutionsRangesMin).max(reportPacketRunFailureResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -2712,9 +3972,21 @@ export const RecordVerdictBody = zod.object({
   "runId": zod.string().optional()
 })
 
+export const recordVerdictResponsePacketFilesItemPagesMin = 2;
+export const recordVerdictResponsePacketFilesItemPagesMax = 2;
+
 
 export const recordVerdictResponseDocumentApprovalsItemPagesMin = 2;
 export const recordVerdictResponseDocumentApprovalsItemPagesMax = 2;
+
+export const recordVerdictResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const recordVerdictResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const recordVerdictResponseMergeResolutionsRangesItemMin = 2;
+export const recordVerdictResponseMergeResolutionsRangesItemMax = 2;
+
+export const recordVerdictResponseMergeResolutionsRangesMin = 2;
+export const recordVerdictResponseMergeResolutionsRangesMax = 2;
 
 export const recordVerdictResponseManualPlacementsItemPagesMin = 2;
 export const recordVerdictResponseManualPlacementsItemPagesMax = 2;
@@ -2775,8 +4047,24 @@ export const RecordVerdictResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(recordVerdictResponsePacketFilesItemPagesMin).max(recordVerdictResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -2863,8 +4151,16 @@ export const RecordVerdictResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(recordVerdictResponseDocumentApprovalsItemPageRangesItemMin).max(recordVerdictResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(recordVerdictResponseMergeResolutionsRangesItemMin).max(recordVerdictResponseMergeResolutionsRangesItemMax)).min(recordVerdictResponseMergeResolutionsRangesMin).max(recordVerdictResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),
@@ -2920,9 +4216,21 @@ export const RecordPlacementBody = zod.object({
   "runId": zod.string().optional()
 })
 
+export const recordPlacementResponsePacketFilesItemPagesMin = 2;
+export const recordPlacementResponsePacketFilesItemPagesMax = 2;
+
 
 export const recordPlacementResponseDocumentApprovalsItemPagesMin = 2;
 export const recordPlacementResponseDocumentApprovalsItemPagesMax = 2;
+
+export const recordPlacementResponseDocumentApprovalsItemPageRangesItemMin = 2;
+export const recordPlacementResponseDocumentApprovalsItemPageRangesItemMax = 2;
+
+export const recordPlacementResponseMergeResolutionsRangesItemMin = 2;
+export const recordPlacementResponseMergeResolutionsRangesItemMax = 2;
+
+export const recordPlacementResponseMergeResolutionsRangesMin = 2;
+export const recordPlacementResponseMergeResolutionsRangesMax = 2;
 
 export const recordPlacementResponseManualPlacementsItemPagesMin = 2;
 export const recordPlacementResponseManualPlacementsItemPagesMax = 2;
@@ -2983,8 +4291,24 @@ export const RecordPlacementResponse = zod.object({
   "decidedAt": zod.string()
 }).optional(),
   "lastRunError": zod.string().optional().describe('Plain-language reason the last analyzer kick failed (packet reverted to gated). Cleared by the next successful upload, gate decision, or run ingest.\n'),
-  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from')
+  "uploaderIp": zod.string().optional().describe('audit trail — client IP the packet upload arrived from'),
+  "files": zod.array(zod.object({
+  "filename": zod.string(),
+  "pages": zod.array(zod.number()).min(recordPlacementResponsePacketFilesItemPagesMin).max(recordPlacementResponsePacketFilesItemPagesMax)
+})).optional().describe('Multi-file provenance (assembled packets only): each source file\'s name and its [first,last] span in the packet\'s global page numbering. Absent on single-PDF uploads.\n')
 }).optional().describe('Portal-owned packet state machine — the staged C2 intake flow: preflight_running → gated → processing → report. Persisted server-side so the gate physically blocks; no client-side choreography can advance it. The spec §3 auto rule (<20 clean pages auto-proceed) is currently suspended: every packet gates so staff can pick the run\'s model plan before spend.\n'),
+  "packetManifest": zod.object({
+  "files": zod.array(zod.object({
+  "id": zod.string(),
+  "filename": zod.string(),
+  "sizeBytes": zod.number(),
+  "pages": zod.number(),
+  "flags": zod.array(zod.string()).describe('deterministic per-file quality flags (same checks as pre-flight, no model calls)'),
+  "removed": zod.boolean()
+})),
+  "createdAt": zod.string(),
+  "assembledAt": zod.string().optional().describe('set when assemble consumed this manifest (staging bytes are gone)')
+}).optional().describe('Multi-file intake staging (Phase 5 v1): the reviewable file list built before any analysis. Lives on the application until assemble replaces the packet; assembling marks it consumed. Removed files are simply skipped at assemble — no defer queue.\n'),
   "template": zod.object({
   "template": zod.string(),
   "version": zod.number(),
@@ -3071,8 +4395,16 @@ export const RecordPlacementResponse = zod.object({
   "outcome": zod.enum(['approved', 'approved_incomplete', 'rejected']),
   "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
   "decidedAt": zod.string(),
-  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)')
+  "approvedDocId": zod.string().optional().describe('registry row created by materialization (approved outcomes only)'),
+  "pageRanges": zod.array(zod.array(zod.number()).min(recordPlacementResponseDocumentApprovalsItemPageRangesItemMin).max(recordPlacementResponseDocumentApprovalsItemPageRangesItemMax)).optional().describe('For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.\n')
 }).describe('A per-DOCUMENT human approval (the filing decision) — the unit between page decisions and block verdicts. Tagged to a block and, for set blocks, a variant. approved\/approved_incomplete materialize into the approved registry through the same seam as block accepts; approved_incomplete additionally requests a new version. Append-only on the application; a re-approval of the same pages supersedes via the registry, never deletes.\n')).optional().describe('Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned.\n'),
+  "mergeResolutions": zod.record(zod.string(), zod.object({
+  "runId": zod.string(),
+  "ranges": zod.array(zod.array(zod.number()).min(recordPlacementResponseMergeResolutionsRangesItemMin).max(recordPlacementResponseMergeResolutionsRangesItemMax)).min(recordPlacementResponseMergeResolutionsRangesMin).max(recordPlacementResponseMergeResolutionsRangesMax).describe('the two inclusive page ranges the recommendation covers'),
+  "decision": zod.enum(['merged', 'dismissed']),
+  "decidedBy": zod.enum(['Originator', 'Underwriter', 'Manager']),
+  "decidedAt": zod.string()
+}).describe('The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by \"<runId>:p<f>-<l>|p<f>-<l>\" (ranges sorted by first page). Latest decision wins — reversible.\n')).optional().describe('Merge-recommendation decisions, keyed \"<runId>:p<f>-<l>|p<f>-<l>\". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.\n'),
   "variants": zod.record(zod.string(), zod.array(zod.object({
   "id": zod.string(),
   "descriptor": zod.record(zod.string(), zod.string()).describe('descriptorField key -> value, keys exactly as the template block declares'),

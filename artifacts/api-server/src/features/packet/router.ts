@@ -15,7 +15,7 @@ import { HttpError, isHttpError } from "../../lib/httpError";
 import { clientIp } from "../../lib/clientIp";
 import { readApplication, updateApplication, type Application } from "../intake/store";
 import { isSafeSegment } from "../intake/blocks";
-import { readPdfInfo, runPreflight } from "./preflight";
+import { readPdfInfo, runPreflight, type PdfInfo } from "./preflight";
 import {
   openPacketPdfStream,
   openPageThumbnailStream,
@@ -127,6 +127,116 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage, limits: { fileSize: 100 * 1024 * 1024 } });
 
+/**
+ * Shared acceptance path for a validated packet PDF sitting in a temp file:
+ * claim (preflight_running) → deterministic pre-flight → durable byte writes →
+ * guarded finalize to gated. Used by the single-PDF upload route AND the
+ * multi-file assemble route (which concatenates first, then flows through this
+ * exact same machine — the analyzer never knows the difference).
+ * Throws HttpError; always consumes (deletes) tempPath.
+ */
+export async function acceptPacketPdf(opts: {
+  appId: string;
+  tempPath: string;
+  originalName: string;
+  sizeBytes: number;
+  info: PdfInfo;
+  uploaderIp?: string;
+  /** multi-file provenance: each source file's global page span */
+  files?: { filename: string; pages: [number, number] }[];
+  /** stamp packetManifest.assembledAt (assemble route only) */
+  consumeManifest?: boolean;
+}): Promise<Application> {
+  const { appId, tempPath } = opts;
+  let result: Application | undefined;
+  await withPacketLock(appId, async () => {
+    const base: PacketState = {
+      filename: opts.originalName,
+      sizeBytes: opts.sizeBytes,
+      pages: opts.info.pages,
+      sha256: createHash("sha256").update(readFileSync(tempPath)).digest("hex"),
+      uploadedAt: new Date().toISOString(),
+      state: "preflight_running",
+      ...(opts.uploaderIp ? { uploaderIp: opts.uploaderIp } : {}),
+      ...(opts.files ? { files: opts.files } : {}),
+    };
+    let previousPacket: PacketState | undefined;
+    let claimed: Application | undefined;
+    try {
+      claimed = await updateApplication(appId, (app) => {
+        if (app.packet?.state === "processing") {
+          throw new HttpError(409, "Analyzer is running for this packet — wait for the run to land, then re-upload");
+        }
+        previousPacket = app.packet;
+        app.packet = base;
+        return app;
+      });
+    } catch (err) {
+      unlinkSync(tempPath);
+      throw err;
+    }
+    if (!claimed) {
+      unlinkSync(tempPath);
+      throw new HttpError(404, "Application not found");
+    }
+
+    const packet: PacketState = { ...base };
+    const thumbsStagingDir = path.join(
+      os.tmpdir(),
+      `packet-thumbs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    );
+    const releaseClaim = async () => {
+      try {
+        await updateApplication(appId, (a) => {
+          if (a.packet?.state === "preflight_running" && a.packet.sha256 === base.sha256) {
+            a.packet = previousPacket;
+          }
+          return a;
+        });
+      } catch {
+        // Releasing is best-effort; the original error is what the client sees.
+      }
+    };
+    try {
+      packet.preflight = await runPreflight(tempPath, opts.info, thumbsStagingDir);
+    } catch (err) {
+      rmSync(thumbsStagingDir, { recursive: true, force: true });
+      unlinkSync(tempPath);
+      await releaseClaim();
+      throw new HttpError(500, `Pre-flight failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    // Write order on REPLACE: thumbnails first, integrity-bearing PDF LAST —
+    // see the ordering note in the upload route history (v0.7 ops notes).
+    try {
+      for (const t of packet.preflight.thumbnails) {
+        await putPageThumbnail(appId, t.page, path.join(thumbsStagingDir, `page-${t.page}.png`));
+      }
+      await putPacketPdf(appId, tempPath);
+    } catch (err) {
+      await releaseClaim();
+      throw new HttpError(500, `Packet storage write failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      rmSync(thumbsStagingDir, { recursive: true, force: true });
+      rmSync(tempPath, { force: true });
+    }
+
+    // Spec §3 auto rule remains SUSPENDED: every packet gates for a model plan.
+    packet.state = "gated";
+    result = await updateApplication(appId, (a) => {
+      if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
+        throw new HttpError(409, "This upload was superseded by a newer upload");
+      }
+      a.packet = packet;
+      if (opts.consumeManifest && a.packetManifest) {
+        a.packetManifest = { ...a.packetManifest, assembledAt: new Date().toISOString() };
+      }
+      return a;
+    });
+    if (!result) throw new HttpError(404, "Application not found");
+  });
+  return result!;
+}
+
 const router: IRouter = Router();
 
 /**
@@ -170,166 +280,23 @@ router.post(
       return;
     }
 
-    await withPacketLock(ctx.app.id, async () => {
-      // State 1: preflight_running — claimed ATOMICALLY before the work starts
-      // (crash-honest). A packet mid-analysis refuses replacement: an older
-      // request must never overwrite newer state.
-      const base: PacketState = {
-        filename: originalName,
+    try {
+      const app = await acceptPacketPdf({
+        appId: ctx.app.id,
+        tempPath,
+        originalName,
         sizeBytes,
-        pages: info.pages,
-        sha256: createHash("sha256").update(readFileSync(tempPath)).digest("hex"),
-        uploadedAt: new Date().toISOString(),
-        state: "preflight_running",
+        info,
         ...(clientIp(req) ? { uploaderIp: clientIp(req) } : {}),
-      };
-      let claimed: Application | undefined;
-      let previousPacket: PacketState | undefined;
-      try {
-        claimed = await updateApplication(ctx.app.id, (app) => {
-          if (app.packet?.state === "processing") {
-            throw new HttpError(409, "Analyzer is running for this packet — wait for the run to land, then re-upload");
-          }
-          previousPacket = app.packet;
-          app.packet = base;
-          return app;
-        });
-      } catch (err) {
-        unlinkSync(tempPath);
-        if (isHttpError(err)) {
-          res.status(err.status).json({ error: err.message });
-          return;
-        }
-        throw err;
-      }
-      if (!claimed) {
-        unlinkSync(tempPath);
-        res.status(404).json({ error: "Application not found" });
+      });
+      res.json(UploadPacketResponse.parse(app));
+    } catch (err) {
+      if (isHttpError(err)) {
+        res.status(err.status).json({ error: err.message });
         return;
       }
-
-      // Pre-flight runs OUTSIDE any transaction — never hold a row lock across
-      // page rasterization. Thumbnails rasterize into local staging first.
-      const packet: PacketState = { ...base };
-      const thumbsStagingDir = path.join(
-        os.tmpdir(),
-        `packet-thumbs-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      );
-      // A failed upload must never strand the claim in preflight_running:
-      // restore whatever packet state existed before this upload (guarded —
-      // only if our claim is still the one in the row).
-      const releaseClaim = async () => {
-        try {
-          await updateApplication(ctx.app.id, (a) => {
-            if (a.packet?.state === "preflight_running" && a.packet.sha256 === base.sha256) {
-              a.packet = previousPacket;
-            }
-            return a;
-          });
-        } catch {
-          // Releasing is best-effort; the original error is what the client sees.
-        }
-      };
-      try {
-        packet.preflight = await runPreflight(tempPath, info, thumbsStagingDir);
-      } catch (err) {
-        rmSync(thumbsStagingDir, { recursive: true, force: true });
-        unlinkSync(tempPath);
-        await releaseClaim();
-        res.status(500).json({ error: `Pre-flight failed: ${err instanceof Error ? err.message : String(err)}` });
-        return;
-      }
-      // Accepted — bytes go to App Storage BEFORE any state the client can see
-      // lands, so a visible packet always references durable bytes. Write order
-      // matters on REPLACE: thumbnails (cosmetic, rewritten on every upload)
-      // go first; the PDF — the integrity-bearing object the record's sha
-      // references — goes LAST. Any failure before the PDF write leaves the
-      // previous packet's bytes untouched, so releaseClaim() restores a record
-      // whose sha still matches its bytes. Residual (rare): a failure AFTER
-      // the PDF write can still restore a record over replaced bytes — the
-      // full fix is sha-versioned object keys, deferred until it earns its
-      // prod-data migration (v0.7 ops notes).
-      try {
-        for (const t of packet.preflight.thumbnails) {
-          await putPageThumbnail(ctx.app.id, t.page, path.join(thumbsStagingDir, `page-${t.page}.png`));
-        }
-        await putPacketPdf(ctx.app.id, tempPath);
-      } catch (err) {
-        await releaseClaim();
-        res.status(500).json({ error: `Packet storage write failed: ${err instanceof Error ? err.message : String(err)}` });
-        return;
-      } finally {
-        rmSync(thumbsStagingDir, { recursive: true, force: true });
-        rmSync(tempPath, { force: true });
-      }
-
-      // Spec §3 auto rule (<20 clean pages) is SUSPENDED for now: every packet
-      // gates so staff pick the run's model plan before any spend.
-      const auto = false as boolean;
-      if (!auto) {
-        packet.state = "gated";
-        let app: Application | undefined;
-        try {
-          // Guarded finalize: only OUR claim (sha, still preflight_running) may
-          // land — a concurrent re-upload that re-claimed wins over this one.
-          app = await updateApplication(ctx.app.id, (a) => {
-            if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
-              throw new HttpError(409, "This upload was superseded by a newer upload");
-            }
-            a.packet = packet;
-            return a;
-          });
-        } catch (err) {
-          if (isHttpError(err)) {
-            res.status(err.status).json({ error: err.message });
-            return;
-          }
-          throw err;
-        }
-        if (!app) {
-          res.status(404).json({ error: "Application not found" });
-          return;
-        }
-        res.json(UploadPacketResponse.parse(app));
-        return;
-      }
-
-      packet.gate = { decision: "auto", decidedAt: new Date().toISOString() };
-      packet.state = "processing";
-      let processing: Application | undefined;
-      try {
-        // Same guard as above — only the winning upload may enter processing
-        // and kick the analyzer.
-        processing = await updateApplication(ctx.app.id, (a) => {
-          if (a.packet?.state !== "preflight_running" || a.packet.sha256 !== packet.sha256) {
-            throw new HttpError(409, "This upload was superseded by a newer upload");
-          }
-          a.packet = packet;
-          return a;
-        });
-      } catch (err) {
-        if (isHttpError(err)) {
-          res.status(err.status).json({ error: err.message });
-          return;
-        }
-        throw err;
-      }
-      if (!processing) {
-        res.status(404).json({ error: "Application not found" });
-        return;
-      }
-      try {
-        await kickAnalyzer(processing.id, packet.sha256, "auto");
-      } catch (err) {
-        // Honest failure: fall back to the gate rather than pretending a run started.
-        const reason = err instanceof Error ? err.message : String(err);
-        await revertToGated(ctx.app.id, packet.sha256, reason);
-        res.status(502).json({ error: reason });
-        return;
-      }
-      // state=processing — the run lands asynchronously via the ingest endpoint.
-      res.json(UploadPacketResponse.parse(processing));
-    });
+      throw err;
+    }
   },
 );
 

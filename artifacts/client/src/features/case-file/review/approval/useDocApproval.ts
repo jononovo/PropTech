@@ -5,10 +5,11 @@ import {
   getGetApplicationQueryKey,
   getListApplicationsQueryKey,
   useRecordDocumentApproval,
+  useRecordMergeResolution,
 } from '@workspace/api-client-react';
 import { useToast } from '@/hooks/use-toast';
 import { useProfile } from '../../../auth/ProfileContext';
-import { mergePairKey, type DocGroup, type MergeDecision, type PageDecisionValue } from './docGroups';
+import type { DocGroup, MergeDecision, PageDecisionValue } from './docGroups';
 
 /**
  * Page-decision state (the pre-step — nothing lands anywhere) + the
@@ -22,14 +23,6 @@ export function useDocApproval(applicationId: string) {
 
   /** groupId -> page -> decision (pre-step, client-side only) */
   const [decisions, setDecisions] = useState<Record<string, Record<number, PageDecisionValue>>>({});
-  /** adjacent groups the human linked as one document */
-  const [links, setLinks] = useState<Array<[string, string]>>([]);
-  /**
-   * merge-proposal decisions (session-scoped for now): pairKey -> merged|dismissed.
-   * A PENDING proposal gates approval of both groups; dismissed stays visible
-   * (grayed) so the reviewer can change their mind.
-   */
-  const [mergeRes, setMergeRes] = useState<Record<string, MergeDecision>>({});
 
   const mutation = useRecordDocumentApproval({
     mutation: {
@@ -45,13 +38,28 @@ export function useDocApproval(applicationId: string) {
     },
   });
 
+  // Merge-recommendation decisions persist on the application (audit trail +
+  // the approval gate must survive a refresh). Upsert — reversible by design.
+  const mergeMutation = useRecordMergeResolution({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetApplicationQueryKey(applicationId) });
+      },
+      onError: (err: unknown) =>
+        toast({
+          description: `Merge decision not saved — ${err instanceof Error ? err.message : 'request failed'}`,
+        }),
+    },
+  });
+
   const decide = (groupId: string, page: number, value: PageDecisionValue) =>
     setDecisions((d) => ({ ...d, [groupId]: { ...(d[groupId] ?? {}), [page]: value } }));
 
-  const link = (aId: string, bId: string) => setLinks((ls) => [...ls, [aId, bId]]);
-
-  const resolveMerge = (aId: string, bId: string, decision: MergeDecision) =>
-    setMergeRes((m) => ({ ...m, [mergePairKey(aId, bId)]: decision }));
+  const resolveMerge = (runId: string, ranges: [number, number][], decision: MergeDecision) =>
+    mergeMutation.mutate({
+      applicationId,
+      data: { runId, ranges, decision, decidedBy: profile.role as 'Originator' | 'Underwriter' | 'Manager' },
+    });
 
   /** every page decided → the roll-up (rail auto-switches to document mode) */
   const fullyDecided = (group: DocGroup) => {
@@ -81,6 +89,7 @@ export function useDocApproval(applicationId: string) {
           ...(opts.variantId ? { variantId: opts.variantId } : {}),
           runId: opts.runId,
           pages: group.pages,
+          ...(group.ranges.length > 1 ? { pageRanges: group.ranges } : {}),
           ...(pageDecisions.length > 0 ? { pageDecisions } : {}),
           outcome: opts.outcome,
           decidedBy: profile.role as 'Originator' | 'Underwriter' | 'Manager',
@@ -105,9 +114,6 @@ export function useDocApproval(applicationId: string) {
   return {
     decisions,
     decide,
-    links,
-    link,
-    mergeRes,
     resolveMerge,
     fullyDecided,
     submit,

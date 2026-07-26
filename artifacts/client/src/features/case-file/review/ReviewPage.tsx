@@ -8,7 +8,7 @@ import { CenterCard, ModeButton, Room, ScoreChip } from './components/chrome';
 import { AllClear, PageImage } from './components/PageViewer';
 import { FilmStrip } from './components/FilmStrip';
 import { Rail } from './components/Rail';
-import { buildDocGroups, firstOpenGroup, mergePairKey, type DocGroup } from './approval/docGroups';
+import { buildDocGroups, firstOpenGroup, type DocGroup } from './approval/docGroups';
 import { useDocApproval } from './approval/useDocApproval';
 import { DocGroupsStrip } from './approval/DocGroupsStrip';
 import { DocApprovalRail } from './approval/DocApprovalRail';
@@ -95,7 +95,8 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
 
   // ── document-approval layer ────────────────────────────────────────────────
   const approval = useDocApproval(id);
-  const groups = useMemo(() => buildDocGroups(model, approval.links), [model, approval.links]);
+  const mergeRes = model.app.mergeResolutions ?? {};
+  const groups = useMemo(() => buildDocGroups(model, mergeRes), [model, mergeRes]);
   // landing rule: DOCUMENT mode on the first unsettled document
   const [docGroupId, setDocGroupId] = useState<string | null>(() => firstOpenGroup(groups)?.id ?? null);
   const docGroup = docGroupId ? groups.find((g) => g.id === docGroupId) : undefined;
@@ -128,12 +129,12 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
     setDocGroupId(open[0]?.id ?? null);
   };
 
-  /** merge proposal state for a group (pending gates approval) */
+  /** merge recommendation state for a group (pending gates approval) */
   const mergeFor = (g: DocGroup) => {
     const partner = g.mergeWith ? groups.find((x) => x.id === g.mergeWith) : undefined;
     if (!partner) return undefined;
     const state: 'merged' | 'dismissed' | 'pending' =
-      (approval.mergeRes[mergePairKey(g.id, partner.id)] as 'merged' | 'dismissed' | undefined) ?? 'pending';
+      (g.mergeKey ? mergeRes[g.mergeKey]?.decision : undefined) ?? 'pending';
     return { state, partnerPages: partner.pages, onJump: () => setDocGroupId(partner.id) };
   };
 
@@ -326,12 +327,11 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
               activePage={activePage}
               selectedGroupId={docGroup?.id ?? null}
               decisions={approval.decisions}
-              mergeRes={approval.mergeRes}
+              mergeRes={mergeRes}
               onPageClick={jumpToPage}
               onGroupSelect={setDocGroupId}
               onDecide={onDecide}
-              onLink={approval.link}
-              onResolveMerge={approval.resolveMerge}
+              onResolveMerge={(ranges, d) => approval.resolveMerge(run.runId, ranges, d)}
               onQuickApprove={quickApprove}
             />
           ) : (

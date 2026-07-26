@@ -21,4 +21,9 @@ export interface DocumentApprovalInput {
   pageDecisions?: PageDecision[];
   outcome: DocumentApprovalInputOutcome;
   decidedBy: DocumentApprovalInputDecidedBy;
+  /**
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
 }

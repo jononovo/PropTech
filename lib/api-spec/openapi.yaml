@@ -608,6 +608,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/merge-resolutions:
+    post:
+      operationId: recordMergeResolution
+      tags: [approved-docs]
+      summary: Record (or change) the human decision on an analyzer merge recommendation
+      description: >
+        A merge recommendation (two run groups filed under the same block) must
+        be resolved — merged or dismissed — before either group can be approved.
+        Upsert keyed by run + the two page ranges; latest decision wins, so a
+        dismissed recommendation can be revisited. Portal-owned, additive.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergeResolutionInput"
+      responses:
+        "200":
+          description: Updated application (mergeResolutions upserted)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: Invalid body or ranges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
   /applications/{applicationId}/document-approvals:
     post:
       operationId: recordDocumentApproval
@@ -830,6 +867,134 @@ paths:
                 $ref: "#/components/schemas/ApiMessage"
         "502":
           description: Auto-proceed passed but the analyzer could not be reached — packet reverted to gated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet/files:
+    post:
+      operationId: uploadPacketFiles
+      tags: [packet]
+      summary: Multi-file intake — stage several PDFs and get a reviewable manifest
+      description: >
+        Phase 5 (multi-file intake v1). Accepts up to 25 PDFs in one drop and builds a
+        MANIFEST before any analysis: per file — name, size, page count, and the same
+        deterministic quality flags pre-flight uses (no model calls). Each file can then be
+        removed from the manifest (X) before assembly; assemble concatenates the kept files
+        into ONE packet PDF that flows through the existing pre-flight → gate → run pipeline
+        unchanged (global page addressing). Re-posting replaces the whole manifest. Refused
+        (409) while an analyzer run is mid-flight. Removed = gone at assemble time; there is
+        no defer queue in v1 — re-upload later instead.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  items: { type: string, format: binary }
+      responses:
+        "200":
+          description: Application with the new packetManifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: No files, a non-PDF, or an unreadable/encrypted PDF (whole drop rejected — fix and re-drop)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: An analyzer run is mid-flight for this packet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet/files/{fileId}:
+    post:
+      operationId: setPacketFileRemoved
+      tags: [packet]
+      summary: Toggle a manifest file's removed state (the X — reversible until assemble)
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [removed]
+              properties:
+                removed: { type: boolean }
+      responses:
+        "200":
+          description: Application with the updated manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "404":
+          description: Application, manifest, or file not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Manifest already assembled or analyzer mid-flight
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+  /applications/{applicationId}/packet/assemble:
+    post:
+      operationId: assemblePacket
+      tags: [packet]
+      summary: Concatenate the kept manifest files into ONE packet and run pre-flight
+      description: >
+        Assembles the manifest's kept (non-removed) files, in manifest order, into a single
+        packet PDF and pushes it through the exact single-packet path (pre-flight, gated
+        state, gate decision, analyzer). packet.files records each source file's global page
+        span for provenance. At least one kept file required.
+      parameters:
+        - $ref: "#/components/parameters/ApplicationId"
+      responses:
+        "200":
+          description: Application with packet state gated (same shape as uploadPacket)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Application"
+        "400":
+          description: No manifest, or every file was removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "404":
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiMessage"
+        "409":
+          description: Analyzer mid-flight, staged bytes missing, or a concurrent upload superseded this
           content:
             application/json:
               schema:
@@ -1499,6 +1664,17 @@ components:
           minItems: 2
           maxItems: 2
         runId: { type: string, description: "analyzer run the assignment came from (extract only)" }
+        pageRanges:
+          type: array
+          description: >
+            When the document was assembled from a human-accepted merge of
+            non-adjacent ranges: every [first,last] range extracted, in order.
+            `pages` is the envelope. Absent = single contiguous range.
+          items:
+            type: array
+            items: { type: integer }
+            minItems: 2
+            maxItems: 2
         packetSha256: { type: string }
         sourceFilename: { type: string, description: "original upload filename (copy only)" }
         approvedBy: { type: string }
@@ -1552,6 +1728,18 @@ components:
           enum: [Originator, Underwriter, Manager]
         decidedAt: { type: string }
         approvedDocId: { type: string, description: "registry row created by materialization (approved outcomes only)" }
+        pageRanges:
+          type: array
+          description: >
+            For a document assembled from a human-accepted merge of
+            NON-ADJACENT ranges: every inclusive [first,last] range that makes
+            up the document, ascending, non-overlapping. `pages` remains the
+            envelope [min,max] for old readers. Absent = single contiguous range.
+          items:
+            type: array
+            items: { type: integer }
+            minItems: 2
+            maxItems: 2
     DocumentApprovalInput:
       type: object
       required: [blockId, runId, pages, outcome, decidedBy]
@@ -1571,6 +1759,59 @@ components:
         outcome:
           type: string
           enum: [approved, approved_incomplete, rejected]
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
+        pageRanges:
+          type: array
+          items:
+            type: array
+            items: { type: integer }
+            minItems: 2
+            maxItems: 2
+    MergeResolution:
+      type: object
+      description: >
+        The human decision on an analyzer merge recommendation between two run
+        groups. Keyed on the application by "<runId>:p<f>-<l>|p<f>-<l>"
+        (ranges sorted by first page). Latest decision wins — reversible.
+      required: [runId, ranges, decision, decidedBy, decidedAt]
+      properties:
+        runId: { type: string }
+        ranges:
+          type: array
+          description: the two inclusive page ranges the recommendation covers
+          items:
+            type: array
+            items: { type: integer }
+            minItems: 2
+            maxItems: 2
+          minItems: 2
+          maxItems: 2
+        decision:
+          type: string
+          enum: [merged, dismissed]
+        decidedBy:
+          type: string
+          enum: [Originator, Underwriter, Manager]
+        decidedAt: { type: string }
+    MergeResolutionInput:
+      type: object
+      required: [runId, ranges, decision, decidedBy]
+      properties:
+        runId: { type: string }
+        ranges:
+          type: array
+          items:
+            type: array
+            items: { type: integer }
+            minItems: 2
+            maxItems: 2
+          minItems: 2
+          maxItems: 2
+        decision:
+          type: string
+          enum: [merged, dismissed]
         decidedBy:
           type: string
           enum: [Originator, Underwriter, Manager]
@@ -1640,6 +1881,8 @@ components:
             $ref: "#/components/schemas/Verdict"
         packet:
           $ref: "#/components/schemas/PacketState"
+        packetManifest:
+          $ref: "#/components/schemas/PacketManifest"
         template:
           $ref: "#/components/schemas/Template"
         templateHistory:
@@ -1667,6 +1910,14 @@ components:
             is the decision trail on the application. Portal-owned.
           items:
             $ref: "#/components/schemas/DocumentApproval"
+        mergeResolutions:
+          type: object
+          description: >
+            Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>".
+            A PENDING recommendation (no entry) gates approval of both groups.
+            Portal-owned.
+          additionalProperties:
+            $ref: "#/components/schemas/MergeResolution"
         variants:
           type: object
           description: >
@@ -1938,6 +2189,51 @@ components:
         uploaderIp:
           type: string
           description: audit trail — client IP the packet upload arrived from
+        files:
+          type: array
+          description: >
+            Multi-file provenance (assembled packets only): each source file's
+            name and its [first,last] span in the packet's global page numbering.
+            Absent on single-PDF uploads.
+          items:
+            type: object
+            required: [filename, pages]
+            properties:
+              filename: { type: string }
+              pages:
+                type: array
+                items: { type: integer }
+                minItems: 2
+                maxItems: 2
+    PacketManifestFile:
+      type: object
+      required: [id, filename, sizeBytes, pages, flags, removed]
+      properties:
+        id: { type: string }
+        filename: { type: string }
+        sizeBytes: { type: integer }
+        pages: { type: integer }
+        flags:
+          type: array
+          description: deterministic per-file quality flags (same checks as pre-flight, no model calls)
+          items: { type: string }
+        removed: { type: boolean }
+    PacketManifest:
+      type: object
+      description: >
+        Multi-file intake staging (Phase 5 v1): the reviewable file list built before any
+        analysis. Lives on the application until assemble replaces the packet; assembling
+        marks it consumed. Removed files are simply skipped at assemble — no defer queue.
+      required: [files, createdAt]
+      properties:
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/PacketManifestFile"
+        createdAt: { type: string }
+        assembledAt:
+          type: string
+          description: set when assemble consumed this manifest (staging bytes are gone)
     AnalysisCoreFields:
       type: object
       description: >
@@ -2049,6 +2345,40 @@ components:
         gate:
           type: string
           enum: [auto, confirmed, bypassed]
+    SatisfactionGroup:
+      type: object
+      description: one variant-shaped pile of run documents, as the pass read them
+      required: [docPages]
+      properties:
+        variantId: { type: string, description: "declared variant this pile belongs to, when the pass could tell" }
+        descriptorGuess:
+          type: object
+          description: descriptor values the pass read off the documents (keys = the block's descriptorFields)
+          additionalProperties: { type: string }
+        docPages:
+          type: array
+          description: "[first,last] of each run document in this pile"
+          items:
+            type: array
+            items: { type: integer }
+            minItems: 2
+            maxItems: 2
+        coverage: { type: string, description: "human sentence on sequence coverage (periods present, holes)" }
+    BlockSatisfaction:
+      type: object
+      required: [groups, gaps, summary, generatedAt]
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/SatisfactionGroup"
+        gaps:
+          type: array
+          description: what is still missing, one human sentence each (empty = nothing obvious)
+          items: { type: string }
+        summary: { type: string, description: "one paragraph — the expert read of where this requirement stands" }
+        model: { type: string, description: "text model that produced this (provenance)" }
+        generatedAt: { type: string }
     AnalysisRun:
       type: object
       required: [runId, startedAt, pipelineVersion, preflight, documents, unassigned, whisper]
@@ -2089,6 +2419,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AnalysisUnassigned"
+        satisfaction:
+          type: object
+          description: >
+            Satisfaction pass (Phase 4) — per SET block with ≥1 assigned
+            document, a text-LLM read of how the run's documents map onto the
+            block's declared variants and rules. Assistive only, never a gate;
+            humans re-assign freely. Absent on runs before the pass existed or
+            when no set block had documents.
+          additionalProperties:
+            $ref: "#/components/schemas/BlockSatisfaction"
         whisper:
           type: array
           items: { type: string }

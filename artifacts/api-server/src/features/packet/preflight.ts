@@ -144,6 +144,22 @@ async function renderThumbnail(pdfPath: string, page: number, thumbsDir: string)
   if (made) renameSync(path.join(thumbsDir, made), path.join(thumbsDir, `page-${page}.png`));
 }
 
+/**
+ * Per-file quality flags for the multi-file intake manifest (Phase 5) — the
+ * SAME deterministic checks pre-flight runs (blank/contrast/duplicate raster
+ * pass + embedded-image DPI), without thumbnails or estimates. No model calls.
+ */
+export async function quickFileFlags(pdfPath: string): Promise<string[]> {
+  const tmp = mkdtempSync(path.join(os.tmpdir(), "sheaf-manifest-"));
+  try {
+    await run("pdftoppm", ["-r", "36", pdfPath, path.join(tmp, "page")]);
+    const stats = statsFromPpmDir(tmp, "page");
+    return buildFlags(stats, await lowDpiPages(pdfPath));
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 export async function runPreflight(pdfPath: string, info: PdfInfo, thumbsDir: string): Promise<PreflightReport> {
   const tmp = mkdtempSync(path.join(os.tmpdir(), "sheaf-preflight-"));
   try {

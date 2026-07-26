@@ -31,4 +31,10 @@ export interface DocumentApproval {
   decidedAt: string;
   /** registry row created by materialization (approved outcomes only) */
   approvedDocId?: string;
+  /**
+     * For a document assembled from a human-accepted merge of NON-ADJACENT ranges: every inclusive [first,last] range that makes up the document, ascending, non-overlapping. `pages` remains the envelope [min,max] for old readers. Absent = single contiguous range.
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
 }

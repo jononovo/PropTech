@@ -28,6 +28,12 @@ export interface ApprovedDocument {
   pages?: number[];
   /** analyzer run the assignment came from (extract only) */
   runId?: string;
+  /**
+     * When the document was assembled from a human-accepted merge of non-adjacent ranges: every [first,last] range extracted, in order. `pages` is the envelope. Absent = single contiguous range.
+     * @items.minItems 2
+     * @items.maxItems 2
+     */
+  pageRanges?: number[][];
   packetSha256?: string;
   /** original upload filename (copy only) */
   sourceFilename?: string;

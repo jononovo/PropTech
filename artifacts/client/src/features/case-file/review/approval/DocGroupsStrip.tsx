@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, CheckCircle2, Flag, ImageOff, Link as LinkIcon, X } from 'lucide-react';
 import { pageImageUrl } from '../reviewModel';
 import type { DocGroup, MergeDecision, PageDecisionValue } from './docGroups';
-import { mergePairKey } from './docGroups';
 
 /**
  * Grouped filmstrip — A1 card treatment. Each group is a full card: header
@@ -40,7 +39,6 @@ export function DocGroupsStrip({
   onPageClick,
   onGroupSelect,
   onDecide,
-  onLink,
   onResolveMerge,
   onQuickApprove,
 }: {
@@ -50,12 +48,11 @@ export function DocGroupsStrip({
   activePage: number;
   selectedGroupId: string | null;
   decisions: Record<string, Record<number, PageDecisionValue>>;
-  mergeRes: Record<string, MergeDecision>;
+  mergeRes: Record<string, { decision: MergeDecision }>;
   onPageClick: (page: number) => void;
   onGroupSelect: (id: string) => void;
   onDecide: (groupId: string, page: number, value: PageDecisionValue) => void;
-  onLink: (aId: string, bId: string) => void;
-  onResolveMerge: (aId: string, bId: string, decision: MergeDecision) => void;
+  onResolveMerge: (ranges: [number, number][], decision: MergeDecision) => void;
   onQuickApprove: (group: DocGroup) => void;
 }) {
   const activeRef = useRef<HTMLDivElement | null>(null);
@@ -70,10 +67,10 @@ export function DocGroupsStrip({
         const palette = g.colorSlot >= 0 && !isSettled ? PALETTE[g.colorSlot % PALETTE.length] : NEUTRAL;
         const selected = g.id === selectedGroupId;
         const partner = g.mergeWith ? groups.find((x) => x.id === g.mergeWith) : undefined;
-        const pairKey = partner ? mergePairKey(g.id, partner.id) : null;
-        const mergeState: MergeDecision | 'pending' | null = pairKey
-          ? (mergeRes[pairKey] as MergeDecision | undefined) ?? 'pending'
+        const mergeState: MergeDecision | 'pending' | null = partner
+          ? (g.mergeKey ? mergeRes[g.mergeKey]?.decision : undefined) ?? 'pending'
           : null;
+        const pairRanges: [number, number][] | null = partner ? [g.pages, partner.pages] : null;
         const partnerAdjacent =
           !!partner && (g.pages[1] + 1 === partner.pages[0] || partner.pages[1] + 1 === g.pages[0]);
         const next = groups[i + 1];
@@ -84,7 +81,7 @@ export function DocGroupsStrip({
         return (
           <div key={g.id} className="flex items-stretch gap-3 shrink-0" ref={selected ? activeRef : undefined}>
             <div
-              className={`flex flex-col w-min rounded-md border relative transition-all ${palette.bg} ${
+              className={`flex flex-col w-min min-w-[96px] rounded-md border relative transition-all ${palette.bg} ${
                 selected
                   ? 'border-[var(--ops-accent)] shadow-[0_0_0_1px_rgba(59,130,246,0.25)]'
                   : palette.border
@@ -186,7 +183,7 @@ export function DocGroupsStrip({
                   state={mergeState!}
                   partnerLabel={`pp. ${partner.pages[0]}–${partner.pages[1]}`}
                   onJump={() => onGroupSelect(partner.id)}
-                  onResolve={(d) => onResolveMerge(g.id, partner.id, d)}
+                  onResolve={(d) => onResolveMerge(pairRanges!, d)}
                   testid={`button-merge-hop-${g.pages[0]}`}
                 />
               )}
@@ -198,11 +195,8 @@ export function DocGroupsStrip({
                 side="between"
                 state={mergeState!}
                 partnerLabel="adjacent"
-                onJump={() => onLink(g.id, next.id)}
-                onResolve={(d) => {
-                  onResolveMerge(g.id, next.id, d);
-                  if (d === 'merged') onLink(g.id, next.id);
-                }}
+                onJump={() => onResolveMerge(pairRanges!, 'merged')}
+                onResolve={(d) => onResolveMerge(pairRanges!, d)}
                 testid={`button-link-${g.pages[1]}`}
               />
             )}

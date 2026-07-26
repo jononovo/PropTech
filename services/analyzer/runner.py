@@ -16,6 +16,7 @@ from judge import judge_document, prompt_version as judge_prompt_version
 from naming import derive_name
 from parse import parse_document
 from pdfs import render_pages
+from satisfaction import satisfaction_pass
 from scrutiny import apply_substitution_scrutiny, block_index, deep_scan, needs_deep_scan
 from split_classify import (classify_segment, deterministic_boundaries,
                             llm_refine_boundaries, map_to_block,
@@ -190,6 +191,12 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
     for d in documents:
         d.pop("_substituted_critical", None)
 
+    # satisfaction pass (Phase 4): set blocks with documents get an expert read
+    t = time.monotonic()
+    satisfaction, sat_whispers = await satisfaction_pass(app, blocks_by_id, documents, store, plan.text)
+    timings["satisfactionMs"] = int((time.monotonic() - t) * 1000)
+    whisper.extend(sat_whispers)
+
     timings["totalMs"] = int((time.monotonic() - t_run) * 1000)
     elements_dir = store / "elements"
     artifacts_produced = {  # per-engine honesty — what THIS run actually made
@@ -211,6 +218,7 @@ async def _pipeline(app_id: str, packet_sha256: str, gate: str, plan_ids: dict |
         "preflight": {"pages": len(mds), "flags": pf_flags, "gate": gate},
         "documents": documents,
         "unassigned": unassigned,
+        **({"satisfaction": satisfaction} if satisfaction else {}),
         "whisper": whisper,
     }
     status, body = await portal.post_run(app_id, run)

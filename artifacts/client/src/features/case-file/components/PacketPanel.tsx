@@ -37,6 +37,11 @@ export function PacketPanel({ model, applicationId }: { model: CaseModel; applic
   if (packet?.state === 'report') return null;
   if (packet?.state === 'processing') return <ProcessingCard />;
   if (packet?.state === 'gated') return <GateCard model={model} applicationId={applicationId} />;
+  // Multi-file intake: a pending (un-assembled) manifest replaces the dropzone.
+  const manifest = model.app.packetManifest;
+  if (manifest && !manifest.assembledAt) {
+    return <ManifestCard manifest={manifest} applicationId={applicationId} />;
+  }
   // preflight_running only survives a server crash mid-check — honest retry.
   return <Dropzone applicationId={applicationId} retry={packet?.state === 'preflight_running'} />;
 }
@@ -46,21 +51,25 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : 'upload failed 
 // ─── no packet yet ──────────────────────────────────────────────────────────
 
 export function Dropzone({ applicationId, retry }: { applicationId: string; retry: boolean }) {
-  const { uploadPacket, upload } = usePacketActions(applicationId);
+  const { uploadPacket, upload, uploadPacketFiles, uploadFiles } = usePacketActions(applicationId);
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  const take = (file: File | undefined) => {
-    if (!file) return;
-    if (!(file.type === 'application/pdf' || /\.pdf$/i.test(file.name))) {
-      toast({ description: 'Packets are PDF only — that file was not accepted.' });
+  // One PDF goes straight to pre-flight; several become a reviewable manifest.
+  const take = (list: FileList | File[] | null | undefined) => {
+    const files = Array.from(list ?? []);
+    if (files.length === 0) return;
+    const bad = files.find((f) => !(f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
+    if (bad) {
+      toast({ description: `${bad.name} is not a PDF — the drop was not accepted.` });
       return;
     }
-    uploadPacket(file);
+    if (files.length === 1) uploadPacket(files[0]!);
+    else uploadPacketFiles(files);
   };
 
-  if (upload.isPending) {
+  if (upload.isPending || uploadFiles.isPending) {
     return (
       <div
         className="bg-white border border-[var(--ops-border)] rounded-[6px] p-7 flex flex-col items-center text-center"
@@ -89,7 +98,7 @@ export function Dropzone({ applicationId, retry }: { applicationId: string; retr
         onDrop={(e) => {
           e.preventDefault();
           setDragging(false);
-          take(e.dataTransfer.files?.[0]);
+          take(e.dataTransfer.files);
         }}
         onClick={() => inputRef.current?.click()}
         role="button"
@@ -107,33 +116,141 @@ export function Dropzone({ applicationId, retry }: { applicationId: string; retr
           {retry ? 'Pre-flight didn’t finish — drop the packet again' : 'Drop the application packet'}
         </h2>
         <p className="text-[12.5px] text-[var(--ops-muted)] max-w-[420px] leading-relaxed">
-          One PDF, everything the applicant sent. Pre-flight reads it cover to cover before any money
-          is spent — the verdict lands here first.
+          Everything the applicant sent — one PDF goes straight to pre-flight; several PDFs become a
+          reviewable file list first. No money is spent before the verdict lands here.
         </p>
-        <div className="micro-label text-[9.5px] mt-3">PDF only · click or drag</div>
+        <div className="micro-label text-[9.5px] mt-3">PDF only · one or many · click or drag</div>
         <input
           ref={inputRef}
           type="file"
           accept="application/pdf,.pdf"
+          multiple
           className="hidden"
           data-testid="input-packet-file"
           onChange={(e) => {
-            take(e.target.files?.[0] ?? undefined);
+            take(e.target.files);
             e.target.value = '';
           }}
         />
       </div>
-      {upload.isError && (
+      {(upload.isError || uploadFiles.isError) && (
         <div
           className="mt-3 bg-[var(--ops-critical-wash)] border border-[var(--ops-critical-border)] rounded p-3 flex items-start gap-2.5"
           data-testid="text-packet-error"
         >
           <AlertCircle className="w-3.5 h-3.5 text-[var(--ops-critical-text)] shrink-0 mt-0.5" />
           <div className="text-[12.5px] text-[var(--ops-critical-text)] leading-relaxed">
-            {errMsg(upload.error)} — fix the file and drop it again.
+            {errMsg(upload.isError ? upload.error : uploadFiles.error)} — fix the file and drop it
+            again.
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── manifest — multi-file intake, reviewable before assembly ───────────────
+
+/**
+ * The drop became a file list, not a packet yet. Each file shows the same
+ * deterministic quality flags pre-flight uses; the X removes it from the
+ * eventual packet (reversible until Build). Build concatenates the kept files
+ * into ONE packet PDF that flows through the normal pre-flight → gate path.
+ */
+function ManifestCard({
+  manifest,
+  applicationId,
+}: {
+  manifest: NonNullable<CaseModel['app']['packetManifest']>;
+  applicationId: string;
+}) {
+  const { toggleFileRemoved, setFileRemoved, assemblePacket, assemble } =
+    usePacketActions(applicationId);
+  const kept = manifest.files.filter((f) => !f.removed);
+  const keptPages = kept.reduce((n, f) => n + f.pages, 0);
+
+  if (assemble.isPending) {
+    return (
+      <div
+        className="bg-white border border-[var(--ops-border)] rounded-[6px] p-7 flex flex-col items-center text-center"
+        data-testid="card-assembling"
+      >
+        <Loader2 className="w-5 h-5 text-[var(--ops-accent)] animate-spin mb-3" />
+        <div className="text-[13.5px] font-medium text-[var(--ops-ink)] mb-1">
+          Building the packet
+        </div>
+        <div className="ops-mono text-[11px] text-[var(--ops-muted)]">
+          {kept.length} files → one PDF · then pre-flight
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="bg-white border border-[var(--ops-border)] rounded-[6px]"
+      data-testid="card-packet-manifest"
+    >
+      <div className="px-5 pt-4 pb-3 border-b border-[var(--ops-inner-rule)]">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-semibold text-[15px] text-[var(--ops-ink)]">
+            {manifest.files.length} files dropped — review before building the packet
+          </h2>
+          <span className="ops-mono text-[11px] text-[var(--ops-muted)] whitespace-nowrap">
+            keeping {kept.length}/{manifest.files.length} · {keptPages} pages
+          </span>
+        </div>
+        <p className="text-[12px] text-[var(--ops-muted)] mt-1 leading-relaxed">
+          Removed files are simply left out of the packet — re-drop to start over. Nothing is
+          analyzed until you build.
+        </p>
+      </div>
+      <ul className="divide-y divide-[var(--ops-inner-rule)]">
+        {manifest.files.map((f) => (
+          <li
+            key={f.id}
+            className={`px-5 py-2.5 flex items-center gap-3 ${f.removed ? 'opacity-45' : ''}`}
+            data-testid={`manifest-file-${f.id}`}
+          >
+            <FileText className="w-4 h-4 text-[var(--ops-muted)] shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div
+                className={`text-[12.5px] text-[var(--ops-ink)] truncate ${f.removed ? 'line-through' : ''}`}
+              >
+                {f.filename}
+              </div>
+              <div className="ops-mono text-[10.5px] text-[var(--ops-muted)]">
+                {f.pages} {f.pages === 1 ? 'page' : 'pages'} ·{' '}
+                {(f.sizeBytes / 1024).toFixed(0)} KB
+                {f.flags.length > 0 && (
+                  <span className="text-[var(--ops-critical-text)]"> · {f.flags.join(' · ')}</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => toggleFileRemoved(f.id, !f.removed)}
+              disabled={setFileRemoved.isPending}
+              className="text-[11px] ops-mono px-2 py-1 rounded border border-[var(--ops-border)] hover:bg-[var(--ops-inset)] text-[var(--ops-muted)] shrink-0"
+              data-testid={`button-manifest-${f.removed ? 'restore' : 'remove'}-${f.id}`}
+            >
+              {f.removed ? 'restore' : '✕ remove'}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="px-5 py-3.5 border-t border-[var(--ops-inner-rule)] flex items-center justify-between gap-3">
+        <span className="micro-label text-[9.5px] text-[var(--ops-faint)]">
+          files are concatenated in this order · one packet · normal pre-flight follows
+        </span>
+        <button
+          onClick={() => assemblePacket()}
+          disabled={kept.length === 0}
+          className="px-4 py-2 rounded bg-[var(--ops-accent)] text-white text-[12.5px] font-medium disabled:opacity-40 hover:opacity-90"
+          data-testid="button-assemble-packet"
+        >
+          Build packet ({kept.length} {kept.length === 1 ? 'file' : 'files'}, {keptPages} pages)
+        </button>
+      </div>
     </div>
   );
 }

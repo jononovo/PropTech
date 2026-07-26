@@ -37,6 +37,7 @@ import type {
   GetRunPageImageParams,
   HealthStatus,
   LoginInput,
+  MergeResolutionInput,
   ModelOptionsResponse,
   PacketGateInput,
   PacketRunFailure,
@@ -44,6 +45,7 @@ import type {
   PlacementInput,
   SavedSection,
   SavedSectionInput,
+  SetPacketFileRemovedBody,
   Template,
   TemplateDuplicateInput,
   TemplateInput,
@@ -51,6 +53,7 @@ import type {
   TemplateRef,
   TemplateUpgradeInput,
   UploadDocumentParams,
+  UploadPacketFilesBody,
   UploadedFile,
   User,
   VariantShape,
@@ -2037,6 +2040,79 @@ export const useMaterializeApprovedDoc = <TError = ErrorType<ApiMessage>,
       return useMutation(getMaterializeApprovedDocMutationOptions(options));
     }
 
+export const getRecordMergeResolutionUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/merge-resolutions`
+}
+
+/**
+ * A merge recommendation (two run groups filed under the same block) must be resolved — merged or dismissed — before either group can be approved. Upsert keyed by run + the two page ranges; latest decision wins, so a dismissed recommendation can be revisited. Portal-owned, additive.
+ * @summary Record (or change) the human decision on an analyzer merge recommendation
+ */
+export const recordMergeResolution = async (applicationId: string,
+    mergeResolutionInput: MergeResolutionInput, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getRecordMergeResolutionUrl(applicationId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(mergeResolutionInput)
+  }
+);}
+
+
+
+
+
+export const getRecordMergeResolutionMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMergeResolution>>, TError,{applicationId: string;data: BodyType<MergeResolutionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordMergeResolution>>, TError,{applicationId: string;data: BodyType<MergeResolutionInput>}, TContext> => {
+
+const mutationKey = ['recordMergeResolution'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordMergeResolution>>, {applicationId: string;data: BodyType<MergeResolutionInput>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  recordMergeResolution(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordMergeResolutionMutationResult = NonNullable<Awaited<ReturnType<typeof recordMergeResolution>>>
+    export type RecordMergeResolutionMutationBody = BodyType<MergeResolutionInput>
+    export type RecordMergeResolutionMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Record (or change) the human decision on an analyzer merge recommendation
+ */
+export const useRecordMergeResolution = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMergeResolution>>, TError,{applicationId: string;data: BodyType<MergeResolutionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordMergeResolution>>,
+        TError,
+        {applicationId: string;data: BodyType<MergeResolutionInput>},
+        TContext
+      > => {
+      return useMutation(getRecordMergeResolutionMutationOptions(options));
+    }
+
 export const getRecordDocumentApprovalUrl = (applicationId: string,) => {
 
 
@@ -2506,6 +2582,227 @@ export const useUploadPacket = <TError = ErrorType<ApiMessage>,
         TContext
       > => {
       return useMutation(getUploadPacketMutationOptions(options));
+    }
+
+export const getUploadPacketFilesUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet/files`
+}
+
+/**
+ * Phase 5 (multi-file intake v1). Accepts up to 25 PDFs in one drop and builds a MANIFEST before any analysis: per file — name, size, page count, and the same deterministic quality flags pre-flight uses (no model calls). Each file can then be removed from the manifest (X) before assembly; assemble concatenates the kept files into ONE packet PDF that flows through the existing pre-flight → gate → run pipeline unchanged (global page addressing). Re-posting replaces the whole manifest. Refused (409) while an analyzer run is mid-flight. Removed = gone at assemble time; there is no defer queue in v1 — re-upload later instead.
+ * @summary Multi-file intake — stage several PDFs and get a reviewable manifest
+ */
+export const uploadPacketFiles = async (applicationId: string,
+    uploadPacketFilesBody: UploadPacketFilesBody, options?: RequestInit): Promise<Application> => {
+    const formData = new FormData();
+uploadPacketFilesBody.files.forEach(value => formData.append(`files`, value));
+
+  return customFetch<Application>(getUploadPacketFilesUrl(applicationId),
+  {
+    ...options,
+    method: 'POST'
+    ,
+    body: formData
+  }
+);}
+
+
+
+
+
+export const getUploadPacketFilesMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacketFiles>>, TError,{applicationId: string;data: BodyType<UploadPacketFilesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadPacketFiles>>, TError,{applicationId: string;data: BodyType<UploadPacketFilesBody>}, TContext> => {
+
+const mutationKey = ['uploadPacketFiles'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadPacketFiles>>, {applicationId: string;data: BodyType<UploadPacketFilesBody>}> = (props) => {
+          const {applicationId,data} = props ?? {};
+
+          return  uploadPacketFiles(applicationId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadPacketFilesMutationResult = NonNullable<Awaited<ReturnType<typeof uploadPacketFiles>>>
+    export type UploadPacketFilesMutationBody = BodyType<UploadPacketFilesBody>
+    export type UploadPacketFilesMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Multi-file intake — stage several PDFs and get a reviewable manifest
+ */
+export const useUploadPacketFiles = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPacketFiles>>, TError,{applicationId: string;data: BodyType<UploadPacketFilesBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadPacketFiles>>,
+        TError,
+        {applicationId: string;data: BodyType<UploadPacketFilesBody>},
+        TContext
+      > => {
+      return useMutation(getUploadPacketFilesMutationOptions(options));
+    }
+
+export const getSetPacketFileRemovedUrl = (applicationId: string,
+    fileId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet/files/${fileId}`
+}
+
+/**
+ * @summary Toggle a manifest file's removed state (the X — reversible until assemble)
+ */
+export const setPacketFileRemoved = async (applicationId: string,
+    fileId: string,
+    setPacketFileRemovedBody: SetPacketFileRemovedBody, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getSetPacketFileRemovedUrl(applicationId,fileId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setPacketFileRemovedBody)
+  }
+);}
+
+
+
+
+
+export const getSetPacketFileRemovedMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPacketFileRemoved>>, TError,{applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setPacketFileRemoved>>, TError,{applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}, TContext> => {
+
+const mutationKey = ['setPacketFileRemoved'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setPacketFileRemoved>>, {applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}> = (props) => {
+          const {applicationId,fileId,data} = props ?? {};
+
+          return  setPacketFileRemoved(applicationId,fileId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetPacketFileRemovedMutationResult = NonNullable<Awaited<ReturnType<typeof setPacketFileRemoved>>>
+    export type SetPacketFileRemovedMutationBody = BodyType<SetPacketFileRemovedBody>
+    export type SetPacketFileRemovedMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Toggle a manifest file's removed state (the X — reversible until assemble)
+ */
+export const useSetPacketFileRemoved = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setPacketFileRemoved>>, TError,{applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setPacketFileRemoved>>,
+        TError,
+        {applicationId: string;fileId: string;data: BodyType<SetPacketFileRemovedBody>},
+        TContext
+      > => {
+      return useMutation(getSetPacketFileRemovedMutationOptions(options));
+    }
+
+export const getAssemblePacketUrl = (applicationId: string,) => {
+
+
+
+
+  return `/api/applications/${applicationId}/packet/assemble`
+}
+
+/**
+ * Assembles the manifest's kept (non-removed) files, in manifest order, into a single packet PDF and pushes it through the exact single-packet path (pre-flight, gated state, gate decision, analyzer). packet.files records each source file's global page span for provenance. At least one kept file required.
+ * @summary Concatenate the kept manifest files into ONE packet and run pre-flight
+ */
+export const assemblePacket = async (applicationId: string, options?: RequestInit): Promise<Application> => {
+
+  return customFetch<Application>(getAssemblePacketUrl(applicationId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAssemblePacketMutationOptions = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assemblePacket>>, TError,{applicationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof assemblePacket>>, TError,{applicationId: string}, TContext> => {
+
+const mutationKey = ['assemblePacket'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof assemblePacket>>, {applicationId: string}> = (props) => {
+          const {applicationId} = props ?? {};
+
+          return  assemblePacket(applicationId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AssemblePacketMutationResult = NonNullable<Awaited<ReturnType<typeof assemblePacket>>>
+
+    export type AssemblePacketMutationError = ErrorType<ApiMessage>
+
+    /**
+ * @summary Concatenate the kept manifest files into ONE packet and run pre-flight
+ */
+export const useAssemblePacket = <TError = ErrorType<ApiMessage>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof assemblePacket>>, TError,{applicationId: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof assemblePacket>>,
+        TError,
+        {applicationId: string},
+        TContext
+      > => {
+      return useMutation(getAssemblePacketMutationOptions(options));
     }
 
 export const getDecidePacketGateUrl = (applicationId: string,) => {

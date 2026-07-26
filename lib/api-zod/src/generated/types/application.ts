@@ -7,11 +7,13 @@
  */
 import type { ApplicationFieldValues } from './applicationFieldValues';
 import type { ApplicationMaterializationErrors } from './applicationMaterializationErrors';
+import type { ApplicationMergeResolutions } from './applicationMergeResolutions';
 import type { ApplicationUploads } from './applicationUploads';
 import type { ApplicationVariants } from './applicationVariants';
 import type { ApplicationVerdicts } from './applicationVerdicts';
 import type { DocumentApproval } from './documentApproval';
 import type { ManualPlacement } from './manualPlacement';
+import type { PacketManifest } from './packetManifest';
 import type { PacketState } from './packetState';
 import type { Template } from './template';
 import type { TemplateRepinEvent } from './templateRepinEvent';
@@ -30,6 +32,7 @@ export interface Application {
   /** blockId -> latest human verdict */
   verdicts?: ApplicationVerdicts;
   packet?: PacketState;
+  packetManifest?: PacketManifest;
   template: Template;
   /** Audit trail of template re-pins (who, when, vN→vN) */
   templateHistory?: TemplateRepinEvent[];
@@ -37,6 +40,8 @@ export interface Application {
   materializationErrors?: ApplicationMaterializationErrors;
   /** Per-document approvals from the filmstrip flow, append-only, newest first. The registry (approved-docs) is the materialized truth; this is the decision trail on the application. Portal-owned. */
   documentApprovals?: DocumentApproval[];
+  /** Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned. */
+  mergeResolutions?: ApplicationMergeResolutions;
   /** blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts. */
   variants?: ApplicationVariants;
   /** Human filings of analyzer-unassigned page ranges (portal-owned) */

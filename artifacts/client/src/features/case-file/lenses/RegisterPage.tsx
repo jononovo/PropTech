@@ -11,6 +11,7 @@ import {
   type CaseReq,
 } from '../caseData';
 import { VerdictButtons } from '../components/VerdictButtons';
+import { ApprovedDocsPanel } from '../approved/ApprovedDocsPanel';
 import type { Lens } from '../CaseShell';
 
 export function RegisterPage({
@@ -149,6 +150,7 @@ export function RegisterPage({
             </tbody>
           </table>
         </div>
+        <ApprovedDocsPanel model={model} applicationId={applicationId} />
       </div>
 
       {/* footer */}

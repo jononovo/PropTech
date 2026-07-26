@@ -57,8 +57,6 @@ import type {
   TemplateUpgradeInput,
   UpdateSourceFileBody,
   UploadDocumentParams,
-  UploadFileArtifact200,
-  UploadFileArtifactParams,
   UploadedFile,
   User,
   VariantShape,
@@ -3232,92 +3230,6 @@ export function useGetFilePageImage<TData = Awaited<ReturnType<typeof getFilePag
 
 
 
-
-export const getUploadFileArtifactUrl = (applicationId: string,
-    fileId: string,
-    page: number,
-    params: UploadFileArtifactParams,) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? 'null' : String(value))
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0 ? `/api/applications/${applicationId}/files/${fileId}/artifacts/${page}?${stringifiedParams}` : `/api/applications/${applicationId}/files/${fileId}/artifacts/${page}`
-}
-
-/**
- * The analyzer worker pushes each page's full render, thumbnail, parse markdown and layout-elements JSON here the moment they exist — object storage is the single durable home; the worker's disk is scratch. Authenticated by the x-sheaf-service header, not x-profile.
- * @summary Store one per-page file artifact (worker-only)
- */
-export const uploadFileArtifact = async (applicationId: string,
-    fileId: string,
-    page: number,
-    uploadFileArtifactBody: Blob | string,
-    params: UploadFileArtifactParams, options?: RequestInit): Promise<UploadFileArtifact200> => {
-
-  return customFetch<UploadFileArtifact200>(getUploadFileArtifactUrl(applicationId,fileId,page,params),
-  {
-    ...options,
-    method: 'PUT'
-    ,
-    body: JSON.stringify(uploadFileArtifactBody)
-  }
-);}
-
-
-
-
-
-export const getUploadFileArtifactMutationOptions = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFileArtifact>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof uploadFileArtifact>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}, TContext> => {
-
-const mutationKey = ['uploadFileArtifact'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadFileArtifact>>, {applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}> = (props) => {
-          const {applicationId,fileId,page,data,params} = props ?? {};
-
-          return  uploadFileArtifact(applicationId,fileId,page,data,params,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type UploadFileArtifactMutationResult = NonNullable<Awaited<ReturnType<typeof uploadFileArtifact>>>
-    export type UploadFileArtifactMutationBody = BodyType<Blob | string>
-    export type UploadFileArtifactMutationError = ErrorType<ApiMessage>
-
-    /**
- * @summary Store one per-page file artifact (worker-only)
- */
-export const useUploadFileArtifact = <TError = ErrorType<ApiMessage>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadFileArtifact>>, TError,{applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams}, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof uploadFileArtifact>>,
-        TError,
-        {applicationId: string;fileId: string;page: number;data: BodyType<Blob | string>;params: UploadFileArtifactParams},
-        TContext
-      > => {
-      return useMutation(getUploadFileArtifactMutationOptions(options));
-    }
 
 export const getRecordPlacementUrl = (applicationId: string,) => {
 

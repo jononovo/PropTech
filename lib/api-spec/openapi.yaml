@@ -1143,7 +1143,10 @@ paths:
   /applications/{applicationId}/files/{fileId}/artifacts/{page}:
     put:
       operationId: uploadFileArtifact
-      tags: [analysis]
+      # worker-only: excluded from TS codegen (orval filters) — the analyzer
+      # worker is the sole caller, over httpx. A generated React client for a
+      # raw-bytes service route would be dead code.
+      tags: [worker]
       summary: Store one per-page file artifact (worker-only)
       description: >
         The analyzer worker pushes each page's full render, thumbnail, parse

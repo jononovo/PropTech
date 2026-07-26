@@ -9,80 +9,84 @@ export interface HealthStatus {
   status: string;
 }
 
+export type TemplateListingStatus = typeof TemplateListingStatus[keyof typeof TemplateListingStatus];
+
+
+export const TemplateListingStatus = {
+  draft: 'draft',
+  active: 'active',
+} as const;
+
+export interface TemplateListing {
+  family: string;
+  name: string;
+  program: string;
+  version: number;
+  status: TemplateListingStatus;
+  sections: number;
+  docs: number;
+  updated: string;
+  inUseBy: number;
+}
+
+export interface TemplateInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  program: string;
+}
+
+export interface TemplateRef {
+  family: string;
+  version: number;
+}
+
 export interface ApiMessage {
   error: string;
 }
 
-export type ApplicationEventActorKind = typeof ApplicationEventActorKind[keyof typeof ApplicationEventActorKind];
+export type TemplateStatus = typeof TemplateStatus[keyof typeof TemplateStatus];
 
 
-export const ApplicationEventActorKind = {
-  user: 'user',
-  system: 'system',
-} as const;
-
-export type ApplicationEventActor = {
-  kind: ApplicationEventActorKind;
-  name?: string;
-  ip?: string;
-};
-
-export type ApplicationEventTarget = {
-  type: string;
-  id?: string;
-  label?: string;
-};
-
-export type ApplicationEventDetail = { [key: string]: unknown };
-
-/**
- * One ledger row — append-only, written with the state change it records.
- */
-export interface ApplicationEvent {
-  seq: number;
-  at: string;
-  actor: ApplicationEventActor;
-  /** noun.verb, e.g. file.uploaded, gate.confirmed, verdict.accepted */
-  action: string;
-  target?: ApplicationEventTarget;
-  detail?: ApplicationEventDetail;
-}
-
-export type ListApplicationEventsResponse = ApplicationEvent[];
-
-export type ExpiryRuleKind = typeof ExpiryRuleKind[keyof typeof ExpiryRuleKind];
-
-
-export const ExpiryRuleKind = {
-  staleness: 'staleness',
-  hard: 'hard',
+export const TemplateStatus = {
+  draft: 'draft',
+  active: 'active',
 } as const;
 
 /**
- * Null means no clock. staleness uses days; hard means valid through closing.
+ * Satisfied when any one of [primary, ...satisfiedBy] is filed.
  */
-export interface ExpiryRule {
-  kind: ExpiryRuleKind;
-  days?: number;
-}
-
-export type FieldType = typeof FieldType[keyof typeof FieldType];
-
-
-export const FieldType = {
-  text: 'text',
-  number: 'number',
-  date: 'date',
-  select: 'select',
-  yesno: 'yesno',
-} as const;
-
-export interface Field {
+export interface AlternativeGroup {
   id: string;
-  type: FieldType;
-  label: string;
-  required?: boolean;
-  options?: string[];
+  name: string;
+  primary: string;
+  satisfiedBy: string[];
+}
+
+export type SectionOwner = typeof SectionOwner[keyof typeof SectionOwner];
+
+
+export const SectionOwner = {
+  Applicant: 'Applicant',
+  Originator: 'Originator',
+  Escrow: 'Escrow',
+  Homium: 'Homium',
+} as const;
+
+export type PermissionRole = typeof PermissionRole[keyof typeof PermissionRole];
+
+
+export const PermissionRole = {
+  Applicant: 'Applicant',
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface Permission {
+  role: PermissionRole;
+  view: boolean;
+  upload: boolean;
 }
 
 export type BlockKind = typeof BlockKind[keyof typeof BlockKind];
@@ -120,6 +124,22 @@ export const BlockSourcing = {
   constrained: 'constrained',
   scarce: 'scarce',
 } as const;
+
+export type ExpiryRuleKind = typeof ExpiryRuleKind[keyof typeof ExpiryRuleKind];
+
+
+export const ExpiryRuleKind = {
+  staleness: 'staleness',
+  hard: 'hard',
+} as const;
+
+/**
+ * Null means no clock. staleness uses days; hard means valid through closing.
+ */
+export interface ExpiryRule {
+  kind: ExpiryRuleKind;
+  days?: number;
+}
 
 /**
  * "set" = the requirement is satisfied by N variants (bank accounts, persons, …), each with its own documents. Absent = "single" (today's behavior).
@@ -183,6 +203,25 @@ export interface VariantConfig {
   docsPerVariant: DocsPerVariant;
 }
 
+export type FieldType = typeof FieldType[keyof typeof FieldType];
+
+
+export const FieldType = {
+  text: 'text',
+  number: 'number',
+  date: 'date',
+  select: 'select',
+  yesno: 'yesno',
+} as const;
+
+export interface Field {
+  id: string;
+  type: FieldType;
+  label: string;
+  required?: boolean;
+  options?: string[];
+}
+
 /**
  * kind=document uses document fields; kind=fields uses the fields array.
  */
@@ -212,32 +251,6 @@ export interface Subsection {
   blocks: Block[];
 }
 
-export type PermissionRole = typeof PermissionRole[keyof typeof PermissionRole];
-
-
-export const PermissionRole = {
-  Applicant: 'Applicant',
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-export interface Permission {
-  role: PermissionRole;
-  view: boolean;
-  upload: boolean;
-}
-
-export type SectionOwner = typeof SectionOwner[keyof typeof SectionOwner];
-
-
-export const SectionOwner = {
-  Applicant: 'Applicant',
-  Originator: 'Originator',
-  Escrow: 'Escrow',
-  Homium: 'Homium',
-} as const;
-
 export interface Section {
   id: string;
   name: string;
@@ -246,24 +259,6 @@ export interface Section {
   subsections: Subsection[];
 }
 
-/**
- * Satisfied when any one of [primary, ...satisfiedBy] is filed.
- */
-export interface AlternativeGroup {
-  id: string;
-  name: string;
-  primary: string;
-  satisfiedBy: string[];
-}
-
-export type TemplateStatus = typeof TemplateStatus[keyof typeof TemplateStatus];
-
-
-export const TemplateStatus = {
-  draft: 'draft',
-  active: 'active',
-} as const;
-
 export interface Template {
   template: string;
   version: number;
@@ -271,38 +266,6 @@ export interface Template {
   program: string;
   alternatives: AlternativeGroup[];
   sections: Section[];
-}
-
-export type TemplateListingStatus = typeof TemplateListingStatus[keyof typeof TemplateListingStatus];
-
-
-export const TemplateListingStatus = {
-  draft: 'draft',
-  active: 'active',
-} as const;
-
-export interface TemplateListing {
-  family: string;
-  name: string;
-  program: string;
-  version: number;
-  status: TemplateListingStatus;
-  sections: number;
-  docs: number;
-  updated: string;
-  inUseBy: number;
-}
-
-export interface TemplateRef {
-  family: string;
-  version: number;
-}
-
-export interface TemplateInput {
-  /** @minLength 1 */
-  name: string;
-  /** @minLength 1 */
-  program: string;
 }
 
 export interface TemplateDuplicateInput {
@@ -323,6 +286,24 @@ export interface SavedSectionInput {
   source: string;
   section: Section;
 }
+
+/**
+ * A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.
+ */
+export interface VariantShapeInput {
+  /** library display name, unique */
+  name: string;
+  variantNoun: string;
+  /** @minItems 1 */
+  descriptorFields: DescriptorField[];
+  docsPerVariant?: DocsPerVariant;
+}
+
+export type VariantShape = VariantShapeInput & {
+  id: string;
+  /** seeded built-in (top document types) — shown first in the picker */
+  preset?: boolean;
+};
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
@@ -349,14 +330,30 @@ export interface LoginInput {
   password: string;
 }
 
-export type FieldValuesValues = {[key: string]: string};
+export interface ApplicationSummary {
+  id: string;
+  family: string;
+  version: number;
+  templateName: string;
+  applicantName: string;
+  createdAt: string;
+  docsFiled: number;
+  docsTotal: number;
+  projectedClosingDate?: string;
+}
+
+export interface ApplicationInput {
+  family: string;
+  version: number;
+  /** @minLength 1 */
+  applicantName: string;
+  projectedClosingDate?: string;
+}
 
 /**
- * Map of field id to entered value for one field-group block.
+ * blockId -> field values map
  */
-export interface FieldValues {
-  values: FieldValuesValues;
-}
+export type ApplicationFieldValues = {[key: string]: {[key: string]: string}};
 
 export interface UploadedFile {
   filename: string;
@@ -370,103 +367,10 @@ export interface UploadedFile {
   fileId: string;
 }
 
-export type SourceFileKind = typeof SourceFileKind[keyof typeof SourceFileKind];
-
-
-export const SourceFileKind = {
-  original: 'original',
-  derived: 'derived',
-} as const;
-
 /**
- * solicited = uploaded against a block/variant with declared intent
+ * blockId -> uploaded files
  */
-export type SourceFileOrigin = typeof SourceFileOrigin[keyof typeof SourceFileOrigin];
-
-
-export const SourceFileOrigin = {
-  unsolicited: 'unsolicited',
-  solicited: 'solicited',
-} as const;
-
-/**
- * archived = out of the working view, never deleted (no UI yet — deferred)
- */
-export type SourceFileStatus = typeof SourceFileStatus[keyof typeof SourceFileStatus];
-
-
-export const SourceFileStatus = {
-  active: 'active',
-  archived: 'archived',
-} as const;
-
-export type SourceFileDerivationOp = typeof SourceFileDerivationOp[keyof typeof SourceFileDerivationOp];
-
-
-export const SourceFileDerivationOp = {
-  split: 'split',
-  merge: 'merge',
-} as const;
-
-export type SourceFileDerivationSourcesItem = {
-  fileId: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
-};
-
-/**
- * derived files only — lineage back to immutable sources
- */
-export type SourceFileDerivation = {
-  op: SourceFileDerivationOp;
-  sources: SourceFileDerivationSourcesItem[];
-};
-
-/**
- * Structured deterministic pre-flight flag. fileId is omitted where the file is implicit (SourceFile.flags); page is omitted for whole-file flags. note carries the human-readable sentence.
- */
-export interface FileFlag {
-  fileId?: string;
-  /** 1-based within the file */
-  page?: number;
-  /** machine code — blank, duplicate, low_dpi, low_contrast, ... */
-  code: string;
-  note: string;
-}
-
-/**
- * One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).
- */
-export interface SourceFile {
-  /** sf-<nanoid8>, minted at intake, never reused */
-  id: string;
-  kind: SourceFileKind;
-  /** solicited = uploaded against a block/variant with declared intent */
-  origin: SourceFileOrigin;
-  /** current assigned name (rename = metadata) */
-  filename: string;
-  /** as received (originals) */
-  originalFilename?: string;
-  /** solicited intent, if any */
-  blockId?: string;
-  variantId?: string;
-  sizeBytes: number;
-  /** PDFs only */
-  pages?: number;
-  sha256?: string;
-  /** per-file deterministic pre-flight flags, computed at drop (fileId implicit) */
-  flags?: FileFlag[];
-  /** archived = out of the working view, never deleted (no UI yet — deferred) */
-  status: SourceFileStatus;
-  receivedAt: string;
-  receivedBy?: string;
-  receivedIp?: string;
-  /** derived files only — lineage back to immutable sources */
-  derivation?: SourceFileDerivation;
-}
+export type ApplicationUploads = {[key: string]: UploadedFile[]};
 
 export type VerdictVerdict = typeof VerdictVerdict[keyof typeof VerdictVerdict];
 
@@ -498,6 +402,92 @@ export interface Verdict {
   decidedBy: VerdictDecidedBy;
   runId?: string;
 }
+
+/**
+ * blockId -> latest human verdict
+ */
+export type ApplicationVerdicts = {[key: string]: Verdict};
+
+/**
+ * blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.
+ */
+export type ApplicationMaterializationErrors = {[key: string]: {
+  message: string;
+  at: string;
+}};
+
+/**
+ * The canonical page address: a contiguous, inclusive 1-based page range WITHIN one SourceFile. A span never crosses a file boundary; a document spanning files carries multiple spans.
+ */
+export interface FileSpan {
+  fileId: string;
+  /**
+     * [first, last] inclusive, 1-based within the file
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+}
+
+export type MergeResolutionDecision = typeof MergeResolutionDecision[keyof typeof MergeResolutionDecision];
+
+
+export const MergeResolutionDecision = {
+  merged: 'merged',
+  dismissed: 'dismissed',
+} as const;
+
+export type MergeResolutionDecidedBy = typeof MergeResolutionDecidedBy[keyof typeof MergeResolutionDecidedBy];
+
+
+export const MergeResolutionDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+/**
+ * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:<fileId>:p<f>-<l>|<fileId>:p<f>-<l>" (spans sorted by fileId then first page). Latest decision wins — reversible.
+ */
+export interface MergeResolution {
+  runId: string;
+  /**
+     * the two file-qualified spans the recommendation covers
+     * @minItems 2
+     * @maxItems 2
+     */
+  spans: FileSpan[];
+  decision: MergeResolutionDecision;
+  decidedBy: MergeResolutionDecidedBy;
+  decidedAt: string;
+}
+
+/**
+ * Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.
+ */
+export type ApplicationMergeResolutions = {[key: string]: MergeResolution};
+
+/**
+ * descriptorField key -> value, keys exactly as the template block declares
+ */
+export type ApplicationVariantDescriptor = {[key: string]: string};
+
+/**
+ * One real-world instance of a set block's requirement on THIS application ("Chase ····1234", "Jane Doe · 1990-04-24"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.
+ */
+export interface ApplicationVariant {
+  id: string;
+  /** descriptorField key -> value, keys exactly as the template block declares */
+  descriptor: ApplicationVariantDescriptor;
+  /** server-built display label (descriptor values joined) */
+  label: string;
+  createdAt: string;
+}
+
+/**
+ * blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts.
+ */
+export type ApplicationVariants = {[key: string]: ApplicationVariant[]};
 
 export type RunStateState = typeof RunStateState[keyof typeof RunStateState];
 
@@ -549,24 +539,109 @@ export interface RunState {
   lastRunError?: string;
 }
 
+export type SourceFileKind = typeof SourceFileKind[keyof typeof SourceFileKind];
+
+
+export const SourceFileKind = {
+  original: 'original',
+  derived: 'derived',
+} as const;
+
+/**
+ * solicited = uploaded against a block/variant with declared intent
+ */
+export type SourceFileOrigin = typeof SourceFileOrigin[keyof typeof SourceFileOrigin];
+
+
+export const SourceFileOrigin = {
+  unsolicited: 'unsolicited',
+  solicited: 'solicited',
+} as const;
+
+/**
+ * Structured deterministic pre-flight flag. fileId is omitted where the file is implicit (SourceFile.flags); page is omitted for whole-file flags. note carries the human-readable sentence.
+ */
+export interface FileFlag {
+  fileId?: string;
+  /** 1-based within the file */
+  page?: number;
+  /** machine code — blank, duplicate, low_dpi, low_contrast, ... */
+  code: string;
+  note: string;
+}
+
+/**
+ * archived = out of the working view, never deleted (no UI yet — deferred)
+ */
+export type SourceFileStatus = typeof SourceFileStatus[keyof typeof SourceFileStatus];
+
+
+export const SourceFileStatus = {
+  active: 'active',
+  archived: 'archived',
+} as const;
+
+export type SourceFileDerivationOp = typeof SourceFileDerivationOp[keyof typeof SourceFileDerivationOp];
+
+
+export const SourceFileDerivationOp = {
+  split: 'split',
+  merge: 'merge',
+} as const;
+
+export type SourceFileDerivationSourcesItem = {
+  fileId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  pages: number[];
+};
+
+/**
+ * derived files only — lineage back to immutable sources
+ */
+export type SourceFileDerivation = {
+  op: SourceFileDerivationOp;
+  sources: SourceFileDerivationSourcesItem[];
+};
+
+/**
+ * One file as it entered the system — immutable, id-addressed bytes. Rename is metadata only. Files are never removed from the list; status is the only lifecycle field (archive behavior deferred).
+ */
+export interface SourceFile {
+  /** sf-<nanoid8>, minted at intake, never reused */
+  id: string;
+  kind: SourceFileKind;
+  /** solicited = uploaded against a block/variant with declared intent */
+  origin: SourceFileOrigin;
+  /** current assigned name (rename = metadata) */
+  filename: string;
+  /** as received (originals) */
+  originalFilename?: string;
+  /** solicited intent, if any */
+  blockId?: string;
+  variantId?: string;
+  sizeBytes: number;
+  /** PDFs only */
+  pages?: number;
+  sha256?: string;
+  /** per-file deterministic pre-flight flags, computed at drop (fileId implicit) */
+  flags?: FileFlag[];
+  /** archived = out of the working view, never deleted (no UI yet — deferred) */
+  status: SourceFileStatus;
+  receivedAt: string;
+  receivedBy?: string;
+  receivedIp?: string;
+  /** derived files only — lineage back to immutable sources */
+  derivation?: SourceFileDerivation;
+}
+
 export interface TemplateRepinEvent {
   fromVersion: number;
   toVersion: number;
   decidedBy: string;
   decidedAt: string;
-}
-
-/**
- * The canonical page address: a contiguous, inclusive 1-based page range WITHIN one SourceFile. A span never crosses a file boundary; a document spanning files carries multiple spans.
- */
-export interface FileSpan {
-  fileId: string;
-  /**
-     * [first, last] inclusive, 1-based within the file
-     * @minItems 2
-     * @maxItems 2
-     */
-  pages: number[];
 }
 
 /**
@@ -634,56 +709,6 @@ export interface DocumentApproval {
   approvedDocId?: string;
 }
 
-export type MergeResolutionDecision = typeof MergeResolutionDecision[keyof typeof MergeResolutionDecision];
-
-
-export const MergeResolutionDecision = {
-  merged: 'merged',
-  dismissed: 'dismissed',
-} as const;
-
-export type MergeResolutionDecidedBy = typeof MergeResolutionDecidedBy[keyof typeof MergeResolutionDecidedBy];
-
-
-export const MergeResolutionDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-/**
- * The human decision on an analyzer merge recommendation between two run groups. Keyed on the application by "<runId>:<fileId>:p<f>-<l>|<fileId>:p<f>-<l>" (spans sorted by fileId then first page). Latest decision wins — reversible.
- */
-export interface MergeResolution {
-  runId: string;
-  /**
-     * the two file-qualified spans the recommendation covers
-     * @minItems 2
-     * @maxItems 2
-     */
-  spans: FileSpan[];
-  decision: MergeResolutionDecision;
-  decidedBy: MergeResolutionDecidedBy;
-  decidedAt: string;
-}
-
-/**
- * descriptorField key -> value, keys exactly as the template block declares
- */
-export type ApplicationVariantDescriptor = {[key: string]: string};
-
-/**
- * One real-world instance of a set block's requirement on THIS application ("Chase ····1234", "Jane Doe · 1990-04-24"). The template declares the descriptor shape; the application holds the actual variants. Id minted once, never re-minted — uploads and (later) approvals key on it.
- */
-export interface ApplicationVariant {
-  id: string;
-  /** descriptorField key -> value, keys exactly as the template block declares */
-  descriptor: ApplicationVariantDescriptor;
-  /** server-built display label (descriptor values joined) */
-  label: string;
-  createdAt: string;
-}
-
 export type ManualPlacementDecidedBy = typeof ManualPlacementDecidedBy[keyof typeof ManualPlacementDecidedBy];
 
 
@@ -705,39 +730,6 @@ export interface ManualPlacement {
   decidedAt: string;
   runId?: string;
 }
-
-/**
- * blockId -> field values map
- */
-export type ApplicationFieldValues = {[key: string]: {[key: string]: string}};
-
-/**
- * blockId -> uploaded files
- */
-export type ApplicationUploads = {[key: string]: UploadedFile[]};
-
-/**
- * blockId -> latest human verdict
- */
-export type ApplicationVerdicts = {[key: string]: Verdict};
-
-/**
- * blockId -> last approval-materialization failure (loud, with reason). The verdict stands; the approved registry row is missing until a successful retry clears the entry. Portal-owned.
- */
-export type ApplicationMaterializationErrors = {[key: string]: {
-  message: string;
-  at: string;
-}};
-
-/**
- * Merge-recommendation decisions, keyed "<runId>:p<f>-<l>|p<f>-<l>". A PENDING recommendation (no entry) gates approval of both groups. Portal-owned.
- */
-export type ApplicationMergeResolutions = {[key: string]: MergeResolution};
-
-/**
- * blockId -> variants of that set block on this application. Intake-side data — variants and their uploads are NOT part of the application's satisfied requirements until a human accepts.
- */
-export type ApplicationVariants = {[key: string]: ApplicationVariant[]};
 
 export interface Application {
   id: string;
@@ -772,6 +764,28 @@ export interface Application {
   manualPlacements?: ManualPlacement[];
 }
 
+export interface ApplicationUpdate {
+  projectedClosingDate?: string | null;
+}
+
+export interface TemplateUpgradeInput {
+  targetVersion: number;
+  decidedBy: string;
+}
+
+export type FieldValuesValues = {[key: string]: string};
+
+/**
+ * Map of field id to entered value for one field-group block.
+ */
+export interface FieldValues {
+  values: FieldValuesValues;
+}
+
+export interface DocumentUpload {
+  file: Blob;
+}
+
 export interface ReceiveFilesResponse {
   /** the SourceFiles minted by THIS drop, in received order */
   files: SourceFile[];
@@ -799,24 +813,6 @@ export interface UpdateSourceFileBody {
   /** archive/restore — bytes are never deleted; archived files leave the delta gate, estimates, and runs */
   status?: UpdateSourceFileBodyStatus;
 }
-
-/**
- * A saved descriptor convention: what one variant of a set block looks like (noun + identity fields + docs-per-variant default). Copy-on-use — templates get their own copy of the fields, never a reference, so editing a shape later cannot reach into existing templates.
- */
-export interface VariantShapeInput {
-  /** library display name, unique */
-  name: string;
-  variantNoun: string;
-  /** @minItems 1 */
-  descriptorFields: DescriptorField[];
-  docsPerVariant?: DocsPerVariant;
-}
-
-export type VariantShape = VariantShapeInput & {
-  id: string;
-  /** seeded built-in (top document types) — shown first in the picker */
-  preset?: boolean;
-};
 
 /**
  * extract = spans pulled from source files; copy = direct intake upload copied whole
@@ -854,6 +850,34 @@ export interface ApprovedDocument {
   supersededBy?: string;
 }
 
+export type MergeResolutionInputDecision = typeof MergeResolutionInputDecision[keyof typeof MergeResolutionInputDecision];
+
+
+export const MergeResolutionInputDecision = {
+  merged: 'merged',
+  dismissed: 'dismissed',
+} as const;
+
+export type MergeResolutionInputDecidedBy = typeof MergeResolutionInputDecidedBy[keyof typeof MergeResolutionInputDecidedBy];
+
+
+export const MergeResolutionInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface MergeResolutionInput {
+  runId: string;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     */
+  spans: FileSpan[];
+  decision: MergeResolutionInputDecision;
+  decidedBy: MergeResolutionInputDecidedBy;
+}
+
 export type DocumentApprovalInputOutcome = typeof DocumentApprovalInputOutcome[keyof typeof DocumentApprovalInputOutcome];
 
 
@@ -883,143 +907,14 @@ export interface DocumentApprovalInput {
   decidedBy: DocumentApprovalInputDecidedBy;
 }
 
-export type MergeResolutionInputDecision = typeof MergeResolutionInputDecision[keyof typeof MergeResolutionInputDecision];
+export type ModelStageOptionsStage = typeof ModelStageOptionsStage[keyof typeof ModelStageOptionsStage];
 
 
-export const MergeResolutionInputDecision = {
-  merged: 'merged',
-  dismissed: 'dismissed',
+export const ModelStageOptionsStage = {
+  parse: 'parse',
+  text: 'text',
+  judge: 'judge',
 } as const;
-
-export type MergeResolutionInputDecidedBy = typeof MergeResolutionInputDecidedBy[keyof typeof MergeResolutionInputDecidedBy];
-
-
-export const MergeResolutionInputDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-export interface MergeResolutionInput {
-  runId: string;
-  /**
-     * @minItems 2
-     * @maxItems 2
-     */
-  spans: FileSpan[];
-  decision: MergeResolutionInputDecision;
-  decidedBy: MergeResolutionInputDecidedBy;
-}
-
-export interface DocumentUpload {
-  file: Blob;
-}
-
-export interface ApplicationInput {
-  family: string;
-  version: number;
-  /** @minLength 1 */
-  applicantName: string;
-  projectedClosingDate?: string;
-}
-
-export interface ApplicationUpdate {
-  projectedClosingDate?: string | null;
-}
-
-export interface ApplicationSummary {
-  id: string;
-  family: string;
-  version: number;
-  templateName: string;
-  applicantName: string;
-  createdAt: string;
-  docsFiled: number;
-  docsTotal: number;
-  projectedClosingDate?: string;
-}
-
-export interface TemplateUpgradeInput {
-  targetVersion: number;
-  decidedBy: string;
-}
-
-export type VerdictInputVerdict = typeof VerdictInputVerdict[keyof typeof VerdictInputVerdict];
-
-
-export const VerdictInputVerdict = {
-  accepted: 'accepted',
-  new_version_requested: 'new_version_requested',
-} as const;
-
-export type VerdictInputDecidedBy = typeof VerdictInputDecidedBy[keyof typeof VerdictInputDecidedBy];
-
-
-export const VerdictInputDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-export interface VerdictInput {
-  verdict: VerdictInputVerdict;
-  note?: string;
-  documentDate?: string;
-  expiryDate?: string;
-  datesEdited?: boolean;
-  decidedBy: VerdictInputDecidedBy;
-  runId?: string;
-}
-
-export type PlacementInputDecidedBy = typeof PlacementInputDecidedBy[keyof typeof PlacementInputDecidedBy];
-
-
-export const PlacementInputDecidedBy = {
-  Originator: 'Originator',
-  Underwriter: 'Underwriter',
-  Manager: 'Manager',
-} as const;
-
-export interface PlacementInput {
-  span: FileSpan;
-  /** document blockId on the pinned template, or the literal "archive" */
-  target: string;
-  note?: string;
-  decidedBy: PlacementInputDecidedBy;
-  runId?: string;
-}
-
-export interface RunEstimate {
-  files: number;
-  pages: number;
-  estimateUsd: number;
-  estimateMinutes: number;
-}
-
-export type RunGateInputDecision = typeof RunGateInputDecision[keyof typeof RunGateInputDecision];
-
-
-export const RunGateInputDecision = {
-  confirmed: 'confirmed',
-  bypassed: 'bypassed',
-} as const;
-
-/**
- * Per-stage model option ids (from GET /models/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run's config artifact (pipelineVersion honesty).
- */
-export interface RunPlan {
-  parse?: string;
-  text?: string;
-  judge?: string;
-  /** Per-run addon toggle (default true): score every judged document for visual fraud indicators. Off = fraud_signal is ABSENT from this run's scores and the UI renders "not scored this run" — never a fake 0. Frozen into the run's config artifact like the engine ids. */
-  fraudScoring?: boolean;
-}
-
-export interface RunGateInput {
-  decision: RunGateInputDecision;
-  decidedBy: string;
-  plan?: RunPlan;
-}
 
 export type ModelOptionStatus = typeof ModelOptionStatus[keyof typeof ModelOptionStatus];
 
@@ -1039,15 +934,6 @@ export interface ModelOption {
   default: boolean;
 }
 
-export type ModelStageOptionsStage = typeof ModelStageOptionsStage[keyof typeof ModelStageOptionsStage];
-
-
-export const ModelStageOptionsStage = {
-  parse: 'parse',
-  text: 'text',
-  judge: 'judge',
-} as const;
-
 export interface ModelStageOptions {
   stage: ModelStageOptionsStage;
   /** Locked stages render but cannot be changed (judge in v1, spec §1.2). */
@@ -1059,10 +945,58 @@ export interface ModelOptionsResponse {
   stages: ModelStageOptions[];
 }
 
-export interface RunFailure {
-  reason: string;
-  /** the kick this failure belongs to (stale-worker guard) */
-  requestId: string;
+export type ApplicationEventActorKind = typeof ApplicationEventActorKind[keyof typeof ApplicationEventActorKind];
+
+
+export const ApplicationEventActorKind = {
+  user: 'user',
+  system: 'system',
+} as const;
+
+export type ApplicationEventActor = {
+  kind: ApplicationEventActorKind;
+  name?: string;
+  ip?: string;
+};
+
+export type ApplicationEventTarget = {
+  type: string;
+  id?: string;
+  label?: string;
+};
+
+export type ApplicationEventDetail = { [key: string]: unknown };
+
+/**
+ * One ledger row — append-only, written with the state change it records.
+ */
+export interface ApplicationEvent {
+  seq: number;
+  at: string;
+  actor: ApplicationEventActor;
+  /** noun.verb, e.g. file.uploaded, gate.confirmed, verdict.accepted */
+  action: string;
+  target?: ApplicationEventTarget;
+  detail?: ApplicationEventDetail;
+}
+
+export type ListApplicationEventsResponse = ApplicationEvent[];
+
+export type AnalysisPreflightGate = typeof AnalysisPreflightGate[keyof typeof AnalysisPreflightGate];
+
+
+export const AnalysisPreflightGate = {
+  auto: 'auto',
+  confirmed: 'confirmed',
+  bypassed: 'bypassed',
+} as const;
+
+export interface AnalysisPreflight {
+  /** total pages across the input set */
+  pages: number;
+  /** structured pre-flight flags across the input set (fileId-qualified) */
+  flags: FileFlag[];
+  gate: AnalysisPreflightGate;
 }
 
 /**
@@ -1132,23 +1066,6 @@ export interface AnalysisDocument {
 export interface AnalysisUnassigned {
   span: FileSpan;
   description: string;
-}
-
-export type AnalysisPreflightGate = typeof AnalysisPreflightGate[keyof typeof AnalysisPreflightGate];
-
-
-export const AnalysisPreflightGate = {
-  auto: 'auto',
-  confirmed: 'confirmed',
-  bypassed: 'bypassed',
-} as const;
-
-export interface AnalysisPreflight {
-  /** total pages across the input set */
-  pages: number;
-  /** structured pre-flight flags across the input set (fileId-qualified) */
-  flags: FileFlag[];
-  gate: AnalysisPreflightGate;
 }
 
 /**
@@ -1226,6 +1143,89 @@ export interface AnalysisSidecar {
   runs: AnalysisRun[];
 }
 
+export interface RunEstimate {
+  files: number;
+  pages: number;
+  estimateUsd: number;
+  estimateMinutes: number;
+}
+
+export type RunGateInputDecision = typeof RunGateInputDecision[keyof typeof RunGateInputDecision];
+
+
+export const RunGateInputDecision = {
+  confirmed: 'confirmed',
+  bypassed: 'bypassed',
+} as const;
+
+/**
+ * Per-stage model option ids (from GET /models/options) for THIS run. Omitted stages use the system default. The worker resolves ids at run start and fails loudly on unknown/unavailable options — never a silent engine substitution; the resolved plan is frozen into the run's config artifact (pipelineVersion honesty).
+ */
+export interface RunPlan {
+  parse?: string;
+  text?: string;
+  judge?: string;
+  /** Per-run addon toggle (default true): score every judged document for visual fraud indicators. Off = fraud_signal is ABSENT from this run's scores and the UI renders "not scored this run" — never a fake 0. Frozen into the run's config artifact like the engine ids. */
+  fraudScoring?: boolean;
+}
+
+export interface RunGateInput {
+  decision: RunGateInputDecision;
+  decidedBy: string;
+  plan?: RunPlan;
+}
+
+export interface RunFailure {
+  reason: string;
+  /** the kick this failure belongs to (stale-worker guard) */
+  requestId: string;
+}
+
+export type VerdictInputVerdict = typeof VerdictInputVerdict[keyof typeof VerdictInputVerdict];
+
+
+export const VerdictInputVerdict = {
+  accepted: 'accepted',
+  new_version_requested: 'new_version_requested',
+} as const;
+
+export type VerdictInputDecidedBy = typeof VerdictInputDecidedBy[keyof typeof VerdictInputDecidedBy];
+
+
+export const VerdictInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface VerdictInput {
+  verdict: VerdictInputVerdict;
+  note?: string;
+  documentDate?: string;
+  expiryDate?: string;
+  datesEdited?: boolean;
+  decidedBy: VerdictInputDecidedBy;
+  runId?: string;
+}
+
+export type PlacementInputDecidedBy = typeof PlacementInputDecidedBy[keyof typeof PlacementInputDecidedBy];
+
+
+export const PlacementInputDecidedBy = {
+  Originator: 'Originator',
+  Underwriter: 'Underwriter',
+  Manager: 'Manager',
+} as const;
+
+export interface PlacementInput {
+  span: FileSpan;
+  /** document blockId on the pinned template, or the literal "archive" */
+  target: string;
+  note?: string;
+  decidedBy: PlacementInputDecidedBy;
+  runId?: string;
+}
+
 export type UploadDocumentParams = {
 /**
  * Set blocks — tag the upload to one of the block's variants (400 if unknown).
@@ -1277,22 +1277,4 @@ export const GetFilePageImageSize = {
   full: 'full',
   thumb: 'thumb',
 } as const;
-
-export type UploadFileArtifactParams = {
-kind: UploadFileArtifactKind;
-};
-
-export type UploadFileArtifactKind = typeof UploadFileArtifactKind[keyof typeof UploadFileArtifactKind];
-
-
-export const UploadFileArtifactKind = {
-  pages: 'pages',
-  thumbnails: 'thumbnails',
-  md: 'md',
-  elements: 'elements',
-} as const;
-
-export type UploadFileArtifact200 = {
-  stored: boolean;
-};
 

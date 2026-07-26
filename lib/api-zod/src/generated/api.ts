@@ -3985,25 +3985,6 @@ export const GetFilePageImageResponse = zod.unknown()
 
 
 /**
- * The analyzer worker pushes each page's full render, thumbnail, parse markdown and layout-elements JSON here the moment they exist — object storage is the single durable home; the worker's disk is scratch. Authenticated by the x-sheaf-service header, not x-profile.
- * @summary Store one per-page file artifact (worker-only)
- */
-export const UploadFileArtifactParams = zod.object({
-  "applicationId": zod.coerce.string(),
-  "fileId": zod.coerce.string(),
-  "page": zod.coerce.number()
-})
-
-export const UploadFileArtifactQueryParams = zod.object({
-  "kind": zod.enum(['pages', 'thumbnails', 'md', 'elements'])
-})
-
-export const UploadFileArtifactResponse = zod.object({
-  "stored": zod.boolean()
-})
-
-
-/**
  * Human-only filing for pages the analyzer left unassigned ("your assignments win — Sheaf respects manual placement"). target is a document blockId on the pinned template, or the literal "archive". A new placement replaces any earlier placement that overlaps the same page range. Recorded with decidedBy/decidedAt; the analyzer never writes these.
  * @summary Manually file or archive an unassigned page range
  */

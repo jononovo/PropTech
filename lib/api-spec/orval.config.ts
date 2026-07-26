@@ -17,6 +17,9 @@ export default defineConfig({
   "api-client-react": {
     input: {
       target: "./openapi.yaml",
+      // worker-tagged operations are service-to-service (analyzer → portal,
+      // raw bytes over httpx) — never called from TS, so never generated.
+      filters: { mode: "exclude", tags: ["worker"] },
       override: {
         transformer: titleTransformer,
       },
@@ -43,6 +46,7 @@ export default defineConfig({
   zod: {
     input: {
       target: "./openapi.yaml",
+      filters: { mode: "exclude", tags: ["worker"] },
       override: {
         transformer: titleTransformer,
       },

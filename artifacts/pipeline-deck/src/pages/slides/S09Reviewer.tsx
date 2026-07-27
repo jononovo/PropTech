@@ -45,7 +45,7 @@ export default function S09Reviewer() {
         </div>
       </div>
 
-      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-muted">09 / 12</span>
+      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-muted">09 / 13</span>
     </div>
   );
 }

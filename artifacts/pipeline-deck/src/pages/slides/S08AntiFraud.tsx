@@ -34,7 +34,7 @@ export default function S08AntiFraud() {
         </p>
       </div>
 
-      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-white/40">08 / 12</span>
+      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-white/40">08 / 13</span>
     </div>
   );
 }

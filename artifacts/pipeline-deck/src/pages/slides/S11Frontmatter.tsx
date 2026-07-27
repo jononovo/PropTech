@@ -38,7 +38,7 @@ export default function S11Frontmatter() {
         </p>
       </div>
 
-      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-muted">11 / 12</span>
+      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-muted">12 / 13</span>
     </div>
   );
 }

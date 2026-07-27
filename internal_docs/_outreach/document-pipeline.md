@@ -36,6 +36,16 @@ Intake accepts anything from one self-contained PDF to a folder of mixed uploads
 
 > Code: run orchestration `services/analyzer/runner.py`; run record & ingest `artifacts/api-server/src/features/analysis/router.ts`
 
+### Where the analysis lives — authority vs. projections
+
+- **A segment is coordinates, not a file.** Until approval, a suggested document exists only as spans (`fileId` + `[firstPage, lastPage]`) pointing into the untouched raw PDF. No per-segment file is cut before a human approves.
+- **Postgres is the authority.** One `analysis_runs` row per ingested run; its JSON payload carries every suggested document — spans, taxonomy label, scores, flags, core fields. Everything the app behaves on reads from here.
+- **`runs/<runId>/doc-NN_<slug>.md`** — one markdown projection per suggested document, written at run ingest: YAML frontmatter (suggestedName, confidence, spans, scores, flags, coreFields, provenance + sha256) over the stitched per-page transcripts. Derived and regenerable — exists for humans, grep, and agents/RAG; a failed write logs a ledger event but never fails the ingest. Note: the per-page `md/`/`elements/` keys under `files/` are raw parse output with **no** analysis — the scores live at document level only, here and in Postgres.
+- **On approval, the analysis is copied forward.** The approved sidecar (`approved/<basename>.md`) gets the run document's suggestedName, scores, flags, and core fields in its frontmatter, so the deliverable is self-contained. Caveat: a merged document spanning multiple analyzer groups inherits the scores/flags of the analyzer document matching its **first** span; the other group's verdict remains only in the run record.
+- **Analysis happens once per segment, ever.** Classification and judging run once, at analysis time, one call per segment — never lumped across segments. Human decisions (triage verdicts, merge resolutions, per-page approve/deny, approval itself) are recorded rulings layered on top; none of them re-run any model. Only a new file drop creates new analysis (a delta run, unioned into the latest run at ingest). If a reviewer re-draws boundaries in a shape the analyzer never suggested, the result keeps the original segments' verdicts — "re-judge on human re-segmentation" would be a deliberate new feature.
+
+> Code: run record `artifacts/api-server/src/features/analysis/store.ts`; run projections `…/analysis/runSidecars.ts`; approved sidecar `…/approved-docs/materialize.ts` + `…/approved-docs/frontmatter.ts`
+
 ## High-level flow
 
 1. **Pre-flight** — Poppler CLI checks each dropped file in milliseconds (readable? encrypted? blank/low-contrast/duplicate pages? low-res scans?). One failing file rejects the whole drop, with a per-file explanation so the user fixes and re-drops.

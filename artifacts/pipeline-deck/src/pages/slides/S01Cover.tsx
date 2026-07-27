@@ -25,7 +25,7 @@ export default function S01Cover() {
         <span className="font-mono text-[1.5vw] text-white/50">document-pipeline · July 2026</span>
       </div>
 
-      <span className="absolute right-[4vw] bottom-[8vh] font-mono text-[1.5vw] text-white/40">01 / 12</span>
+      <span className="absolute right-[4vw] bottom-[8vh] font-mono text-[1.5vw] text-white/40">01 / 13</span>
     </div>
   );
 }

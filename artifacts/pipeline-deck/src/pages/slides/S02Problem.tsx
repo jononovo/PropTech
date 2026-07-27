@@ -45,7 +45,7 @@ export default function S02Problem() {
         </div>
       </div>
 
-      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-muted">02 / 12</span>
+      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-muted">02 / 13</span>
     </div>
   );
 }

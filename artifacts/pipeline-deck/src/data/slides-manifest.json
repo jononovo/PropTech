@@ -80,8 +80,16 @@
     "speakerNotes": ""
   },
   {
-    "id": "5d0e1f2a-7b3c-4d4e-a6f5-6b7c8d9e0f11",
+    "id": "7f2a3b4c-9d5e-4f6a-c8b7-8d9e0f1a2b13",
     "position": 11,
+    "filepath": "src/pages/slides/S11Segments.tsx",
+    "title": "A segment is coordinates, not a file",
+    "description": "Segments & analysis — spans, authority vs projections, no re-judging",
+    "speakerNotes": ""
+  },
+  {
+    "id": "5d0e1f2a-7b3c-4d4e-a6f5-6b7c8d9e0f11",
+    "position": 12,
     "filepath": "src/pages/slides/S11Frontmatter.tsx",
     "title": "Every approved PDF carries its receipts",
     "description": "Frontmatter — real sidecar YAML with scores and provenance",
@@ -89,7 +97,7 @@
   },
   {
     "id": "6e1f2a3b-8c4d-4e5f-b7a6-7c8d9e0f1a12",
-    "position": 12,
+    "position": 13,
     "filepath": "src/pages/slides/S12Assistant.tsx",
     "title": "Ask the case, not the pile",
     "description": "Case Assistant — read-only answers grounded in approved documents",

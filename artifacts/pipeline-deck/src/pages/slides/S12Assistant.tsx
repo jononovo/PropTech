@@ -38,7 +38,7 @@ export default function S12Assistant() {
         <span className="font-mono text-[1.5vw] text-white/40 ml-[1vw]">The run is the product.</span>
       </div>
 
-      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-white/40">12 / 12</span>
+      <span className="absolute right-[4vw] bottom-[6vh] font-mono text-[1.5vw] text-white/40">13 / 13</span>
     </div>
   );
 }

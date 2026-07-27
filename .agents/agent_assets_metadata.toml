@@ -18,3 +18,9 @@ id = "7K81bgDGnhGC9Q1Dfi7oI"
 uri = "file://docs/homium-product-spec.md"
 type = "text"
 title = "Homium Compliance Manager — Product Spec & AI Handoff"
+
+[[outputs]]
+id = "tHQYH7An5TbwLA2KKvnUA"
+uri = "file://.local/outputs/PropTech---Loan-Docs-Analysis.pdf"
+type = "pdf"
+title = "PropTech - Loan Docs Analysis.pdf"

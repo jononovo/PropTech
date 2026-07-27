@@ -4,43 +4,47 @@ export default function S11Segments() {
       <div className="absolute left-[6vw] top-[8vh]">
         <p className="font-mono text-[1.5vw] text-accent uppercase tracking-[0.25em] mb-[1.5vh]">Segments &amp; analysis</p>
         <h2 className="font-display font-extrabold text-[4vw] tracking-tight [text-wrap:balance]">
-          A segment is coordinates, not a file
+          One file, many documents
         </h2>
       </div>
 
-      <div className="absolute left-[6vw] top-[30vh] w-[36vw]">
-        <p className="font-body text-[2vw] [text-wrap:pretty]">
-          Until approval, a document exists only as spans — file plus page range — pointing into the untouched raw PDF.
-        </p>
-        <div className="bg-ink rounded-[0.5vw] p-[1.5vw] mt-[3vh]">
-          <pre className="font-mono text-[1.5vw] leading-[1.6] text-white/85 whitespace-pre">
-            <span className="text-sky-300">spans</span>:{'\n'}
-            {'  '}- <span className="text-sky-300">fileId</span>: <span className="text-orange-300">"file-01"</span>{'\n'}
-            {'    '}<span className="text-sky-300">pages</span>: [1, 9]
-          </pre>
+      <div className="absolute left-[6vw] top-[29vh] w-[40vw] bg-card border border-line rounded-[0.5vw] p-[1.6vw]">
+        <p className="font-mono text-[1.5vw] text-muted mb-[1.8vh]">file-01.pdf · 38 pages, never cut apart</p>
+        <div className="flex items-center gap-[1vw] py-[1.2vh] border-t border-line">
+          <span className="font-mono text-[1.5vw] text-accent w-[9vw]">pp. 1–9</span>
+          <span className="font-body text-[1.7vw]">URLA — Form 1003</span>
         </div>
-        <p className="font-body text-[1.8vw] text-muted mt-[3vh] [text-wrap:pretty]">
-          Analysis runs once per segment, ever. Human rulings layer on top — nothing is re-judged.
-        </p>
+        <div className="flex items-center gap-[1vw] py-[1.2vh] border-t border-line">
+          <span className="font-mono text-[1.5vw] text-accent w-[9vw]">pp. 10–11</span>
+          <span className="font-body text-[1.7vw]">Paystub</span>
+        </div>
+        <div className="flex items-center gap-[1vw] py-[1.2vh] border-t border-line">
+          <span className="font-mono text-[1.5vw] text-accent w-[9vw]">pp. 12–17</span>
+          <span className="font-body text-[1.7vw]">Bank statement</span>
+        </div>
+        <div className="flex items-center gap-[1vw] py-[1.2vh] border-t border-b border-line">
+          <span className="font-mono text-[1.5vw] text-accent w-[9vw]">pp. 18–38</span>
+          <span className="font-body text-[1.7vw] text-muted">…more documents, same pattern</span>
+        </div>
       </div>
 
-      <div className="absolute right-[5vw] top-[30vh] w-[42vw]">
-        <div className="py-[2.2vh] border-t border-line">
-          <p className="font-mono text-[1.5vw] text-accent mb-[0.6vh]">postgres · analysis_runs</p>
-          <p className="font-body text-[1.8vw] text-muted [text-wrap:pretty]">
-            The authority. Spans, scores, flags, core fields per suggested document.
+      <div className="absolute right-[5vw] top-[29vh] w-[40vw]">
+        <div className="py-[2vh] border-t border-line">
+          <p className="font-body text-[1.9vw] [text-wrap:pretty]">
+            <span className="font-semibold">Each document is a page range</span>{' '}
+            <span className="text-muted">pointing into the intact file — the PDF is only physically cut at approval.</span>
           </p>
         </div>
-        <div className="py-[2.2vh] border-t border-line">
-          <p className="font-mono text-[1.5vw] text-accent mb-[0.6vh]">runs/&lt;runId&gt;/doc-NN.md</p>
-          <p className="font-body text-[1.8vw] text-muted [text-wrap:pretty]">
-            One projection per document — scored frontmatter over the transcript. For humans, grep, and agents.
+        <div className="py-[2vh] border-t border-line">
+          <p className="font-body text-[1.9vw] [text-wrap:pretty]">
+            <span className="font-semibold">Each range is analyzed on its own:</span>{' '}
+            <span className="text-muted">its own classification, judge verdict, scores, and scored markdown sidecar.</span>
           </p>
         </div>
-        <div className="py-[2.2vh] border-t border-b border-line">
-          <p className="font-mono text-[1.5vw] text-accent mb-[0.6vh]">approved/&lt;name&gt;.md</p>
-          <p className="font-body text-[1.8vw] text-muted [text-wrap:pretty]">
-            On approval the analysis is copied forward — the deliverable is self-contained.
+        <div className="py-[2vh] border-t border-b border-line">
+          <p className="font-body text-[1.9vw] [text-wrap:pretty]">
+            <span className="font-semibold">Analyzed once, ever.</span>{' '}
+            <span className="text-muted">Human rulings layer on top of the ranges — approval copies the analysis forward, nothing is re-judged.</span>
           </p>
         </div>
       </div>

@@ -83,8 +83,8 @@
     "id": "7f2a3b4c-9d5e-4f6a-c8b7-8d9e0f1a2b13",
     "position": 11,
     "filepath": "src/pages/slides/S11Segments.tsx",
-    "title": "A segment is coordinates, not a file",
-    "description": "Segments & analysis — spans, authority vs projections, no re-judging",
+    "title": "One file, many documents",
+    "description": "Segments & analysis — page ranges into one PDF, each analyzed on its own",
     "speakerNotes": ""
   },
   {

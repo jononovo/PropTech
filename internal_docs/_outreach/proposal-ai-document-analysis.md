@@ -43,10 +43,10 @@ Before writing product code, the team does focused research on two fronts.
 |---|---|---|
 | **PaddleOCR-VL 1.6** | Open weights, self-hosted | Hosting and ops cost; GPU footprint; fine-tuning on lending documents; layout/element fidelity on rotated & skewed scans |
 | **DeepSeek-OCR** | Open weights | Accuracy vs. Paddle on dense forms; throughput; hosting profile |
+| **Unlimited-OCR** (Baidu, 3B, built on DeepSeek-OCR) | Open weights, self-hosted | One-shot long-horizon parsing of whole multi-page documents; accuracy vs. its DeepSeek base; hosting footprint |
 | **Mistral OCR** | Hosted API | Quality on photos vs. flatbed scans; per-page cost at volume; latency; data-handling terms |
-| Other hosted "unlimited"-tier OCR offerings | Hosted API | Whether flat-rate tiers hold up at our page volumes and quality bar |
 
-For the self-hosted candidates (Paddle 1.6 especially), research explicitly covers **how to host it, manage it, and fine-tune it**: deployment options, warm-vs-cold economics, versioning of fine-tuned checkpoints, and what a lending-specific fine-tune would need as training data.
+For the self-hosted candidates (Paddle 1.6 especially), research explicitly covers **how to host it, manage it, and fine-tune it**: deployment options, warm-vs-cold economics, and what a lending-specific fine-tune would require. This is research only — establishing feasibility and cost so the option is understood, not committing to it.
 
 **The dovetail question.** Raw OCR output is not the deliverable. The real evaluation criterion is how each model's output *feeds an analysis framework efficiently*:
 
@@ -89,11 +89,27 @@ The testing framework graduates into a product feature: a system for **managing 
 Stage 1 proves the shape on curated samples. Stage 2 is about contact with reality.
 
 - **Real files, at volume.** Run genuine (appropriately permissioned) loan folders through the pipeline. Measure where classification, splitting, and allocation actually fail — the errors real data produces are never the ones test data predicts.
+- **Real customer data as the capability benchmark.** Beyond finding failures, this is where we honestly measure how efficient and capable these models actually are on the real thing: accuracy, cost per file, and time saved versus manual assembly, reported with numbers.
+- **Adversarial document testing.** Deliberately hard inputs: complex merged files containing multiple document types in one scan, photographed documents, and crooked or hard-to-read scans — driver's licenses and IDs especially, where skew, glare, and low resolution are the norm.
 - **Threshold tuning.** Quality, fraud, and confidence thresholds calibrated against human reviewer agreement, not intuition. Track where reviewers override the machine and feed that back.
-- **Fine-tuning, if research supports it.** If Stage 1 concluded a self-hosted model (e.g., Paddle 1.6) is fine-tunable at reasonable cost, Stage 2 executes it using accumulated corrected examples.
 - **Fraud depth.** Move beyond single-document signals to cross-document analysis: consistency of names, addresses, employers, and figures across the whole file — the checks only an indexed corpus makes cheap.
 - **AI search and Q&A over the corpus.** With every document and analysis stored as indexed markdown, Stage 2 delivers the payoff of the indexability requirement: ask questions across a loan file ("what was the average balance across all four accounts?") with page-level citations.
 - **Requirement analytics.** Which requirements cause the most friction, the most re-requests, the most fraud flags — data the form builder then uses to improve the products themselves.
+
+---
+
+## Next steps (post–Stage 2)
+
+Beyond Stage 2 lie the harder problems that turn a capable pipeline into something that actually works in production. These are deliberately listed as challenges, not commitments:
+
+- **Review page for the real world.** Harden the human review surface against real-world scenarios and edge cases — the messy files, partial decisions, and interruptions that curated testing never produces.
+- **Smarter merge suggestions.** Matching new pages to documents that were *already approved* — e.g., additional bank statement pages arriving after the statement was signed off — and proposing the merge without silently reopening a settled decision.
+- **Duplicate flagging, auditable.** Detect re-uploads and near-duplicates, flag them, and store the determination as an auditable record rather than silently dropping files.
+- **Visual overlays on suspicious elements.** Highlight regions of a document — stamps, signatures, dates — directly on the page image when analysis finds them suspicious, so a reviewer sees *where*, not just *that*.
+- **Reversing approved documents.** A governed path to un-approve: what happens downstream, what gets re-opened, and how the reversal is recorded.
+- **Dual-approval authentication.** Required double-check by differently authenticated roles — Originator and Underwriter both review and approve, with one role senior and able to override. Approval becomes a two-key operation tied to identity.
+- **In-person competitor analysis.** Sales calls and demo onboarding with competing products, to understand their analysis depth, compliance flow, and UI capabilities from the inside rather than from marketing pages.
+- **Real-world pilot.** Live applications with multi-user document submission and approval flows — the full loop, under real conditions.
 
 ---
 
@@ -107,13 +123,14 @@ This proposal covers the analysis-and-allocation core. Around it, a fuller produ
 
 | # | Deliverable | Stage |
 |---|---|---|
-| 1 | Model research report (Paddle 1.6 vs. DeepSeek-OCR vs. Mistral OCR vs. hosted alternatives; hosting & fine-tuning plan) | 1 |
+| 1 | Model research report (Paddle 1.6 vs. DeepSeek-OCR vs. Unlimited-OCR vs. Mistral OCR; hosting & fine-tuning feasibility) | 1 |
 | 2 | Common intermediate format (markdown + elements JSON), backend-pluggable | 1 |
 | 3 | End-to-end pipeline: messy folder → clean, adjusted, per-document outputs | 1 |
 | 4 | Per-requirement allocation with correct naming and indexing | 1 |
 | 5 | Loan-product testing framework (up to ~100 documents per product) | 1 |
 | 6 | Requirements management + JSON form builder feeding the matcher | 1 |
 | 7 | Real-data calibration, threshold tuning, reviewer-feedback loop | 2 |
-| 8 | Cross-document fraud analysis | 2 |
-| 9 | AI search/Q&A over the indexed corpus with citations | 2 |
-| 10 | Model fine-tuning on corrected lending data (if justified by research) | 2 |
+| 8 | Adversarial testing: merged multi-type files, images, crooked/hard-to-read IDs | 2 |
+| 9 | Capability & efficiency report on real customer data | 2 |
+| 10 | Cross-document fraud analysis | 2 |
+| 11 | AI search/Q&A over the indexed corpus with citations | 2 |

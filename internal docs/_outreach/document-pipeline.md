@@ -56,24 +56,24 @@ Run lifecycle is tracked on the application record: `gated` (awaiting the start 
 
 ## Pre-flight & intake (detail)
 
-- Tools (Poppler CLI — the standard open-source PDF toolkit): `pdfinfo` (validity, page count, encryption → reject), `pdftoppm -r 36` (cheap raster for pixel checks), `pdfimages -list` (embedded scan DPI).
+- Tools ([Poppler](https://poppler.freedesktop.org/) CLI — the standard open-source PDF toolkit): `pdfinfo` (validity, page count, encryption → reject), `pdftoppm -r 36` (cheap raster for pixel checks), `pdfimages -list` (embedded scan DPI).
 - Raster checks per page: **blank** (mean/stddev brightness), **low contrast** (stddev < 8), **duplicate** (exact 36-DPI raster hash match within the drop), **low DPI** (embedded images < 150 DPI covering > 200k px).
-- JPG/PNG are converted in-place to single-page PDFs with `pdf-lib` (1 px = 1 pt) so everything downstream is PDF. HEIC/Word/Excel rejected at the door.
+- JPG/PNG are converted in-place to single-page PDFs with [`pdf-lib`](https://pdf-lib.js.org/) (pure-JS PDF creation/editing; 1 px = 1 pt) so everything downstream is PDF. HEIC/Word/Excel rejected at the door.
 - Accepted files are minted as immutable **SourceFiles**: stable ID `sf-XXXXXXXX`, SHA-256 hash, original bytes written once to `files/<fileId>.pdf`. Flags are advisory — stored on the record, shown in the intake UI, and echoed to the judge.
 
 > Code: checks `artifacts/api-server/src/features/files/preflight.ts`; intake seam (minting, image conversion, all-or-nothing) `…/files/receive.ts` + `…/files/imageToPdf.ts`; estimate & start `…/analysis/router.ts`; intake UI `artifacts/client/src/features/case-file/lenses/IntakePage.tsx`
 
 ## Analyzer stage 1 — Render
 
-- `pdftoppm -png -r 150` (Poppler; DPI via env `RENDER_DPI`). No image "enhancement" is ever applied — models see exactly what a human sees.
-- Thumbnails via Pillow (the standard Python imaging library): 320 px-wide PNG per page.
+- `pdftoppm -png -r 150` ([Poppler](https://poppler.freedesktop.org/); DPI via env `RENDER_DPI`). No image "enhancement" is ever applied — models see exactly what a human sees.
+- Thumbnails via [Pillow](https://pillow.readthedocs.io/) (the standard Python imaging library): 320 px-wide PNG per page.
 - Both are uploaded to the API per page as they're produced (`PUT /files/:fileId/artifacts/:page?kind=pages|thumbnails`), which writes them to object storage. Served back at `GET /files/:fileId/pages/:page` (full) and `?size=thumb` (filmstrip).
 
 > Code: rendering `services/analyzer/pdfs.py`; artifact upload/serve routes `artifacts/api-server/src/features/analysis/router.ts`
 
 ## Analyzer stage 2 — Parse (OCR)
 
-- One request per file: `POST /v1/ocr` to Mistral, model `mistral-ocr-latest`, `include_blocks: true`, page-level confidence scores.
+- One request per file: `POST /v1/ocr` to Mistral, model [`mistral-ocr-latest`](https://mistral.ai/news/mistral-ocr) ([API docs](https://docs.mistral.ai/capabilities/OCR/basic_ocr/)), `include_blocks: true`, page-level confidence scores.
 - Response is per-page: markdown → `md/p-N.md`, layout blocks → `elements/p-N.json`. Real excerpt (W-2 sample):
 
 ```json
@@ -113,7 +113,7 @@ new statement period, new form). Be conservative — when unsure, do not split.
 Answer ONLY JSON: {"additional_starts": [pageNumbers]}
 ```
 
-- Default text model: `glm-5p2` on Fireworks; `max_tokens=4096` (reasoning headroom before the JSON).
+- Default text model: [GLM](https://z.ai/) `glm-5p2` served on [Fireworks AI](https://fireworks.ai/models); `max_tokens=4096` (reasoning headroom before the JSON).
 
 > Code: `services/analyzer/split_classify.py` (split + classify); taxonomy `services/analyzer/taxonomy.py`; model resolution `services/analyzer/models.py`
 
@@ -145,7 +145,7 @@ Use unassigned when nothing fits — NEVER invent a type.
 
 ## Analyzer stage 4 — Judge
 
-- Default model: Claude Sonnet (`claude-sonnet-4-6`, Anthropic backend) — configurable per run plan like every stage.
+- Default model: [Claude Sonnet](https://www.anthropic.com/claude/sonnet) (`claude-sonnet-4-6`, [Anthropic API](https://docs.anthropic.com/)) — configurable per run plan like every stage.
 - One multimodal call per document: all page PNGs attached + parsed markdown (truncated to 4000 chars), `max_tokens=1200`. Prompt essence:
 
 ```text
@@ -177,7 +177,7 @@ Answer ONLY JSON: { "quality": 0.0-1.0, "formatting": 0.0-1.0,
 
 ## Materialization — raw vs. approved
 
-- Approval cuts the exact approved span from the **original source bytes** (never re-rendered) with `pdf-lib`:
+- Approval cuts the exact approved span from the **original source bytes** (never re-rendered) with [`pdf-lib`](https://pdf-lib.js.org/):
 
 ```ts
 const indices = Array.from({ length: last - first + 1 }, (_, i) => first - 1 + i);

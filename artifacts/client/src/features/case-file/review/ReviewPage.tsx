@@ -303,6 +303,16 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
                       : `STOP ${pos + 1} OF ${review.stops.length} · P.${activePage}`
                     : `PAGE ${activePage} OF ${review.totalPages}`}
               </span>
+              {!docGroup && (
+                <div className="flex bg-[var(--ops-inset)] p-0.5 rounded-[4px] border border-[var(--ops-border)]">
+                  <ModeButton active={mode === 'priority'} onClick={() => switchMode('priority')} testid="toggle-priority">
+                    Priority
+                  </ModeButton>
+                  <ModeButton active={mode === 'all'} onClick={() => switchMode('all')} testid="toggle-all">
+                    All pages
+                  </ModeButton>
+                </div>
+              )}
               {groups.length > 0 && (
                 <div className="flex bg-[var(--ops-inset)] p-0.5 rounded-[4px] border border-[var(--ops-border)]">
                   <ModeButton active={!docGroup} onClick={() => setDocGroupId(null)} testid="toggle-page-mode">
@@ -320,16 +330,6 @@ function ReviewRoom({ id, model, review }: { id: string; model: CaseModel; revie
                     testid="toggle-document-mode"
                   >
                     Document
-                  </ModeButton>
-                </div>
-              )}
-              {!docGroup && (
-                <div className="flex bg-[var(--ops-inset)] p-0.5 rounded-[4px] border border-[var(--ops-border)]">
-                  <ModeButton active={mode === 'priority'} onClick={() => switchMode('priority')} testid="toggle-priority">
-                    Priority
-                  </ModeButton>
-                  <ModeButton active={mode === 'all'} onClick={() => switchMode('all')} testid="toggle-all">
-                    All pages
                   </ModeButton>
                 </div>
               )}

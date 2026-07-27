@@ -1,22 +1,52 @@
 # Sheaf — Document Analysis Pipeline
 
-The heart of Sheaf is the **analyzer run**: a staged, model-driven pipeline that turns a pile of scanned pages into classified, scored, citation-backed documents. Everything before it prepares clean input; everything after it is humans deciding on what the analyzer found.
+Technical description of how a drop of files becomes approved, named, citation-backed loan documents.
 
-## The Analyzer Run
+## Physical outcomes — what happens to documents
 
-### Stage 1 — Render
+Intake accepts anything from a single self-contained PDF to a whole folder of mixed uploads (PDF/JPG/PNG). Three physical workflows result, all resolved by a human in the review-page filmstrip:
 
-- Poppler's `pdftoppm -png -r 150` rasterizes every page at 150 DPI (configurable via `RENDER_DPI`) — no image "enhancement" is ever applied; models see what a human would see.
-- Pillow derives a 320 px-wide PNG thumbnail per page.
-- Each artifact is pushed to object storage the moment it exists (`files/<fileId>/pages/p-N.png`, `files/<fileId>/thumbnails/p-N.png`); the worker's disk is scratch only.
+1. **Merge** — several uploads (or fragments) that are really one document. The analyzer files them under the same requirement; the filmstrip shows a link badge between the groups and a human accepts or dismisses the merge.
+2. **Split** — one large upload containing many documents (a scanned packet). The split stage segments it into separate document groups; each appears as its own card in the filmstrip.
+3. **Rename & approve as-is** — a well-structured, self-contained document needs no surgery. It gets a derived canonical name (`<date>_<type>_<issuer>_<party>.pdf`) and can simply be approved.
 
-### Stage 2 — Parse (OCR)
+## Analysis outcomes — what the analyzer asserts
 
-- The whole file goes to Mistral's OCR endpoint (`POST /v1/ocr`, model `mistral-ocr-latest`) with `include_blocks: true` and page-level confidence scores.
-- Per page, two artifacts are stored:
-  - `md/p-N.md` — the full markdown transcript (tables come back as GitHub-style markdown tables).
-  - `elements/p-N.json` — typed layout blocks with pixel-coordinate bounding boxes in the page's own raster space, plus page dimensions and confidence.
-- The elements JSON is the citation geometry: every block carries `top_left_x/y` and `bottom_right_x/y` in pixels at the reported `dpi`, so any fact can be highlighted at its exact source region. Real excerpt from a W-2 sample (`elements/p-1.json`):
+- **Per document (group of pages):** taxonomy label, quality/formatting/fraud scores (0–1), one-line description, flags (findings), core fields (dates, parties), suggested canonical name.
+- **Per page:** rendered PNG + thumbnail, markdown transcript, layout-element geometry (JSON, pixel bboxes), OCR confidence, pre-flight flags (blank/low-contrast/duplicate/low-DPI).
+- Page artifacts are mechanical outputs of render/parse; document-level assertions come from the split/classify/judge stages on top of them.
+
+## High-level flow
+
+1. **Pre-flight** — millisecond Poppler checks at upload; bad drops rejected whole with a per-file report.
+2. **Gate** — files sit as immutable SourceFiles; a human sees the pre-flight report + cost estimate and launches the run.
+3. **Analyzer stage 1: Render** — pages → PNGs.
+4. **Analyzer stage 2: Parse** — Mistral OCR → markdown + element geometry.
+5. **Analyzer stage 3: Split & classify** — page groups → taxonomy labels; merge candidates derived.
+6. **Analyzer stage 4: Judge** — multimodal scoring + core fields per document.
+7. **Human review** — triage verdicts, filmstrip merge/split/rename decisions, approval.
+8. **Materialization** — approved spans cut into fresh PDFs + markdown sidecars under `approved/`.
+
+---
+
+## Pre-flight & intake
+
+- Poppler CLI, per file: `pdfinfo` (validity, page count, encryption → reject), `pdftoppm -r 36` (cheap raster), `pdfimages -list` (embedded scan DPI).
+- Raster checks: **blank** (mean/stddev brightness), **low contrast** (stddev < 8), **duplicate** (exact 36-DPI raster hash match), **low DPI** (embedded images < 150 DPI over 200k px).
+- JPG/PNG converted in-place to single-page PDFs (`pdf-lib`, 1 px = 1 pt). HEIC/Word/Excel rejected.
+- Whole-drop validation is all-or-nothing. Flags are advisory, stored on the file record, echoed to the judge later.
+- Accepted files are minted as immutable **SourceFiles** (`sf-XXXXXXXX`, SHA-256, bytes written once). Nothing runs until a human launches it from the pre-flight report (priced per page).
+
+## Analyzer stage 1 — Render
+
+- `pdftoppm -png -r 150` (env `RENDER_DPI`); no image enhancement ever — models see what a human sees.
+- Pillow makes a 320 px thumbnail per page.
+- Pushed immediately to object storage: `files/<fileId>/pages/p-N.png`, `files/<fileId>/thumbnails/p-N.png`. Worker disk is scratch.
+
+## Analyzer stage 2 — Parse (OCR)
+
+- Whole file to Mistral OCR: `POST /v1/ocr`, model `mistral-ocr-latest`, `include_blocks: true`, page-level confidence.
+- Per page: `md/p-N.md` (markdown transcript; tables as markdown tables) and `elements/p-N.json` (typed blocks, pixel bboxes in the page's raster space — the citation geometry). Real excerpt from a W-2 sample:
 
 ```json
 {
@@ -43,58 +73,87 @@ The heart of Sheaf is the **analyzer run**: a staged, model-driven pipeline that
 }
 ```
 
-- Block `type` values include `title`, `text`, `table`, `image` — block content is itself markdown, so structure survives all the way to the UI.
-- Page-count mismatches or missing markdown abort the run loudly; no page is ever silently skipped.
+- Block `type` ∈ `title | text | table | image`; block `content` is itself markdown, so structure survives to the UI.
+- Page-count mismatch or missing markdown aborts the run loudly — no silent page skips.
 
-### Stage 3 — Split & Classify
+## Analyzer stage 3 — Split & Classify
 
-- **Split** (document boundary detection) runs rules-first, LLM-second:
-  - Deterministic pass: regex signals for known form IDs (`FORM_ID_SIGNALS` — e.g. "Form 1003", "W-2") and "Page 1 of Y" counter resets.
-  - Refinement pass: one text-LLM call over the per-page openings resolves boundaries the rules can't see (continuation pages, unlabeled attachments). Reasoning models are given headroom (`max_tokens=4096`) because they think before emitting JSON.
-- **Classify**: each resulting segment gets one text-LLM call against the lending `TAXONOMY`, returning a `taxonomy_id` (W-2, URLA/1003, bank statement, pay stub, …). Malformed model output degrades honestly to *unassigned*; backend failures fail the run.
-- Split output is a *recommendation* — humans confirm or override merges in review.
+### Split (packet → documents)
 
-### Stage 4 — Judge
+- Deterministic pass first: regex form-ID signals (`FORM_ID_SIGNALS`, e.g. "Form 1003", "W-2") in each page's first 1200 chars, plus "Page 1 of Y" counter resets.
+- Then ONE text-LLM refinement pass over per-page openings:
 
-- One multimodal call per document: page images + markdown transcript in a single prompt, returning structured JSON:
-  - `quality` (0–1) — usable, complete document?
-  - `formatting` (0–1) — does it look like what it claims to be?
-  - `fraud_signal` (0–1) — tampering/inconsistency indicators.
-  - `core_fields` — dates, parties, and other anchor facts.
-- Full audit metadata is persisted per judgment (`judge/doc-NN.json`): raw model response, model name, token counts, latency, prompt version.
+```text
+These are the opening words of each page of one uploaded loan packet, in order.
+Deterministic signals already mark new documents starting at pages: [...].
+List ANY ADDITIONAL pages that clearly start a new document (letterhead change,
+new statement period, new form). Be conservative — when unsure, do not split.
+Answer ONLY JSON: {"additional_starts": [pageNumbers]}
+```
+
+- Default text model: `glm-5p2` on Fireworks (`accounts/fireworks/models/glm-5p2`), `max_tokens=4096` (reasoning headroom before the JSON).
+
+### Classify
+
+- One text-LLM call per segment against the lending taxonomy:
+
+```text
+Classify this document from a mortgage loan packet.
+Valid types: {menu}
+Answer ONLY JSON: {"taxonomy_id": "<id or unassigned>", "description": "<one line>"}
+Use unassigned when nothing fits — NEVER invent a type.
+```
+
+- Malformed output degrades honestly to `unassigned`; backend failures fail the run.
+
+### Merge recommendations
+
+- Derived from classification, not a separate model call: **two open document groups filed under the same requirement (`blockId`) are probably one document.**
+- The review filmstrip pairs such groups and renders a link badge between them (adjacent) or a jump badge (separated by other cards, labeled with the partner's page range).
+- Resolution is keyed per pair — `<fileId>:p<first>-<last>|<fileId>:p<first>-<last>` — and persists as `merged` (spans combine into one document) or `dismissed` (stay separate, link recorded). A pending recommendation **blocks approval** of either group until resolved.
+
+### Rename
+
+- No LLM: the canonical name is derived from judge `core_fields` — `<document_date>_<blockId-or-type>_<issuing_party>_<party_lastname>.pdf`, slugified. Shown as the card subtitle in the filmstrip; a human can override before approval.
+
+## Analyzer stage 4 — Judge
+
+- Default model: **Claude Sonnet** (`claude-sonnet-4-6` via Anthropic backend; configurable per run plan like every stage).
+- One multimodal call per document — all page images attached plus the parsed markdown (truncated to 4000 chars), `max_tokens=1200`. Prompt essence:
+
+```text
+You are the independent judge in a mortgage document pipeline. You see page
+image(s) of ONE document plus its machine-parsed markdown. Assess honestly.
+Document type suggestion: {taxonomy label}
+Pre-flight flags touching these pages: {flags}
+Parsed markdown (may be imperfect — you are the check on it): {md}
+Answer ONLY JSON: { "quality": 0.0-1.0, "formatting": 0.0-1.0,
+  "fraud_signal": 0.0-1.0, "description": "...", "flags": [...],
+  "core_fields": { "document_date", "expiry_date",
+                   "primary_party_name", "issuing_party" } }
+```
+
+- The judge is deliberately *independent*: it sees the images, so it audits the OCR rather than trusting it.
+- Full audit metadata persisted per judgment (`judge/doc-NN.json`): raw response, model, token counts, latency, prompt version.
 
 ### Run mechanics
 
-- Model backends are pluggable per run plan — Mistral for OCR; Fireworks/Novita-hosted models for the text and multimodal stages. Resolution failures are loud; nothing falls back silently.
-- Incremental drops re-analyze only new files and merge into the latest run — the newest run is always the whole truth.
-- All artifacts are file-keyed in object storage (`files/<fileId>/{pages,thumbnails,md,elements}/p-N.*`), forming a complete, immutable audit trail.
+- Backends pluggable per run plan (Mistral OCR; Fireworks/Novita text; Anthropic judge). Resolution failures are loud — nothing falls back silently.
+- Incremental drops re-analyze only new files and merge into the latest run; the newest run is always the whole truth.
+- All artifacts file-keyed in object storage: `files/<fileId>/{pages,thumbnails,md,elements}/p-N.*` — a complete immutable audit trail.
 
 ---
 
-## Before the run
+## Human in the loop
 
-### Pre-flight (at upload)
-
-- Server-side, milliseconds per file, Poppler CLI: `pdfinfo` (validity, page count, encryption), `pdftoppm` at 36 DPI (cheap raster), `pdfimages -list` (embedded scan DPI).
-- Accepts PDF/JPG/PNG only; JPG/PNG are converted in-place to single-page PDFs with `pdf-lib` (1 px = 1 pt). HEIC, Word, Excel rejected.
-- Per-page checks on the 36 DPI raster: **blank** (mean/stddev brightness), **low contrast** (stddev < 8), **duplicate** (exact raster hash match), **low DPI** (embedded images < 150 DPI over 200k px area).
-- Whole-drop validation is all-or-nothing — one bad file fails the drop with a per-file report.
-
-### Intake & the gate
-
-- Accepted files are minted as immutable **SourceFiles**: stable ID (`sf-XXXXXXXX`), SHA-256 hash, original bytes written once to `files/<fileId>.pdf`.
-- Nothing runs automatically: staff see the pre-flight report plus a per-page cost/time estimate and explicitly decide to launch the analyzer.
-
-## After the run — human in the loop
-
-- **Triage** — judge findings arrive as a prioritized worklist; every flag gets an explicit human verdict.
-- **Review** — page or document view, transcript beside the scan; citations use the elements geometry to jump to the exact source region.
-- **Filmstrip** — analyzer-recommended merges appear as link badges between document groups; humans accept or dismiss each. Unresolved recommendations block approval.
-- **Approval** — per document (or per page in set-type requirements); denied pages stay in the raw record but are excluded from output.
+- **Triage** — judge flags arrive as a prioritized worklist; every flag gets an explicit human verdict (nothing auto-resolves).
+- **Review** — page or document view, transcript beside the scan; citations use the element geometry to highlight the exact source region.
+- **Filmstrip** — the three physical workflows land here: accept/dismiss merges, see splits as separate cards, rename via the derived name. Per-page approve/deny for set-type requirements.
+- **Approval** — per document or per page; denied pages remain in the raw record but are excluded from output.
 
 ## Raw vs. approved storage
 
-- **Raw (audit trail)** — file-keyed under `applications/<app>/files/<fileId>/`: original bytes, renders, transcripts, elements, judge output. Immutable after intake.
-- **Approved (deliverable)** — approval *materializes* a self-contained copy under `applications/<app>/approved/`: a fresh PDF cut from original source bytes (`pdf-lib`, exact approved page spans), a markdown sidecar with YAML frontmatter (scores, core fields, per-page transcripts), and renumbered thumbnails.
-- Final data extraction happens **only** from approved documents, never raw uploads.
-- Retention: raw `files/` are audit-only and sweepable independently of `approved/`; a 2-year retention sweep governs application data.
+- **Raw (audit trail)** — `applications/<app>/files/<fileId>/`: original bytes, renders, transcripts, elements, judge output. Immutable after intake.
+- **Approved (deliverable)** — approval *materializes* a self-contained copy under `applications/<app>/approved/`: a fresh PDF cut from original source bytes (`pdf-lib`, exact approved spans), a markdown sidecar with YAML frontmatter (scores, core fields, per-page transcripts), renumbered thumbnails.
+- Final data extraction happens **only** from approved documents.
+- Retention: raw `files/` are audit-only, sweepable independently of `approved/`; a 2-year sweep governs application data.

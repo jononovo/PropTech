@@ -1,0 +1,27 @@
+kind = "slides"
+previewPath = "/pipeline-deck/"
+title = "Anatomy of a Document Run"
+version = "1.0.0"
+id = "artifacts/pipeline-deck"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/pipeline-deck/" ]
+localPort = 24037
+
+[services.development]
+run = "pnpm --filter @workspace/pipeline-deck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pipeline-deck", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/pipeline-deck/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24037"
+BASE_PATH = "/pipeline-deck/"

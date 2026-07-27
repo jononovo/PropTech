@@ -35,7 +35,7 @@ export function Applications() {
     }, {
       onSuccess: (newApp) => {
         queryClient.invalidateQueries({ queryKey: getListApplicationsQueryKey() });
-        setLocation(`/apply/${newApp.id}`);
+        setLocation(`/applications/${newApp.id}/intake`);
       }
     });
   };

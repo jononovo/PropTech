@@ -1,45 +1,66 @@
 # Sheaf — Document Analysis Pipeline
 
-How a dropped file becomes an approved document: each analysis stage, the human-in-the-loop flow, and raw vs. approved storage.
+The heart of Sheaf is the **analyzer run**: a staged, model-driven pipeline that turns a pile of scanned pages into classified, scored, citation-backed documents. Everything before it prepares clean input; everything after it is humans deciding what the analyzer found.
 
-## 1. Pre-flight (at upload, before anything is stored as accepted)
+## The Analyzer Run
 
-- Runs server-side on every drop, in milliseconds, using the Poppler CLI toolkit: `pdfinfo`, `pdftoppm` (36 DPI raster), `pdfimages`.
-- Accepts PDF, JPG, and PNG only. JPG/PNG are converted in-place to single-page PDFs (`pdf-lib`, 1 px = 1 pt) so everything downstream is PDF. HEIC, Word, and Excel are rejected outright.
-- Checks per file:
-  - **Openable & page count** — `pdfinfo`; encrypted or corrupt PDFs are rejected.
-  - **Blank pages** — raster brightness statistics on the 36 DPI render.
-  - **Low contrast** — pixel standard deviation below threshold (likely unreadable scan).
-  - **Duplicate** — exact hash match of the low-DPI raster against other pages in the drop.
-  - **Low resolution** — `pdfimages` finds large embedded scans below 150 DPI.
-- Whole-drop validation is all-or-nothing: one bad file fails the drop with a per-file report, so partial intakes never happen.
+### Stage 1 — Render
 
-## 2. Intake & the gate
+- `pdftoppm` rasterizes every page: full-size PNGs at analyzer DPI plus 320 px thumbnails (Pillow).
+- These renders feed both the models downstream and the review UI (filmstrip, page viewer).
 
-- Each accepted file is minted as an immutable **SourceFile**: stable ID, SHA-256 hash, original bytes written once to object storage.
-- Pre-flight flags (blank/low-contrast/duplicate/low-DPI) are stored on the file record and surfaced in the intake UI.
-- Nothing is analyzed automatically. Files sit behind an explicit **gate**: staff see a pre-flight report with a cost/time estimate (priced per page) and decide when to run the analyzer. Files can be renamed or archived before ever being processed.
+### Stage 2 — Parse (OCR)
 
-## 3. Analyzer run (Python worker)
+- Mistral's document-OCR API processes each page: returns per-page **markdown transcript** plus **element-level JSON** — every text block with its bounding box.
+- The element geometry is what powers click-to-source citations later: any extracted fact can be traced to the exact region on the exact page.
 
-- **Render** — `pdftoppm` produces full-size page PNGs plus 320 px thumbnails (Pillow).
-- **Parse/OCR** — Mistral's document-OCR API returns per-page markdown plus element-level JSON (text blocks with bounding boxes, used later for click-to-source citations).
-- **Split** — pages are grouped into documents: deterministic signals first (known form IDs, "Page 1 of Y" resets), then a text-LLM pass to resolve ambiguous boundaries.
-- **Classify** — each document segment is labeled against a lending document taxonomy via a text LLM.
-- **Judge** — a multimodal model reviews image + transcript per document, scoring **quality**, **formatting**, and **fraud signal** (0–1), and extracting core fields (dates, parties).
-- Model backends are pluggable per run plan (Mistral for OCR; Fireworks/Novita for LLM calls); failures are loud, never silently skipped.
-- Incremental drops re-run only new files and merge into the latest run, so the newest run is always the whole truth.
+### Stage 3 — Split & Classify
 
-## 4. Human in the loop
+- **Split** — pages are grouped into documents. Deterministic signals go first (known form IDs, "Page 1 of Y" counters resetting); a text-LLM pass then resolves the ambiguous boundaries the rules can't.
+- **Classify** — each resulting document segment is labeled against a lending document taxonomy by a text LLM (W-2, URLA, bank statement, …).
+- Split output is a *recommendation*, not a verdict — humans confirm or override merges in review.
 
-- **Triage** — findings and judge scores land as a prioritized worklist; each flag gets an explicit human verdict (nothing auto-resolves).
-- **Review** — page-by-page or document-level reading with priority ordering, transcripts side-by-side with the scan, and citations that jump to the exact source region.
-- **Filmstrip (document assembly)** — analyzer-recommended merges appear as link badges between document groups; a human accepts or dismisses each recommendation. Pending merge suggestions block approval until resolved.
-- **Approval** — humans approve per document (or per page within set-type requirements). Denials keep the pages in the raw record but exclude them from the approved output.
+### Stage 4 — Judge
 
-## 5. Raw vs. approved storage
+- A multimodal model reads each document as image + transcript together and returns:
+  - **Quality** score (0–1) — is this a usable, complete document?
+  - **Formatting** score (0–1) — does it look like what it claims to be?
+  - **Fraud signal** (0–1) — tampering and inconsistency indicators.
+  - **Core fields** — dates, parties, and other anchor facts.
+- Judge findings become the triage worklist; nothing is auto-resolved.
 
-- **Raw (audit trail)** — everything lives file-keyed under `applications/<app>/files/<fileId>/`: original bytes, page renders, OCR markdown, element JSON, judge output. Immutable; never edited after intake.
-- **Approved (deliverable)** — approval *materializes* a clean copy under `applications/<app>/approved/`: a new PDF cut from the original source bytes for exactly the approved page spans, plus a markdown sidecar (scores, core fields, per-page transcripts) and thumbnails. Self-contained — usable without the raw record.
-- Extraction of final data happens **only** from approved documents, never from raw uploads.
-- Retention: raw `files/` are audit-only and can be swept independently of `approved/`; a 2-year retention sweep governs application data.
+### Run mechanics
+
+- Model backends are pluggable per run plan (Mistral for OCR; Fireworks/Novita for LLM stages); failures are loud, never silently skipped.
+- Incremental drops re-analyze only the new files and merge into the latest run — the newest run is always the whole truth.
+- Every stage's artifacts (renders, markdown, elements, judge output) are written file-keyed to object storage, forming a complete audit trail.
+
+---
+
+## Before the run
+
+### Pre-flight (at upload)
+
+- Server-side, milliseconds per file, using Poppler CLI (`pdfinfo`, `pdftoppm` at 36 DPI, `pdfimages`).
+- Accepts PDF/JPG/PNG only (images converted in-place to single-page PDFs via `pdf-lib`); HEIC, Word, Excel rejected.
+- Checks: openable & page count, encrypted → reject, blank pages, low contrast, duplicates (raster hash), low-resolution scans (<150 DPI).
+- Whole-drop validation is all-or-nothing — one bad file fails the drop with a per-file report.
+
+### Intake & the gate
+
+- Accepted files are minted as immutable **SourceFiles** (stable ID, SHA-256, bytes written once).
+- Nothing runs automatically: staff see the pre-flight report and a per-page cost/time estimate, then explicitly decide to launch the analyzer.
+
+## After the run — human in the loop
+
+- **Triage** — judge findings arrive as a prioritized worklist; each flag gets an explicit human verdict.
+- **Review** — page or document view, transcript beside the scan, citations jumping to the exact source region.
+- **Filmstrip** — analyzer-recommended merges appear as link badges between document groups; humans accept or dismiss each one. Unresolved recommendations block approval.
+- **Approval** — per document (or per page in set-type requirements); denied pages stay in the raw record but are excluded from output.
+
+## Raw vs. approved storage
+
+- **Raw (audit trail)** — file-keyed under `applications/<app>/files/<fileId>/`: original bytes, renders, transcripts, elements, judge output. Immutable after intake.
+- **Approved (deliverable)** — approval *materializes* a clean copy under `applications/<app>/approved/`: a new PDF cut from original source bytes for exactly the approved spans, plus a markdown sidecar (scores, core fields, transcripts) and thumbnails. Self-contained.
+- Final data extraction happens **only** from approved documents, never raw uploads.
+- Retention: raw `files/` are audit-only and sweepable independently of `approved/`; a 2-year retention sweep governs application data.

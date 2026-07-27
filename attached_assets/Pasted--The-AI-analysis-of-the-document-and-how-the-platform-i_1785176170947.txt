@@ -1,0 +1,22 @@
+  The AI analysis of the document and how the platform interfaces with the OCR model is the key that we're looking to elucidate from a technical first detailed technical perspective in this document.  Deep dive into that.  ====  
+1. I think this section is not detailed enough:  Analyzer stage 4 — Judge
+* 
+  It doesn't say like what each section and subsection actually does, and it should go a lot deeper.   I like how it gives kinda overview of like the prompt but how does the antifraud thing actually work?  This analysis and AI analysis, especially is really the core of what I wanna like deep dive into and a elucidate.    “ Answer ONLY JSON: { "quality": 0.0-1.0, "formatting": 0.0-1.0,
+"fraud_signal": 0.0-1.0, "description": "...", "flags": [...],
+"core_fields": { "document_date", "expiry_date",
+"primary_party_name", "issuing_party" } } ”
+
+—  
+I think for document should have subsections below it and scores. The different types of scores should each have their own like line item where it explained exactly what the criteria is for quality and formatting and fraud signal how is that analyzed?
+
+And what model and step in the analysis is actually doing that. 
+
+Does that make sense?
+Is it the judge? Etc..
+
+And the core fields how are they extracted from the document? Also at what stage is it? The is it the classifier that is doing that or is it the judge?
+
+I think per document should have sections within each stage like the preflight and then the analysis, and then the classifier, and then the judge and should have some steps between each of those sections and subsections
+
+
+—  2. Once again, I told you that we're using the model mistral 4 OCR, and asked you to add the link to it and you just added a generic link to mistral   I want you to add details about why this model is useful and how it is ranked and what it does but just like a small maybe 3.4 super success kind of summary of why it is so awesome, and also what API were using to access it from is it directly from mistral, or some other provider that is hosting the model?  https://mistral.ai/news/ocr-4/  —   

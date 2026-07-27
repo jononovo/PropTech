@@ -226,6 +226,20 @@ function MergeIcon({
   onResolve: (d: MergeDecision) => void;
   testid: string;
 }) {
+  // Stateful hover with a close delay: the CSS-only version vanished the
+  // moment the cursor left the button, making the menu unreachable.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const openMenu = () => {
+    clearTimeout(closeTimer.current);
+    setMenuOpen(true);
+  };
+  const scheduleClose = () => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setMenuOpen(false), 500);
+  };
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
   const pos =
     side === 'between'
       ? 'self-center -mx-1.5 relative'
@@ -237,7 +251,7 @@ function MergeIcon({
         ? 'bg-white border-[var(--ops-border)] text-[var(--ops-faint)]'
         : 'bg-white border-dashed border-[var(--ops-accent)] text-[var(--ops-accent)]';
   return (
-    <div className={`${pos} group/merge shrink-0`}>
+    <div className={`${pos} shrink-0`} onMouseEnter={openMenu} onMouseLeave={scheduleClose}>
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -258,8 +272,9 @@ function MergeIcon({
         <LinkIcon className="w-3.5 h-3.5" />
       </button>
       {/* hover cluster: Merge / Dismiss */}
-      {state !== 'merged' && (
-        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 flex items-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] rounded-full border border-[var(--ops-border)] p-0.5 z-40 opacity-0 pointer-events-none transition-opacity duration-150 delay-0 group-hover/merge:opacity-100 group-hover/merge:pointer-events-auto group-hover/merge:delay-[500ms]">
+      {state !== 'merged' && menuOpen && (
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full pb-1 z-40">
+          <div className="flex items-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.15)] rounded-full border border-[var(--ops-border)] p-0.5">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -283,6 +298,7 @@ function MergeIcon({
           >
             <X className="w-3.5 h-3.5" />
           </button>
+          </div>
         </div>
       )}
     </div>
